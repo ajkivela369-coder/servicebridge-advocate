@@ -1,5 +1,7 @@
 # ServiceBridge Advocate
 
+[![CI](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml)
+
 **A privacy-first, evidence-grounded AI advocate for medical complexity, veterans, disability
 benefits, and accommodations.**
 
@@ -63,7 +65,7 @@ Original records, signed opinions, agency decisions, and current governing law a
 Python 3.11 or later is required.
 
 ```bash
-git clone https://github.com/YOUR-ACCOUNT/servicebridge-advocate.git
+git clone https://github.com/ajkivela369-coder/servicebridge-advocate.git
 cd servicebridge-advocate
 python -m venv .venv
 source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
