@@ -1,0 +1,37 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Private claimant records: never commit these directories
+private_data/
+records/
+case_files/
+uploads/
+*.sqlite3
+*.db
+
+# Extracted/OCR/vector artifacts may contain protected information
+artifacts/
+exports/
+ocr_output/
+vector_store/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Editors and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
