@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -71,7 +72,30 @@ for doc in report["documents"]:
     })
 
 st.markdown("### Document reconciliation")
-st.dataframe(rows,use_container_width=True,hide_index=True)
+control_a,control_b,control_c=st.columns([1.1,1.6,1],gap="small")
+with control_a:
+    status_filter=st.selectbox("Status",["All","Review","Ready"],index=0)
+with control_b:
+    file_filter=st.text_input("Filter by file or source ID",placeholder="Example: fictional_exam or SRC-")
+with control_c:
+    st.caption("Export the full inventory, not only the filtered view.")
+    st.download_button(
+        "Download inventory JSON",
+        data=json.dumps(report,indent=2),
+        file_name="evidence_source_inventory.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+
+filtered_rows=rows
+if status_filter != "All":
+    filtered_rows=[row for row in filtered_rows if row["Status"] == status_filter]
+if file_filter.strip():
+    needle=file_filter.strip().lower()
+    filtered_rows=[row for row in filtered_rows if needle in row["File"].lower() or needle in row["Source ID"].lower()]
+
+st.dataframe(filtered_rows,use_container_width=True,hide_index=True)
+st.caption(f"Showing {len(filtered_rows)} of {len(rows)} document(s). Filters affect only the table view; review cues and exports retain the full inventory.")
 
 st.markdown("### Review cues")
 flagged=[doc for doc in report["documents"] if doc["flags"]]
