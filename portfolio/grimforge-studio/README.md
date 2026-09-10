@@ -2,7 +2,7 @@
 
 **AI Cinematic Lore Director** for original grimdark science-fiction commentary and old-world dark-fantasy storytelling.
 
-GrimForge turns an episode idea into a structured creative package: thesis, channel promise, narrator direction, source/canon labels, script blueprint, cinematic director timeline, humor beats, motion-art guidance, sound design, rights checks, and production exports.
+GrimForge turns an episode idea into a structured creative package: thesis, channel promise, narrator direction, source/canon labels, script blueprint, cinematic director timeline, humor beats, motion-art guidance, sound design, rights checks, season continuity, voice testing, and production exports.
 
 ## Creative DNA
 
@@ -14,15 +14,19 @@ The app was informed by analysis of three YouTube references selected for differ
 
 These are **general production attributes only**. GrimForge does not reproduce scripts, jokes, artwork, creator identities, or unauthorized voice likenesses.
 
-## v0.1 features
+## Current features
 
 - **Reference DNA Lab** — adjustable blend of narrator, humor, cinematic, depth, motion and pacing traits.
 - **Channel Forge** — creates the channel promise, visual language, depth rule, humor rule and recurring formats.
 - **Lore Scholar** — thesis-first script architecture with evidence ladders, intellectual lenses, counterweights and explicit canon/inference/interpretation labeling.
 - **Cinematic Director Timeline** — timestamped narration, visuals, motion, sound and humor direction.
 - **Voice Lab** — original narrator directions including Young Imperial Historian, Battle Chronicler and Old World Scholar.
+- **Shot Recipes** — reusable recipes for archive UI, motion paintings, strategic maps, comic snap cuts, selective 3D establishing shots and interpretation diagrams.
+- **Series Lab** — builds a connected 10-part season of ~5-minute episodes with episode-level hooks, payoffs, visual motifs and next-part bridges.
+- **Six-Episode Voice Tournament** — Episodes 1–6 use six distinct original/licensed narrator directions and are scored for clarity, gravitas, warmth, pacing, humor delivery, listener fatigue, intelligibility and world fit before selecting the later-series house voice.
+- **Five-Minute Quality Gate** — checks hook timing, thesis clarity, canon labeling, visual variation, motion discipline, humor fit, audio breathing room and continuity before publication.
 - **Rights Guard** — blocks assets labeled third-party/reference-only from the publication-ready queue.
-- **Production export** — JSON and Markdown director packages for later script/voice/video pipelines.
+- **Production export** — JSON and Markdown director packages plus season-plan JSON for later script/voice/video pipelines.
 
 ## Run
 
@@ -40,6 +44,8 @@ Main file:
 portfolio/grimforge-studio/studio.py
 ```
 
+Streamlit automatically exposes the additional pages, including **Series Lab**, from `portfolio/grimforge-studio/pages/`.
+
 ## Design rules
 
 - Thesis before trivia.
@@ -47,21 +53,23 @@ portfolio/grimforge-studio/studio.py
 - Humor acts as a pressure valve unless the user deliberately raises the comedy control.
 - Motion must explain, reveal or intensify something; it should not exist merely to keep pixels moving.
 - A counterargument or ambiguity is a feature, not an inconvenience.
+- Each five-minute episode must work on its own and also earn the transition into the next part.
 - Use original, user-owned, licensed or public-domain visual assets for publication.
 - Reference images and third-party footage remain out of the render-ready queue until rights are cleared.
 - Voice direction may borrow broad attributes such as age character, pace and resonance; do not clone a real speaker without appropriate consent.
 
-## Planned v0.2
+## Next major upgrades
 
 - Source notebook and lore citations
 - Research/canon confidence board
 - AI script generation adapter
-- Narration renderer adapter
+- Narration renderer adapter and actual voice A/B playback
 - Motion-art / short 3D shot generator adapter
 - Thumbnail laboratory and title scorer
 - YouTube keyword/outlier research panel
 - Scene-level asset library
 - Audio mix timeline
 - Long-form → Shorts repurposing
+- Cross-episode motif memory and continuity QA
 
 This is a creative-production and portfolio tool, not an official Games Workshop product or source of canon. It ships no Games Workshop artwork, logos, models, footage or book text.
