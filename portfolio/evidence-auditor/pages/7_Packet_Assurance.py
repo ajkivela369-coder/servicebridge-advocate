@@ -40,7 +40,7 @@ st.markdown(
 st.markdown(
     """<div class="assure-hero"><div class="eyebrow">Reviewer trust layer · Evidence Auditor Pro</div>
     <div class="headline">Packet Assurance</div>
-    <div class="sub">One screen for provenance quality, evidence-depth gaps, and verbatim-quote integrity. The score measures reviewer readiness—not claim merit, legal sufficiency, medical causation, or eligibility.</div></div>""",
+    <div class="sub">One screen for provenance quality, source reconciliation, evidence-depth gaps, and verbatim-quote integrity. The score measures reviewer readiness—not claim merit, legal sufficiency, medical causation, or eligibility.</div></div>""",
     unsafe_allow_html=True,
 )
 
@@ -133,6 +133,36 @@ with p3:
     if not q["quote_count"]:
         st.caption("No proposed verbatim quotations entered.")
 
+inventory = assurance.get("source_inventory", {})
+st.markdown("### Source reconciliation")
+ri1, ri2, ri3 = st.columns(3, gap="small")
+ri1.metric("Documents", inventory.get("document_count", 0))
+ri2.metric("Ready", max(0, inventory.get("document_count", 0) - inventory.get("documents_needing_review", 0)))
+ri3.metric("Need review", inventory.get("documents_needing_review", 0))
+
+inventory_rows = []
+for doc in inventory.get("documents", []):
+    inventory_rows.append({
+        "Status": doc.get("status", "review").title(),
+        "Source ID": doc.get("source_id", "—"),
+        "Document": doc.get("source_name", "Unknown source"),
+        "Observed pages": doc.get("page_range", "—"),
+        "Text pages": doc.get("text_pages", 0),
+        "Blank/unextractable": doc.get("blank_pages", "—"),
+        "Missing in range": doc.get("missing_pages", "—"),
+        "Unpaged units": doc.get("unpaged_units", 0),
+    })
+if inventory_rows:
+    st.dataframe(inventory_rows, use_container_width=True, hide_index=True)
+    for doc in inventory.get("documents", []):
+        if doc.get("flags"):
+            with st.expander(f'{doc.get("source_name", "Unknown source")} · {doc.get("source_id", "—")} · review cues'):
+                for flag in doc.get("flags", []):
+                    st.warning(flag)
+    st.caption(inventory.get("note", ""))
+else:
+    st.caption("No source inventory is available for the current packet.")
+
 if assurance["quotes"]["results"]:
     st.markdown("### Verification register")
     for item in assurance["quotes"]["results"]:
@@ -141,7 +171,10 @@ if assurance["quotes"]["results"]:
             for match in item.get("matches", [])[:3]:
                 source = match.get("source_name") or "Unknown source"
                 page = match.get("page")
+                source_id = match.get("source_id") or ""
                 locator = f"{source}, p. {page}" if page else source
+                if source_id:
+                    locator += f" · {source_id}"
                 st.caption(locator)
                 context = match.get("context") or {}
                 before = context.get("before") or ""
