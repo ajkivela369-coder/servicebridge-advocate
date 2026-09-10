@@ -5,6 +5,7 @@ from typing import Sequence
 from coverage import assess_issue_coverage
 from packet_guard import audit_packet_quotes
 from readiness import assess_provenance_readiness
+from source_inventory import build_source_inventory
 
 
 def assess_packet_assurance(
@@ -12,15 +13,17 @@ def assess_packet_assurance(
     sources: Sequence[dict],
     proposed_quotes: Sequence[str] | None = None,
 ) -> dict:
-    """Combine provenance, coverage, and quote integrity into one reviewer-facing assurance report.
+    """Combine provenance, coverage, quote integrity, and source reconciliation.
 
     This is a routing and quality-control aid. It does not decide claim merit, legal sufficiency,
-    medical causation, rating percentage, or benefits eligibility.
+    medical causation, rating percentage, or benefits eligibility. Source-inventory cues are kept
+    advisory so this addition does not silently change existing assurance-score semantics.
     """
     proposed_quotes = proposed_quotes or []
     provenance = assess_provenance_readiness(sources)
     coverage = assess_issue_coverage(items)
     quotes = audit_packet_quotes(proposed_quotes, sources)
+    source_inventory = build_source_inventory(sources)
 
     quote_score = 100
     if quotes["quote_count"]:
@@ -57,8 +60,9 @@ def assess_packet_assurance(
         "provenance": provenance,
         "coverage": coverage,
         "quotes": quotes,
+        "source_inventory": source_inventory,
         "note": (
-            "Packet Assurance measures provenance, evidence coverage, and quotation integrity for reviewer workflow. "
-            "It is not a legal or medical merits determination."
+            "Packet Assurance measures provenance, evidence coverage, quotation integrity, and source reconciliation for reviewer workflow. "
+            "Source-reconciliation cues are advisory and do not change the composite score. It is not a legal or medical merits determination."
         ),
     }
