@@ -1,6 +1,6 @@
 # AI Evaluation Portfolio
 
-Two compact, auditable projects demonstrating practical AI evaluation work across neuroscience/biology and health-science quality assurance.
+Three compact, auditable projects demonstrating practical AI evaluation work across neuroscience/biology, health-science quality assurance, and evidence-review workflows.
 
 ## Projects
 
@@ -10,4 +10,7 @@ Biology and neuroscience response evaluation with transparent scoring for requir
 ### [HealthQA Auditor](meridial-healthqa/)
 Safety-first health-science AI output auditing with PASS / REVIEW / ESCALATE dispositions, patient-specific claim detection, dosing-language flags, urgent-symptom escalation checks, and machine-readable reviewer output.
 
-Both projects use deterministic baselines so judgments remain inspectable and testable. They are portfolio demonstrations, not medical devices or patient-care systems.
+### [Evidence Auditor](evidence-auditor/)
+Privacy-safe benefits/disability evidence review with sentence-level favorable/unfavorable/mixed/neutral classification, source typing, confidence/rationale, contradiction screening, reviewer JSON, and a Streamlit dashboard. It uses synthetic examples rather than personal VA, medical, military, or legal records.
+
+All three projects emphasize transparent, inspectable baselines and human review. They are portfolio/research demonstrations, not medical devices, legal-advice systems, or benefits decision engines.
