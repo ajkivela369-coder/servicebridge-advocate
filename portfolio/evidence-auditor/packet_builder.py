@@ -152,6 +152,61 @@ def _append_assurance_summary(story, assurance: dict, styles, accent, soft):
     else:
         story.append(Paragraph("No priority coverage gaps were reported.", styles["EA_Body"]))
 
+    inventory = assurance.get("source_inventory", {})
+    story.append(Paragraph("Source Reconciliation", styles["EA_H2"]))
+    documents = inventory.get("documents", [])
+    if not documents:
+        story.append(Paragraph("No document-level source inventory was available for this packet.", styles["EA_Body"]))
+    else:
+        document_count = inventory.get("document_count", len(documents))
+        review_count = inventory.get("documents_needing_review", 0)
+        ready_count = max(0, document_count - review_count)
+        story.append(Paragraph(
+            f"<b>{document_count}</b> document(s) reconciled · <b>{ready_count}</b> ready · "
+            f"<b>{review_count}</b> with review cues. Missing/blank-page signals describe only the "
+            "source rows supplied to the app and are not proof that an original document is incomplete.",
+            styles["EA_Body"],
+        ))
+        irows = [["Status", "Source ID", "Document", "Observed", "Review cues"]]
+        for source in documents[:16]:
+            cues = []
+            if source.get("blank_pages") not in {None, "", "—"}:
+                cues.append(f"Blank: {source.get('blank_pages')}")
+            if source.get("missing_pages") not in {None, "", "—"}:
+                cues.append(f"Missing: {source.get('missing_pages')}")
+            if source.get("unpaged_units", 0):
+                cues.append(f"Unpaged: {source.get('unpaged_units')}")
+            cue_text = "; ".join(cues) or "None"
+            irows.append([
+                str(source.get("status", "review")).title(),
+                str(source.get("source_id") or "—"),
+                Paragraph(shorten(str(source.get("source_name") or "Unknown source"), width=52, placeholder="…"), styles["EA_Small"]),
+                str(source.get("page_range") or "—"),
+                Paragraph(cue_text, styles["EA_Small"]),
+            ])
+        itable = Table(
+            irows,
+            colWidths=[0.62*inch, 1.05*inch, 2.18*inch, 0.85*inch, 2.0*inch],
+            repeatRows=1,
+        )
+        itable.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), accent),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("BOX", (0,0), (-1,-1), 0.5, colors.HexColor("#9CA3AF")),
+            ("INNERGRID", (0,0), (-1,-1), 0.25, colors.HexColor("#D1D5DB")),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("FONTSIZE", (0,0), (-1,-1), 7.1),
+            ("TOPPADDING", (0,0), (-1,-1), 4),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ]))
+        story.append(itable)
+        if len(documents) > 16:
+            story.append(Paragraph(
+                f"{len(documents) - 16} additional document(s) are listed in the Source Appendix or live Source Inventory workspace.",
+                styles["EA_Small"],
+            ))
+
     quote_report = assurance.get("quotes", {})
     quote_results = quote_report.get("results", [])
     story.append(Paragraph("Quote Verification Register", styles["EA_H2"]))
