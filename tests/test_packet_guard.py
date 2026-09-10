@@ -33,6 +33,7 @@ class PacketGuardTests(unittest.TestCase):
         self.assertTrue(report["export_ready"])
         self.assertEqual(report["counts"]["verified"], 1)
         self.assertEqual(report["results"][0]["matches"][0]["page"], 4)
+        self.assertEqual(report["results"][0]["candidate_matches"], [])
 
     def test_unverified_quote_blocks_gate(self):
         report = audit_packet_quotes(
@@ -41,6 +42,11 @@ class PacketGuardTests(unittest.TestCase):
         )
         self.assertFalse(report["export_ready"])
         self.assertGreater(report["unresolved"], 0)
+        item = report["results"][0]
+        self.assertEqual(item["matches"], [])
+        # Similarity candidates may be retained for human comparison, but are never
+        # exposed through the verified-match field used by packet provenance.
+        self.assertIn("candidate_matches", item)
 
     def test_mixed_register_blocks_until_all_quotes_verified(self):
         report = audit_packet_quotes(
@@ -53,6 +59,7 @@ class PacketGuardTests(unittest.TestCase):
         self.assertEqual(report["quote_count"], 2)
         self.assertEqual(report["counts"]["verified"], 1)
         self.assertFalse(report["export_ready"])
+        self.assertEqual(report["results"][1]["matches"], [])
 
 
 if __name__ == "__main__":
