@@ -50,6 +50,35 @@ class SourceIdentityTests(unittest.TestCase):
         ])
         self.assertEqual(identified[0]["source_id"], "SRC-EXTERNAL01")
 
+    def test_explicit_source_id_propagates_across_contiguous_pages(self):
+        identified = assign_source_ids([
+            {
+                "source_name": "synthetic_external.pdf",
+                "page": 1,
+                "text": "Fictional page one.",
+                "source_id": "SRC-EXTERNAL01",
+            },
+            {"source_name": "synthetic_external.pdf", "page": 2, "text": "Fictional page two."},
+            {"source_name": "synthetic_external.pdf", "page": 3, "text": "Fictional page three."},
+        ])
+        self.assertEqual([row["source_id"] for row in identified], ["SRC-EXTERNAL01"] * 3)
+
+    def test_explicit_source_id_does_not_cross_document_boundary(self):
+        identified = assign_source_ids([
+            {
+                "source_name": "synthetic_external.pdf",
+                "page": 1,
+                "text": "Fictional first document.",
+                "source_id": "SRC-EXTERNAL01",
+            },
+            {"source_name": "synthetic_external.pdf", "page": 2, "text": "Fictional continuation."},
+            {"source_name": "synthetic_external.pdf", "page": 1, "text": "Fictional second document."},
+        ])
+        self.assertEqual(identified[0]["source_id"], "SRC-EXTERNAL01")
+        self.assertEqual(identified[1]["source_id"], "SRC-EXTERNAL01")
+        self.assertNotEqual(identified[2]["source_id"], "SRC-EXTERNAL01")
+        self.assertRegex(identified[2]["source_id"], r"^SRC-[0-9A-F]{10}$")
+
 
 if __name__ == "__main__":
     unittest.main()
