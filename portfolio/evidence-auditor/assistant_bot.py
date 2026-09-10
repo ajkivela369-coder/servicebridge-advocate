@@ -77,7 +77,7 @@ def answer_question(question: str, result: dict, sources: Sequence[dict] | None 
         tensions = result.get("potential_contradictions", [])[:3]
         if not tensions:
             return {
-                "answer": "I do not see a same-issue cross-stance tension in the current screening result. I would still review source context before concluding the evidence is consistent.",
+                "answer": "I do not see a same-issue cross-stance tension in the current screening result. That is not an automatic finding that the evidence is consistent; I would still review the original source context before drawing that conclusion.",
                 "citations": [],
                 "mode": "tensions",
             }
