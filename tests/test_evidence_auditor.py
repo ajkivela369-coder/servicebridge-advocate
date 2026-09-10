@@ -20,6 +20,7 @@ def load_module(name: str, path: Path):
 auditor = load_module("evidence_auditor_auditor", AUDITOR_DIR / "auditor.py")
 packet_builder = load_module("evidence_auditor_packet_builder", AUDITOR_DIR / "packet_builder.py")
 readiness = load_module("evidence_auditor_readiness", AUDITOR_DIR / "readiness.py")
+quote_integrity = load_module("evidence_auditor_quote_integrity", AUDITOR_DIR / "quote_integrity.py")
 
 class EvidenceAuditorV2Tests(unittest.TestCase):
     def test_page_provenance_and_quote_verification(self):
@@ -30,6 +31,43 @@ class EvidenceAuditorV2Tests(unittest.TestCase):
         verification=auditor.verify_quote("The clinician documented objective functional limitation during duty.",sources)
         self.assertEqual(verification["status"],"verified")
         self.assertEqual(verification["matches"][0]["page"],3)
+
+    def test_contextual_quote_verification_returns_neighboring_context(self):
+        sources=[{
+            "source_name":"synthetic_exam.pdf",
+            "page":3,
+            "text":"History was reviewed. The clinician documented objective functional limitation during duty. Follow-up was recommended."
+        }]
+        result=quote_integrity.verify_quote_contextual(
+            "The clinician documented objective functional limitation during duty.",
+            sources,
+        )
+        self.assertEqual(result["status"],"verified")
+        self.assertEqual(result["confidence"],1.0)
+        self.assertIn("History was reviewed",result["matches"][0]["context"]["before"])
+        self.assertIn("Follow-up was recommended",result["matches"][0]["context"]["after"])
+
+    def test_contextual_quote_verification_never_labels_fuzzy_match_exact(self):
+        sources=[{
+            "source_name":"synthetic_exam.pdf",
+            "page":4,
+            "text":"The examiner documented persistent functional limitations after training."
+        }]
+        result=quote_integrity.verify_quote_contextual(
+            "The examiner documented persistent functional limitation after training.",
+            sources,
+        )
+        self.assertEqual(result["status"],"partial")
+        self.assertLess(result["confidence"],1.0)
+        self.assertEqual(result["matches"][0]["match_type"],"similar_not_exact")
+
+    def test_contextual_quote_verification_rejects_unrelated_text(self):
+        sources=[{"source_name":"synthetic_notice.pdf","page":1,"text":"The administrative notice scheduled a routine review."}]
+        result=quote_integrity.verify_quote_contextual(
+            "The physician concluded the condition was caused by training.",
+            sources,
+        )
+        self.assertEqual(result["status"],"not_found")
 
     def test_dual_packet_styles_generate_pdf(self):
         result=auditor.audit_text("The clinician documented objective functional limitation. A later review stated there was no evidence linking the symptoms to service.")
