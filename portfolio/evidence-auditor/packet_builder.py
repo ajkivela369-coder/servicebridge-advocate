@@ -51,7 +51,9 @@ def _styles(visual: bool):
 def _locator(item: dict) -> str:
     name = item.get("source_name") or "Unknown source"
     page = item.get("page")
-    return f"{name}, p. {page}" if page else name
+    source_id = item.get("source_id") or ""
+    base = f"{name}, p. {page}" if page else name
+    return f"{base} · {source_id}" if source_id else base
 
 
 def _header_footer(canvas, doc):
@@ -339,16 +341,29 @@ def build_packet(
 
     story.append(PageBreak())
     story.append(Paragraph("Source Appendix", styles["EA_H1"]))
-    rows = [["Source", "Page", "Evidence IDs"]]
+    story.append(Paragraph(
+        "Stable source IDs distinguish document instances even when filenames are duplicated. IDs are provenance aids, not authenticity findings.",
+        styles["EA_Small"],
+    ))
+    rows = [["Source", "Source ID", "Page", "Evidence IDs"]]
     grouped = {}
     for item in result.get("items", []):
-        key = (item.get("source_name") or "Unknown source", item.get("page"))
+        key = (
+            item.get("source_name") or "Unknown source",
+            item.get("source_id") or "",
+            item.get("page"),
+        )
         grouped.setdefault(key, []).append(item.get("evidence_id",""))
-    for (name, page), ids in grouped.items():
-        rows.append([shorten(name, width=72, placeholder="…"), page or "—", ", ".join(ids[:12])])
+    for (name, source_id, page), ids in grouped.items():
+        rows.append([
+            shorten(name, width=54, placeholder="…"),
+            source_id or "—",
+            page or "—",
+            ", ".join(ids[:12]),
+        ])
     if len(rows) == 1:
-        rows.append(["No sources", "—", "—"])
-    table = Table(rows, colWidths=[4.6*inch, 0.7*inch, 1.45*inch], repeatRows=1)
+        rows.append(["No sources", "—", "—", "—"])
+    table = Table(rows, colWidths=[3.45*inch, 1.25*inch, 0.55*inch, 1.45*inch], repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,0), accent),
         ("TEXTCOLOR", (0,0), (-1,0), colors.white),
