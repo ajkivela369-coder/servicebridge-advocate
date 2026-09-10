@@ -7,6 +7,7 @@ from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
+from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -39,6 +40,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+def extract_pdf_sources(uploaded_files):
+    extracted = []
+    for uploaded in uploaded_files or []:
+        try:
+            uploaded.seek(0)
+            reader = PdfReader(uploaded)
+            for page_number, page in enumerate(reader.pages, 1):
+                text = (page.extract_text() or "").strip()
+                if text:
+                    extracted.append({"source_name": uploaded.name, "page": page_number, "text": text})
+        except Exception as exc:
+            st.warning(f"Could not read {uploaded.name}: {exc}")
+    return extracted
+
+
 hero_l, hero_r = st.columns([5, 1], vertical_alignment="center")
 with hero_l:
     st.markdown(
@@ -59,6 +76,24 @@ sources = st.session_state.get("ea_sources")
 result = st.session_state.get("ea_result")
 
 if not sources or not result:
+    with st.expander("Load PDFs directly into Elias", expanded=False):
+        quick_files = st.file_uploader(
+            "Source PDFs",
+            type=["pdf"],
+            accept_multiple_files=True,
+            key="elias_pdf_loader",
+            help="For a public deployment, use fictional or thoroughly de-identified documents only.",
+        )
+        if quick_files:
+            quick_sources = extract_pdf_sources(quick_files)
+            if quick_sources:
+                sources = quick_sources
+                result = audit_sources(sources)
+                st.session_state["ea_sources"] = sources
+                st.session_state["ea_result"] = result
+                st.success(f"Loaded {len(quick_files)} PDF(s) across {len(sources)} text-bearing pages.")
+
+if not sources or not result:
     demo = (
         "The clinician documented objective functional limitation and stated that the condition was aggravated during duty. "
         "A later administrative review stated there was no evidence linking the current symptoms to service. "
@@ -67,7 +102,7 @@ if not sources or not result:
     )
     sources = [{"source_name": "Synthetic demo evidence", "page": 1, "text": demo}]
     result = audit_sources(sources)
-    st.info("Elias is using the fictional demo record. Open the main Evidence Auditor page and load PDFs to give him the current session evidence.")
+    st.info("Elias is using the fictional demo record. Load PDFs above to test him against your own public-safe/de-identified material.")
 
 left, right = st.columns([2.15, 1], gap="large")
 
