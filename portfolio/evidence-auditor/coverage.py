@@ -46,6 +46,9 @@ def assess_issue_coverage(items: Sequence[dict]) -> dict:
             "issue": issue,
             "coverage_score": score,
             "coverage_band": band,
+            # Backward-compatible alias used by packet/report consumers. Keeping both keys
+            # prevents a developing/strong issue from silently rendering as the default thin band.
+            "band": band,
             "passages": depth,
             "named_sources": len(source_names),
             "source_types": sorted(source_types),
