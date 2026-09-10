@@ -14,8 +14,10 @@ sys.path.insert(0, str(ROOT))
 
 from copilot_engine import answer_question
 from auditor import audit_sources
+from packet_assurance import assess_packet_assurance
+from packet_builder import build_packet
 
-st.set_page_config(page_title="Elias · Evidence Assistant", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Elias · Start Here", page_icon="🛡️", layout="wide")
 
 st.markdown(
     """
@@ -35,6 +37,8 @@ st.markdown(
     .voice-card{border:1px solid rgba(90,110,150,.22);border-radius:18px;padding:1rem 1.05rem;background:linear-gradient(135deg,rgba(29,78,216,.06),rgba(15,118,110,.04))}
     .micro{font-size:.79rem;opacity:.68;line-height:1.45}
     .source-pill{display:inline-block;border:1px solid rgba(90,110,150,.2);border-radius:999px;padding:.22rem .5rem;margin:.12rem;font-size:.72rem}
+    .intake{border:1px solid rgba(37,99,235,.20);border-radius:20px;padding:1.05rem 1.1rem;background:linear-gradient(135deg,rgba(37,99,235,.055),rgba(16,185,129,.035));margin:.4rem 0 1rem}
+    .step-card{border:1px solid rgba(100,116,139,.20);border-radius:15px;padding:.85rem;background:rgba(100,116,139,.03);min-height:112px}
     </style>
     """,
     unsafe_allow_html=True,
@@ -61,9 +65,9 @@ with hero_l:
     st.markdown(
         """
         <div class="elias-hero">
-          <div class="elias-role">Evidence Auditor Pro · Human-guided assistant</div>
+          <div class="elias-role">Evidence Auditor Pro · Start here</div>
           <div class="elias-name">Elias</div>
-          <div class="elias-copy">A calm, citation-first evidence companion. Elias helps you interrogate the record, surface the strongest source-backed passages, find gaps, and frame review questions without pretending to be the lawyer, clinician, or adjudicator.</div>
+          <div class="elias-copy">Upload the record once. Elias organizes the evidence, keeps page-level provenance attached, answers source-grounded questions, surfaces gaps and contradictions, and can assemble a reviewer-ready evidence packet draft for human verification.</div>
           <div class="status"><span class="dot"></span> Citation-first · source-locatable · human review required</div>
         </div>
         """,
@@ -75,23 +79,60 @@ with hero_r:
 sources = st.session_state.get("ea_sources")
 result = st.session_state.get("ea_result")
 
-if not sources or not result:
-    with st.expander("Load PDFs directly into Elias", expanded=False):
-        quick_files = st.file_uploader(
-            "Source PDFs",
-            type=["pdf"],
-            accept_multiple_files=True,
-            key="elias_pdf_loader",
-            help="For a public deployment, use fictional or thoroughly de-identified documents only.",
+st.markdown('<div class="intake"><b>Case Intake</b><br><span class="micro">Put the source PDFs here first. The same session record is then available to the other Evidence Auditor workspaces and the floating Copilot.</span></div>', unsafe_allow_html=True)
+quick_files = st.file_uploader(
+    "Upload source PDFs",
+    type=["pdf"],
+    accept_multiple_files=True,
+    key="elias_pdf_loader_v2",
+    help="For a public deployment, use fictional or thoroughly de-identified documents only. Sensitive records belong only in an appropriately controlled deployment.",
+)
+if quick_files:
+    quick_sources = extract_pdf_sources(quick_files)
+    if quick_sources:
+        sources = quick_sources
+        result = audit_sources(sources)
+        st.session_state["ea_sources"] = sources
+        st.session_state["ea_result"] = result
+        st.success(f"Loaded {len(quick_files)} PDF(s) across {len(sources)} text-bearing pages. Elias and Copilot now share this record for the session.")
+
+if sources and result:
+    s1, s2, s3, s4 = st.columns(4, gap="small")
+    s1.metric("Passages", len(result.get("items", [])))
+    s2.metric("Source/page units", result.get("source_count", 0))
+    s3.metric("Tensions", len(result.get("potential_contradictions", [])))
+    s4.metric("Gap signals", len(result.get("missing_record_flags", [])))
+
+    with st.expander("One-click packet draft", expanded=False):
+        st.caption("This creates a source-backed reviewer draft, not a final legal or medical determination. Verify every quotation, source page, and conclusion before filing.")
+        packet_title = st.text_input("Packet title", value="VA Evidence Review Packet — Draft for Human Review")
+        packet_summary = st.text_area(
+            "Executive summary",
+            value="This packet organizes the loaded source record, favorable and adverse evidence, potential contradictions, record gaps, and source/page locators for human review.",
+            height=90,
         )
-        if quick_files:
-            quick_sources = extract_pdf_sources(quick_files)
-            if quick_sources:
-                sources = quick_sources
-                result = audit_sources(sources)
-                st.session_state["ea_sources"] = sources
-                st.session_state["ea_result"] = result
-                st.success(f"Loaded {len(quick_files)} PDF(s) across {len(sources)} text-bearing pages.")
+        assurance = assess_packet_assurance(result.get("items", []), sources, [])
+        st.caption(f"Packet assurance screen: {assurance['score']}/100 · {assurance['band'].replace('_',' ').title()}")
+        try:
+            packet_bytes = build_packet(
+                result,
+                packet_style="visual_claim",
+                case_title=packet_title,
+                executive_summary=packet_summary,
+                mechanism_steps=[],
+                rebuttal_note="",
+                screenshots=[],
+                assurance=assurance,
+            )
+            st.download_button(
+                "Generate / download evidence packet draft",
+                packet_bytes,
+                file_name="elias_va_evidence_packet_draft.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as exc:
+            st.warning(f"Packet draft is unavailable right now: {exc}")
 
 if not sources or not result:
     demo = (
@@ -102,7 +143,18 @@ if not sources or not result:
     )
     sources = [{"source_name": "Synthetic demo evidence", "page": 1, "text": demo}]
     result = audit_sources(sources)
-    st.info("Elias is using the fictional demo record. Load PDFs above to test him against your own public-safe/de-identified material.")
+    st.info("No uploaded record is active yet, so Elias is using a fictional demo record. Upload PDFs above to replace it for this session.")
+
+st.markdown("#### How the workspaces fit together")
+g1, g2, g3, g4 = st.columns(4, gap="small")
+with g1:
+    st.markdown('<div class="step-card"><b>1 · Elias</b><br><span class="micro">Start here. Load the record, ask questions, and create a first packet draft.</span></div>', unsafe_allow_html=True)
+with g2:
+    st.markdown('<div class="step-card"><b>2 · Review tools</b><br><span class="micro">Check provenance, quotations, packet integrity, and missing coverage in focused workspaces.</span></div>', unsafe_allow_html=True)
+with g3:
+    st.markdown('<div class="step-card"><b>3 · Floating Copilot</b><br><span class="micro">Use the ✦ button from review pages for quick source-grounded help without opening another workspace.</span></div>', unsafe_allow_html=True)
+with g4:
+    st.markdown('<div class="step-card"><b>4 · Human review</b><br><span class="micro">Verify source pages and conclusions before anything is submitted externally.</span></div>', unsafe_allow_html=True)
 
 left, right = st.columns([2.15, 1], gap="large")
 
@@ -126,7 +178,7 @@ with right:
         rate, pitch = 0.90, 0.96
     else:
         rate, pitch = 0.91, 1.00
-    st.caption("This is a new synthetic voice direction, not a clone of the speaker in the reference video.")
+    st.caption("This is a synthetic voice direction, not a clone of a real speaker.")
 
     st.markdown("### Ask him to…")
     suggestions = [
@@ -216,6 +268,5 @@ with left:
 
 st.divider()
 st.caption(
-    "Elias is a public-demo evidence assistant, not a person and not legal or medical counsel. "
-    "His voice preview uses browser speech synthesis and intentionally does not clone a real speaker."
+    "Elias is a public-demo evidence assistant, not legal or medical counsel. Packet generation is an organizing aid, not a benefits determination. Source verification and human review remain required."
 )
