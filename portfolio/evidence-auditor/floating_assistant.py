@@ -69,7 +69,11 @@ def _render_body(result: dict, sources: list[dict]) -> None:
         "What records look missing?",
         "Show the main contradiction",
     ]
-    picked = st.selectbox("Quick ask", ["Choose a prompt…"] + suggestions, key="ea_copilot_quick")
+    quick_question = ""
+    quick_cols = st.columns(2)
+    for index, suggestion in enumerate(suggestions):
+        if quick_cols[index % 2].button(suggestion, use_container_width=True, key=f"ea_copilot_quick_{index}"):
+            quick_question = suggestion
 
     history = st.session_state.setdefault("ea_copilot_history", [])
     for message in history[-4:]:
@@ -91,10 +95,7 @@ def _render_body(result: dict, sources: list[dict]) -> None:
         st.session_state["ea_copilot_history"] = []
         st.rerun()
 
-    submitted = question.strip() if send else ""
-    if picked != "Choose a prompt…" and not submitted:
-        submitted = picked
-
+    submitted = question.strip() if send else quick_question
     if submitted:
         response = answer_question(submitted, result, sources)
         history.append({"role": "user", "content": submitted, "citations": []})
@@ -107,8 +108,6 @@ def _render_body(result: dict, sources: list[dict]) -> None:
             }
         )
         st.session_state["ea_copilot_history"] = history[-8:]
-        st.session_state["ea_copilot_quick"] = "Choose a prompt…"
-        st.session_state["ea_copilot_question"] = ""
         st.rerun()
 
     st.divider()
