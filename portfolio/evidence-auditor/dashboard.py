@@ -9,6 +9,7 @@ from pypdf import PdfReader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from auditor import audit_sources, verify_quote
+from packet_assurance import assess_packet_assurance
 from packet_builder import build_packet
 
 st.set_page_config(page_title="Evidence Auditor Pro", page_icon="⚖️", layout="wide", initial_sidebar_state="expanded")
@@ -35,6 +36,7 @@ linear-gradient(135deg,#14203a,#26395d);color:white;border:1px solid rgba(255,25
 .preview-f{border-radius:18px;padding:1.1rem;background:rgba(120,130,150,.035);border:1px solid rgba(120,130,150,.20)}
 .flow{display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin:.7rem 0}
 .step{padding:.55rem .7rem;border-radius:12px;border:1px solid rgba(80,100,140,.24);background:rgba(80,100,140,.06);font-size:.82rem;font-weight:700}
+.assurance-strip{border:1px solid rgba(37,99,235,.24);border-radius:16px;padding:.9rem 1rem;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(16,185,129,.04));margin:.75rem 0}
 .footer{opacity:.62;font-size:.80rem;margin-top:1.6rem}
 </style>
 """, unsafe_allow_html=True)
@@ -66,7 +68,7 @@ with st.sidebar:
 
 st.markdown("""<div class="hero"><div class="eyebrow">Source-backed case intelligence · v2</div>
 <div class="title">Evidence Auditor Pro</div>
-<div class="subtitle">Review PDFs, preserve page provenance, verify quotations, map issues, surface opposing evidence, build rebuttal-ready comparisons, and export polished reviewer packets with screenshots, diagrams, mechanism maps, and appendices.</div></div>""",unsafe_allow_html=True)
+<div class="subtitle">Review PDFs, preserve page provenance, verify quotations, map issues, surface opposing evidence, build rebuttal-ready comparisons, and export polished reviewer packets with screenshots, diagrams, mechanism maps, appendices, and an embedded assurance summary.</div></div>""",unsafe_allow_html=True)
 
 left,right=st.columns([1.55,1],gap="large")
 with left:
@@ -76,7 +78,7 @@ with right:
     uploaded_images=st.file_uploader("Add screenshots / diagrams",type=["png","jpg","jpeg"],accept_multiple_files=True)
     st.markdown("""<div class="card"><span class="chip">page provenance</span><span class="chip">quote check</span>
     <span class="chip">issue map</span><span class="chip">rebuttal desk</span><span class="chip">mechanism map</span>
-    <span class="chip">visual exhibits</span><span class="chip">PDF packet</span><br><br>
+    <span class="chip">visual exhibits</span><span class="chip">assurance summary</span><span class="chip">PDF packet</span><br><br>
     <b>Public-safe by design:</b> the repository ships fictional examples only.</div>""",unsafe_allow_html=True)
     if uploaded_images:
         cols=st.columns(min(3,len(uploaded_images)))
@@ -175,16 +177,37 @@ with tabs[5]:
     case_title=st.text_input("Packet title",value="Synthetic Demonstration Case — Evidence Review")
     executive_summary=st.text_area("Executive summary",value="This packet organizes source-backed evidence, issue coverage, record gaps, opposing evidence, reviewer-supplied mechanism steps, and visual exhibits for human review.",height=110)
     rebuttal_note=st.text_area("Reviewer rebuttal note",placeholder="Example: The adverse review did not address the source passage documenting...",height=90)
+    proposed_quotes_text=st.text_area(
+        "Proposed verbatim quotations for packet verification",
+        placeholder="One quotation per line. Exact source matches can be listed in the exported assurance register.",
+        height=95,
+        help="Unresolved lines remain explicitly marked as unresolved; fuzzy similarity is never promoted to a verified quote.",
+    )
+    proposed_quotes=[line.strip() for line in proposed_quotes_text.splitlines() if line.strip()]
+    assurance=assess_packet_assurance(result.get("items",[]),sources,proposed_quotes)
+
+    st.markdown(
+        f'<div class="assurance-strip"><b>Packet Assurance {assurance["score"]}/100</b> · '
+        f'{assurance["band"].replace("_"," ").title()} · Provenance {assurance["provenance_score"]} · '
+        f'Coverage {assurance["coverage_score"]} · Quote integrity {assurance["quote_score"]}</div>',
+        unsafe_allow_html=True,
+    )
+    if assurance["blockers"]:
+        st.warning("Reviewer blockers remain: " + " ".join(assurance["blockers"]))
+    else:
+        st.success("No assurance blockers detected by this screening pass. Human source review is still required.")
+
     p1,p2=st.columns([1.3,1],gap="large")
     with p1:
         klass="preview-v" if style=="Visual Claim Packet" else "preview-f"
-        desc=("Color-forward evidence cards, mechanism map, screenshot exhibits, rebuttal desk, and source appendix."
+        desc=("Color-forward evidence cards, assurance summary, mechanism map, screenshot exhibits, rebuttal desk, and source appendix."
               if style=="Visual Claim Packet" else
-              "Restrained typography, issue table, source-backed passages, tension analysis, and source appendix.")
+              "Restrained typography, assurance summary, issue table, source-backed passages, tension analysis, and source appendix.")
         st.markdown(f'<div class="{klass}"><h4>{style}</h4>{desc}</div>',unsafe_allow_html=True)
     with p2:
         include_images=st.checkbox("Include uploaded screenshots / diagrams",value=style=="Visual Claim Packet")
-        st.caption("Visual exhibits are reviewer supplied and should be verified against originals.")
+        include_assurance=st.checkbox("Embed Reviewer Assurance Summary",value=True)
+        st.caption("Assurance is a workflow-quality screen, not a merits decision. Visual exhibits should be verified against originals.")
     shots=[]
     if include_images:
         for img in uploaded_images or []:
@@ -192,10 +215,12 @@ with tabs[5]:
     try:
         packet_style="visual_claim" if style=="Visual Claim Packet" else "formal_review"
         payload=build_packet(result,packet_style=packet_style,case_title=case_title,executive_summary=executive_summary,
-                             mechanism_steps=mechanism_steps,rebuttal_note=rebuttal_note,screenshots=shots)
+                             mechanism_steps=mechanism_steps,rebuttal_note=rebuttal_note,screenshots=shots,
+                             assurance=assurance if include_assurance else None)
         d1,d2=st.columns(2)
         with d1: st.download_button("Download generated PDF",payload,file_name="evidence_auditor_visual_packet.pdf" if packet_style=="visual_claim" else "evidence_auditor_formal_review.pdf",mime="application/pdf",use_container_width=True)
-        with d2: st.download_button("Download reviewer JSON",json.dumps(result,indent=2),file_name="evidence_audit.json",mime="application/json",use_container_width=True)
+        export_json={"audit":result,"packet_assurance":assurance}
+        with d2: st.download_button("Download reviewer JSON",json.dumps(export_json,indent=2),file_name="evidence_audit.json",mime="application/json",use_container_width=True)
         st.caption(f"Generated packet size: {len(payload)/1024:.1f} KB")
     except Exception as exc:
         st.error(f"Packet generation failed: {exc}")
