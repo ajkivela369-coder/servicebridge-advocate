@@ -29,7 +29,8 @@ def assign_source_ids(sources: Sequence[dict]) -> list[dict]:
     """Return source rows with short content-derived document IDs attached.
 
     IDs are deterministic for the currently supplied source rows and contain no raw source text.
-    Existing explicit ``source_id`` values are preserved. The function does not persist, upload,
+    Existing explicit ``source_id`` values are preserved and propagated across immediately
+    contiguous pages from the same document instance. The function does not persist, upload,
     or log source content.
     """
     rows = [dict(source) for source in sources]
@@ -40,13 +41,23 @@ def assign_source_ids(sources: Sequence[dict]) -> list[dict]:
     current_group: list[int] = []
     previous: dict | None = None
     for index, row in enumerate(rows):
+        boundary = _group_boundary(previous, row)
+
+        # If an upstream loader supplied a stable source ID on one page, preserve that identity
+        # across later contiguous pages of the same document instead of silently minting a second
+        # ID for the remainder of the file. A filename change or page reset still starts a new
+        # document instance and therefore blocks propagation.
+        if not row.get("source_id") and previous and previous.get("source_id") and not boundary:
+            row["source_id"] = previous["source_id"]
+
         if row.get("source_id"):
             if current_group:
                 groups.append(current_group)
                 current_group = []
             previous = row
             continue
-        if _group_boundary(previous, row):
+
+        if boundary:
             if current_group:
                 groups.append(current_group)
             current_group = [index]
