@@ -19,6 +19,7 @@ def load_module(name: str, path: Path):
 
 auditor = load_module("evidence_auditor_auditor", AUDITOR_DIR / "auditor.py")
 packet_builder = load_module("evidence_auditor_packet_builder", AUDITOR_DIR / "packet_builder.py")
+readiness = load_module("evidence_auditor_readiness", AUDITOR_DIR / "readiness.py")
 
 class EvidenceAuditorV2Tests(unittest.TestCase):
     def test_page_provenance_and_quote_verification(self):
@@ -36,6 +37,21 @@ class EvidenceAuditorV2Tests(unittest.TestCase):
             payload=packet_builder.build_packet(result,packet_style=style,mechanism_steps=["Event","Finding","Functional impact"])
             self.assertTrue(payload.startswith(b"%PDF"))
             self.assertGreater(len(payload),1000)
+
+    def test_provenance_readiness_rewards_locatable_sources(self):
+        complete=[
+            {"source_name":"synthetic_exam.pdf","page":1,"text":"Finding one."},
+            {"source_name":"synthetic_exam.pdf","page":2,"text":"Finding two."},
+        ]
+        incomplete=[
+            {"source_name":"synthetic_exam.pdf","page":None,"text":"Finding one."},
+            {"source_name":"Unknown source","page":None,"text":""},
+        ]
+        complete_score=readiness.assess_provenance_readiness(complete)
+        incomplete_score=readiness.assess_provenance_readiness(incomplete)
+        self.assertEqual(complete_score["score"],100)
+        self.assertGreater(complete_score["score"],incomplete_score["score"])
+        self.assertIn("page locator", " ".join(incomplete_score["flags"]).lower())
 
 if __name__=="__main__":
     unittest.main()
