@@ -45,6 +45,29 @@ class PacketAssuranceTests(unittest.TestCase):
         self.assertGreaterEqual(report["coverage"]["thin"], 1)
         self.assertEqual(report["band"], "needs_review")
 
+    def test_assurance_includes_document_level_source_inventory(self):
+        report = assess_packet_assurance(self.result["items"], self.sources, [])
+        inventory = report["source_inventory"]
+        self.assertEqual(inventory["document_count"], 2)
+        self.assertEqual(len(inventory["documents"]), 2)
+        self.assertTrue(all(doc["source_id"].startswith("SRC-") for doc in inventory["documents"]))
+
+    def test_source_inventory_is_advisory_not_a_score_reweight(self):
+        clean_sources = [
+            {"source_name": "fictional_record.pdf", "page": 1, "text": "The clinician documented objective functional limitation during duty."},
+            {"source_name": "fictional_record.pdf", "page": 2, "text": "A follow-up note documented continued functional limitation and restricted activity."},
+        ]
+        cue_sources = [
+            {"source_name": "fictional_record.pdf", "page": 1, "text": "The clinician documented objective functional limitation during duty."},
+            {"source_name": "fictional_record.pdf", "page": 2, "text": ""},
+        ]
+        clean_result = audit_sources(clean_sources)
+        cue_result = audit_sources(cue_sources)
+        clean = assess_packet_assurance(clean_result["items"], clean_sources, [])
+        cue = assess_packet_assurance(cue_result["items"], cue_sources, [])
+        self.assertGreaterEqual(cue["source_inventory"]["documents_needing_review"], 1)
+        self.assertEqual(clean["score"], cue["score"])
+
 
 if __name__ == "__main__":
     unittest.main()
