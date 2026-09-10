@@ -1,234 +1,294 @@
 from __future__ import annotations
 
-import json
+import hashlib
 import sys
+import uuid
 from pathlib import Path
 
 import streamlit as st
 from pypdf import PdfReader
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from auditor import audit_sources, verify_quote
-from floating_assistant import render_floating_copilot
-from packet_assurance import assess_packet_assurance
-from packet_builder import build_packet
+APP_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(APP_DIR))
 
-st.set_page_config(page_title="Evidence Auditor Pro", page_icon="⚖️", layout="wide", initial_sidebar_state="expanded")
+from auditor import audit_sources
+from elias_memory import default_memory, export_memory, import_memory, memory_context, summarize_workspace
+from elias_plugins import PLUGIN_CATALOG, default_plugin_state, respond
+from ui_shell import render_app_nav
 
-st.markdown("""
-<style>
-.block-container{padding-top:1.2rem;padding-bottom:3rem;max-width:1540px}
-[data-testid="stSidebar"]{border-right:1px solid rgba(120,130,150,.18)}
-.hero{padding:1.6rem 1.7rem;border-radius:24px;background:
-radial-gradient(circle at 15% 15%,rgba(56,132,255,.22),transparent 30%),
-radial-gradient(circle at 90% 10%,rgba(24,185,160,.16),transparent 28%),
-linear-gradient(135deg,#14203a,#26395d);color:white;border:1px solid rgba(255,255,255,.08);box-shadow:0 18px 55px rgba(0,0,0,.18);margin-bottom:1rem}
-.eyebrow{font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.72}
-.title{font-size:2.35rem;font-weight:800;line-height:1.05;margin:.25rem 0 .5rem}
-.subtitle{font-size:1rem;line-height:1.55;max-width:980px;opacity:.83}
-.card{border:1px solid rgba(120,130,150,.20);border-radius:16px;padding:1rem;background:rgba(120,130,150,.035)}
-.metric{border:1px solid rgba(120,130,150,.17);border-radius:15px;padding:.85rem 1rem;min-height:100px}
-.ml{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.58;font-weight:800}
-.mv{font-size:1.65rem;font-weight:800;margin-top:.15rem}
-.good{border-left:4px solid #20a66a}.bad{border-left:4px solid #d85b5b}.mix{border-left:4px solid #d89a34}.blue{border-left:4px solid #3b82f6}
-.pass{border:1px solid rgba(120,130,150,.18);border-radius:12px;padding:.85rem 1rem;background:rgba(120,130,150,.03)}
-.chip{display:inline-block;padding:.2rem .5rem;border-radius:999px;background:rgba(80,100,140,.10);font-size:.75rem;font-weight:700;margin:.15rem}
-.preview-v{border-radius:18px;padding:1.1rem;background:linear-gradient(135deg,rgba(37,99,235,.10),rgba(16,185,129,.08));border:1px solid rgba(37,99,235,.23)}
-.preview-f{border-radius:18px;padding:1.1rem;background:rgba(120,130,150,.035);border:1px solid rgba(120,130,150,.20)}
-.flow{display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin:.7rem 0}
-.step{padding:.55rem .7rem;border-radius:12px;border:1px solid rgba(80,100,140,.24);background:rgba(80,100,140,.06);font-size:.82rem;font-weight:700}
-.assurance-strip{border:1px solid rgba(37,99,235,.24);border-radius:16px;padding:.9rem 1rem;background:linear-gradient(135deg,rgba(37,99,235,.06),rgba(16,185,129,.04));margin:.75rem 0}
-.footer{opacity:.62;font-size:.80rem;margin-top:1.6rem}
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Elias · Evidence Auditor Pro", page_icon="💬", layout="wide", initial_sidebar_state="expanded")
 
-def extract_pdf_sources(uploaded):
-    reader=PdfReader(uploaded)
-    out=[]
-    for page_no,page in enumerate(reader.pages,1):
-        text=(page.extract_text() or "").strip()
-        if text:
-            out.append({"source_name":uploaded.name,"page":page_no,"text":text})
-    return out
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebarNav"]{display:none}
+    .block-container{max-width:980px;padding-top:.75rem;padding-bottom:7rem}
+    .elias-top{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.2rem 0 1.2rem}
+    .elias-title{font-size:1.18rem;font-weight:780;letter-spacing:-.01em}
+    .elias-pill{display:inline-flex;align-items:center;gap:.38rem;border:1px solid rgba(100,116,139,.22);border-radius:999px;padding:.3rem .62rem;font-size:.72rem;font-weight:700;opacity:.82}
+    .elias-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.65)}
+    .welcome{padding:3.6rem .2rem 1.8rem;text-align:center}
+    .welcome h1{font-size:2.05rem;letter-spacing:-.035em;margin:0 0 .55rem}
+    .welcome p{max-width:650px;margin:0 auto;opacity:.68;line-height:1.55}
+    .prompt-card{border:1px solid rgba(100,116,139,.18);border-radius:16px;padding:.85rem .95rem;min-height:104px;background:rgba(100,116,139,.025)}
+    .prompt-card b{font-size:.86rem}.prompt-card span{display:block;font-size:.76rem;opacity:.62;line-height:1.4;margin-top:.3rem}
+    .source-chip{display:inline-block;border:1px solid rgba(100,116,139,.20);border-radius:999px;padding:.2rem .48rem;margin:.12rem .12rem .12rem 0;font-size:.69rem;opacity:.74}
+    .tool-chip{display:inline-block;border-radius:999px;padding:.18rem .45rem;margin:.08rem .12rem .08rem 0;font-size:.68rem;font-weight:700;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.18)}
+    .memory-card{border:1px solid rgba(100,116,139,.18);border-radius:14px;padding:.75rem .85rem;background:rgba(100,116,139,.025);font-size:.78rem;line-height:1.45}
+    .composer-note{text-align:center;font-size:.68rem;opacity:.52;margin-top:.25rem}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-sample=("The clinician documented objective functional limitation and stated that the condition was aggravated during duty. "
-"A later administrative review stated there was no evidence linking the current symptoms to service. "
-"A witness statement reported continuity of symptoms after training. "
-"The record may be incomplete because several service records were unavailable.")
+
+def _extract_sources(uploaded_files) -> list[dict]:
+    sources: list[dict] = []
+    for uploaded in uploaded_files or []:
+        try:
+            uploaded.seek(0)
+            if uploaded.name.lower().endswith(".pdf"):
+                reader = PdfReader(uploaded)
+                for page_no, page in enumerate(reader.pages, 1):
+                    text = (page.extract_text() or "").strip()
+                    sources.append({"source_name": uploaded.name, "page": page_no, "text": text})
+            else:
+                raw = uploaded.getvalue().decode("utf-8", errors="replace")
+                sources.append({"source_name": uploaded.name, "page": 1, "text": raw.strip()})
+        except Exception as exc:
+            st.warning(f"Could not read {uploaded.name}: {exc}")
+    return sources
+
+
+def _upload_signature(uploaded_files) -> str:
+    digest = hashlib.sha256()
+    for uploaded in uploaded_files or []:
+        digest.update(uploaded.name.encode("utf-8", errors="ignore"))
+        digest.update(str(getattr(uploaded, "size", 0)).encode())
+    return digest.hexdigest()[:16]
+
+
+def _new_thread() -> str:
+    thread_id = uuid.uuid4().hex[:10]
+    st.session_state.setdefault("elias_threads", {})[thread_id] = {
+        "title": "New chat",
+        "messages": [],
+    }
+    st.session_state["elias_active_thread"] = thread_id
+    return thread_id
+
+
+def _init_state() -> None:
+    st.session_state.setdefault("elias_plugins", default_plugin_state())
+    st.session_state.setdefault("elias_memory", default_memory())
+    st.session_state.setdefault("elias_threads", {})
+    if not st.session_state.get("elias_active_thread") or st.session_state["elias_active_thread"] not in st.session_state["elias_threads"]:
+        _new_thread()
+
+
+def _active_thread() -> dict:
+    return st.session_state["elias_threads"][st.session_state["elias_active_thread"]]
+
+
+def _set_thread_title(thread: dict, question: str) -> None:
+    if thread.get("title") != "New chat":
+        return
+    compact = " ".join(question.strip().split())
+    thread["title"] = compact[:42] + ("…" if len(compact) > 42 else "")
+
+
+_init_state()
+render_app_nav("elias")
 
 with st.sidebar:
-    st.markdown("### Review controls")
-    st.caption("Evidence stays session-local unless you explicitly save or export it.")
-    stance_filter=st.multiselect("Evidence stance",["favorable","unfavorable","mixed","neutral"],default=["favorable","unfavorable","mixed","neutral"])
-    min_confidence=st.slider("Minimum confidence",0.0,1.0,0.0,0.05)
-    copilot_enabled=st.toggle("Floating Evidence Copilot",value=True,help="Shows a compact assistant launcher in the lower-right corner. Elias remains a separate full workspace.")
+    if st.button("＋ New chat", use_container_width=True, type="primary"):
+        _new_thread()
+        st.rerun()
+
+    st.markdown("**Chats**")
+    for thread_id, thread in list(st.session_state["elias_threads"].items())[::-1]:
+        label = thread.get("title") or "Untitled chat"
+        if st.button(label, key=f"thread_{thread_id}", use_container_width=True):
+            st.session_state["elias_active_thread"] = thread_id
+            st.rerun()
+
     st.divider()
-    st.markdown("**Packet defaults**")
-    packet_style_label=st.radio("Style",["Visual Claim Packet","Formal Evidence Review"],index=0)
-    st.divider()
-    st.caption("Public demo: fictional/de-identified content only. Human verification required.")
-
-st.markdown("""<div class="hero"><div class="eyebrow">Source-backed case intelligence · v2</div>
-<div class="title">Evidence Auditor Pro</div>
-<div class="subtitle">Review PDFs, preserve page provenance, verify quotations, map issues, surface opposing evidence, build rebuttal-ready comparisons, and export polished reviewer packets with screenshots, diagrams, mechanism maps, appendices, and an embedded assurance summary.</div></div>""",unsafe_allow_html=True)
-
-left,right=st.columns([1.55,1],gap="large")
-with left:
-    uploaded_pdfs=st.file_uploader("Add source PDFs",type=["pdf"],accept_multiple_files=True)
-    pasted_text=st.text_area("Paste evidence or notes",value=sample,height=180)
-with right:
-    uploaded_images=st.file_uploader("Add screenshots / diagrams",type=["png","jpg","jpeg"],accept_multiple_files=True)
-    st.markdown("""<div class="card"><span class="chip">page provenance</span><span class="chip">quote check</span>
-    <span class="chip">issue map</span><span class="chip">rebuttal desk</span><span class="chip">mechanism map</span>
-    <span class="chip">visual exhibits</span><span class="chip">assurance summary</span><span class="chip">PDF packet</span><br><br>
-    <b>Public-safe by design:</b> the repository ships fictional examples only.</div>""",unsafe_allow_html=True)
-    if uploaded_images:
-        cols=st.columns(min(3,len(uploaded_images)))
-        for i,img in enumerate(uploaded_images[:3]):
-            with cols[i]: st.image(img,use_container_width=True)
-
-sources=[]
-if pasted_text.strip(): sources.append({"source_name":"Pasted evidence","page":None,"text":pasted_text})
-for uploaded in uploaded_pdfs or []:
-    try:
-        uploaded.seek(0); sources.extend(extract_pdf_sources(uploaded))
-    except Exception as exc:
-        st.warning(f"Could not extract {uploaded.name}: {exc}")
-
-result=audit_sources(sources)
-st.session_state["ea_sources"]=sources
-st.session_state["ea_result"]=result
-summary=result["summary"]
-metrics=st.columns(6,gap="small")
-for col,(label,value,klass) in zip(metrics,[
-    ("Favorable",summary["favorable"],"good"),("Unfavorable",summary["unfavorable"],"bad"),
-    ("Mixed",summary["mixed"],"mix"),("Sources/pages",result["source_count"],"blue"),
-    ("Tensions",len(result["potential_contradictions"]),"mix"),
-    ("Record gaps",len(result["missing_record_flags"]),"blue")]):
-    with col: st.markdown(f'<div class="metric {klass}"><div class="ml">{label}</div><div class="mv">{value}</div></div>',unsafe_allow_html=True)
-
-tabs=st.tabs(["Command Center","Evidence Review","Quote Check","Rebuttal Lab","Mechanism Map","Packet Studio"])
-
-with tabs[0]:
-    a,b=st.columns([1,1],gap="large")
-    with a:
-        st.markdown("#### Issue heat map")
-        if result["issue_summary"]: st.bar_chart(result["issue_summary"],horizontal=True)
-        else: st.info("Add evidence to populate the issue map.")
-    with b:
-        st.markdown("#### Review routing")
-        st.markdown(f"""<div class="card"><span class="chip">{len(result['items'])} passages</span>
-        <span class="chip">{len(result['issue_summary'])} issue groups</span>
-        <span class="chip">{len(result['potential_contradictions'])} tensions</span>
-        <span class="chip">{len(result['missing_record_flags'])} gap signals</span>
-        <div class="flow"><span class="step">Verify source</span>→<span class="step">Confirm quote</span>→
-        <span class="step">Resolve tension</span>→<span class="step">Build packet</span></div></div>""",unsafe_allow_html=True)
-        for flag in result["missing_record_flags"][:5]:
-            loc=flag["source_name"]+(f", p. {flag['page']}" if flag["page"] else "")
-            st.warning(f"{loc}: {flag['text']}")
-
-with tabs[1]:
-    visible=[i for i in result["items"] if i["stance"] in stance_filter and i["confidence"]>=min_confidence]
-    st.caption("Every extracted passage retains source name and PDF page when available.")
-    for item in visible:
-        loc=item["source_name"]+(f" · p. {item['page']}" if item["page"] else "")
-        with st.expander(f"{item['evidence_id']} · {item['stance'].upper()} · {item['confidence']:.0%} · {loc}",expanded=item["stance"] in {"favorable","unfavorable","mixed"}):
-            st.markdown(f'<div class="pass">{item["text"]}</div>',unsafe_allow_html=True)
-            st.write("**Issues:** "+" · ".join(x.replace("_"," ").title() for x in item["issues"]))
-            st.write("**Source type:** "+item["source_type"].title())
-            for reason in item["rationale"]: st.caption(reason)
-
-with tabs[2]:
-    st.markdown("#### Source quote verifier")
-    quote=st.text_area("Paste the exact quotation you intend to use",height=120)
-    check=verify_quote(quote,sources)
-    if quote.strip():
-        if check["status"]=="verified":
-            st.success(check["note"])
-            for match in check["matches"]:
-                loc=match["source_name"]+(f", p. {match['page']}" if match["page"] else "")
-                st.write(f"Verified against **{loc}**")
-        else: st.error(check["note"])
-    st.caption("Text match ≠ medical or legal truth. Verify the source and context before external use.")
-
-with tabs[3]:
-    st.markdown("#### Same-issue opposing evidence")
-    st.caption("Candidate tensions for human reconciliation, not automatic findings of error.")
-    if not result["potential_contradictions"]: st.success("No same-issue cross-stance tension detected.")
-    for n,t in enumerate(result["potential_contradictions"][:12],1):
-        st.markdown(f"**Tension {n} · {', '.join(x.replace('_',' ').title() for x in t['issues'])}**")
-        c1,c2=st.columns(2,gap="large")
-        with c1:
-            st.success("Supporting / favorable"); st.write(t["favorable"]["text"])
-            st.caption(t["favorable"]["source_name"]+(f" · p. {t['favorable']['page']}" if t["favorable"]["page"] else ""))
-        with c2:
-            st.error("Adverse / opposing"); st.write(t["unfavorable"]["text"])
-            st.caption(t["unfavorable"]["source_name"]+(f" · p. {t['unfavorable']['page']}" if t["unfavorable"]["page"] else ""))
-        st.divider()
-
-with tabs[4]:
-    st.markdown("#### Reviewer-supplied mechanism / sequence")
-    default=["Documented event / exposure / injury","Anatomical or functional change supported by the record",
-             "Observed symptoms or objective findings","Repeated aggravation / persistence","Current functional impact"]
-    mechanism_text=st.text_area("One step per line",value="\n".join(default),height=180)
-    mechanism_steps=[x.strip(" -•\t") for x in mechanism_text.splitlines() if x.strip()]
-    st.markdown('<div class="flow">'+'→'.join(f'<span class="step">{x}</span>' for x in mechanism_steps)+'</div>',unsafe_allow_html=True)
-    st.info("Mechanism maps are reviewer-authored explanatory aids; the app does not silently invent medical causation.")
-
-with tabs[5]:
-    st.markdown("#### Packet Studio")
-    style=st.radio("Document style",["Visual Claim Packet","Formal Evidence Review"],horizontal=True,index=0 if packet_style_label=="Visual Claim Packet" else 1)
-    case_title=st.text_input("Packet title",value="Synthetic Demonstration Case — Evidence Review")
-    executive_summary=st.text_area("Executive summary",value="This packet organizes source-backed evidence, issue coverage, record gaps, opposing evidence, reviewer-supplied mechanism steps, and visual exhibits for human review.",height=110)
-    rebuttal_note=st.text_area("Reviewer rebuttal note",placeholder="Example: The adverse review did not address the source passage documenting...",height=90)
-    proposed_quotes_text=st.text_area(
-        "Proposed verbatim quotations for packet verification",
-        placeholder="One quotation per line. Exact source matches can be listed in the exported assurance register.",
-        height=95,
-        help="Unresolved lines remain explicitly marked as unresolved; fuzzy similarity is never promoted to a verified quote.",
+    st.markdown("**Case files**")
+    uploads = st.file_uploader(
+        "Add PDFs or text files",
+        type=["pdf", "txt", "md"],
+        accept_multiple_files=True,
+        key="elias_case_files",
+        label_visibility="collapsed",
+        help="Files are processed in the current Streamlit session. Public deployments should use fictional or de-identified records unless their data controls are appropriate for sensitive material.",
     )
-    proposed_quotes=[line.strip() for line in proposed_quotes_text.splitlines() if line.strip()]
-    assurance=assess_packet_assurance(result.get("items",[]),sources,proposed_quotes)
+    if uploads:
+        signature = _upload_signature(uploads)
+        if signature != st.session_state.get("elias_upload_signature"):
+            extracted = _extract_sources(uploads)
+            st.session_state["ea_sources"] = extracted
+            st.session_state["ea_result"] = audit_sources(extracted)
+            st.session_state["elias_upload_signature"] = signature
+            memory = st.session_state["elias_memory"]
+            memory["auto_summary"] = summarize_workspace(st.session_state["ea_result"], extracted)
+            st.session_state["elias_memory"] = memory
+            st.toast(f"Loaded {len(uploads)} file(s) into Elias.")
 
+    sources = st.session_state.get("ea_sources") or []
+    result = st.session_state.get("ea_result") or {}
+    if sources:
+        st.caption(f"{len(uploads or []) or len({s.get('source_name') for s in sources})} file(s) · {len(sources)} source/page units")
+        if st.button("Clear case files", use_container_width=True):
+            st.session_state["ea_sources"] = []
+            st.session_state["ea_result"] = {}
+            st.session_state.pop("elias_upload_signature", None)
+            memory = st.session_state["elias_memory"]
+            memory["auto_summary"] = "No case record loaded yet."
+            st.session_state["elias_memory"] = memory
+            st.rerun()
+    else:
+        st.caption("No case files loaded.")
+
+    with st.expander("Memory", expanded=False):
+        memory = st.session_state["elias_memory"]
+        memory["enabled"] = st.toggle("Use case memory", value=bool(memory.get("enabled", True)), key="elias_memory_enabled")
+        memory["case_label"] = st.text_input("Case label", value=memory.get("case_label", ""), placeholder="e.g., VA supplemental claim")
+        memory["goal"] = st.text_area("Goal", value=memory.get("goal", ""), height=70, placeholder="What should Elias keep in mind?")
+        memory["notes"] = st.text_area("Notes to remember", value=memory.get("notes", ""), height=95, placeholder="Stable context, terminology, or reviewer preferences")
+        memory["auto_summary"] = summarize_workspace(result, sources)
+        st.session_state["elias_memory"] = memory
+        st.markdown(f'<div class="memory-card">{memory["auto_summary"]}</div>', unsafe_allow_html=True)
+        st.caption("This demo memory is session-local. Export it if you want to carry the case context to another session.")
+        st.download_button(
+            "Export memory",
+            export_memory(memory),
+            file_name="elias_case_memory.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        memory_upload = st.file_uploader("Import memory JSON", type=["json"], key="elias_memory_import")
+        if memory_upload is not None:
+            try:
+                imported = import_memory(memory_upload.getvalue().decode("utf-8"))
+                imported["auto_summary"] = summarize_workspace(result, sources)
+                st.session_state["elias_memory"] = imported
+                st.success("Memory imported for this session.")
+            except Exception as exc:
+                st.error(f"Could not import memory: {exc}")
+
+    with st.expander("Tools / plugins", expanded=False):
+        st.caption("Built-in, local evidence tools. No external plugin account is connected in this public demo.")
+        plugin_state = st.session_state["elias_plugins"]
+        for name, meta in PLUGIN_CATALOG.items():
+            plugin_state[name] = st.toggle(
+                meta["label"],
+                value=bool(plugin_state.get(name, meta.get("default", True))),
+                key=f"plugin_{name}",
+                help=meta["description"],
+            )
+        st.session_state["elias_plugins"] = plugin_state
+
+    with st.expander("Response settings", expanded=False):
+        st.session_state["elias_show_sources"] = st.toggle("Show source chips", value=st.session_state.get("elias_show_sources", True))
+        st.session_state["elias_show_tools"] = st.toggle("Show tools used", value=st.session_state.get("elias_show_tools", True))
+        st.caption("Elias remains evidence-grounded; these controls change presentation, not the underlying source boundary.")
+
+    st.divider()
+    st.caption("Public-safe baseline · human verification required")
+
+sources = st.session_state.get("ea_sources") or []
+result = st.session_state.get("ea_result") or {}
+thread = _active_thread()
+
+st.markdown(
+    """
+    <div class="elias-top">
+      <div class="elias-title">Elias</div>
+      <div class="elias-pill"><span class="elias-dot"></span> Evidence-grounded assistant</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+messages = thread.get("messages", [])
+if not messages:
     st.markdown(
-        f'<div class="assurance-strip"><b>Packet Assurance {assurance["score"]}/100</b> · '
-        f'{assurance["band"].replace("_"," ").title()} · Provenance {assurance["provenance_score"]} · '
-        f'Coverage {assurance["coverage_score"]} · Quote integrity {assurance["quote_score"]}</div>',
+        """
+        <div class="welcome">
+          <h1>What are we working on?</h1>
+          <p>Upload the record once, then talk to Elias naturally. He can search the evidence, surface gaps and contradictions, verify quotations, remember the case context for this session, and route the finished work into a reviewer packet.</p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
-    if assurance["blockers"]:
-        st.warning("Reviewer blockers remain: " + " ".join(assurance["blockers"]))
+    cards = [
+        ("Find the strongest evidence", "Rank the most useful source-locatable supporting passages."),
+        ("Stress-test the case", "Show adverse evidence, contradictions, and missing-record signals."),
+        ("Explain the record", "Summarize a complicated issue in plain language without inventing facts."),
+        ("Check packet readiness", "Review provenance and evidence coverage before handoff."),
+    ]
+    cols = st.columns(2, gap="small")
+    for index, (title, desc) in enumerate(cards):
+        with cols[index % 2]:
+            st.markdown(f'<div class="prompt-card"><b>{title}</b><span>{desc}</span></div>', unsafe_allow_html=True)
+            if st.button(title, key=f"starter_{index}", use_container_width=True):
+                prompts = [
+                    "What is the strongest evidence in this record?",
+                    "Stress-test this case. What adverse evidence, contradictions, or missing records should I address?",
+                    "Give me a clear summary of the current record and the main issues it supports.",
+                    "Is this packet review-ready, and what should I fix first?",
+                ]
+                st.session_state["elias_pending_prompt"] = prompts[index]
+                st.rerun()
+
+for message in messages:
+    with st.chat_message(message.get("role", "assistant")):
+        st.markdown(message.get("content", ""))
+        if message.get("role") == "assistant":
+            if st.session_state.get("elias_show_sources", True) and message.get("citations"):
+                chips = "".join(f'<span class="source-chip">{source}</span>' for source in dict.fromkeys(message["citations"]))
+                st.markdown(chips, unsafe_allow_html=True)
+            if st.session_state.get("elias_show_tools", True) and message.get("tools_used"):
+                chips = "".join(f'<span class="tool-chip">{tool}</span>' for tool in message["tools_used"])
+                st.markdown(chips, unsafe_allow_html=True)
+
+if not sources:
+    st.info("Upload case PDFs or text files in the left sidebar. Until then, Elias will not invent a case record.")
+
+pending = st.session_state.pop("elias_pending_prompt", None)
+prompt = st.chat_input("Message Elias")
+question = pending or prompt
+
+if question:
+    _set_thread_title(thread, question)
+    thread["messages"].append({"role": "user", "content": question})
+    if not sources or not result:
+        response = {
+            "answer": "I don't have a case record loaded yet. Add the source documents in **Case files**, then ask me again. I won't manufacture evidence to fill the gap.",
+            "citations": [],
+            "grounded": False,
+            "mode": "no_record",
+            "tools_used": [],
+        }
     else:
-        st.success("No assurance blockers detected by this screening pass. Human source review is still required.")
+        response = respond(
+            question,
+            result,
+            sources,
+            plugins=st.session_state.get("elias_plugins") or {},
+            memory_context=memory_context(st.session_state.get("elias_memory") or {}),
+        )
+    thread["messages"].append(
+        {
+            "role": "assistant",
+            "content": response.get("answer", ""),
+            "citations": response.get("citations", []),
+            "tools_used": response.get("tools_used", []),
+            "grounded": response.get("grounded", False),
+            "mode": response.get("mode", ""),
+        }
+    )
+    st.session_state["elias_threads"][st.session_state["elias_active_thread"]] = thread
+    st.rerun()
 
-    p1,p2=st.columns([1.3,1],gap="large")
-    with p1:
-        klass="preview-v" if style=="Visual Claim Packet" else "preview-f"
-        desc=("Color-forward evidence cards, assurance summary, mechanism map, screenshot exhibits, rebuttal desk, and source appendix."
-              if style=="Visual Claim Packet" else
-              "Restrained typography, assurance summary, issue table, source-backed passages, tension analysis, and source appendix.")
-        st.markdown(f'<div class="{klass}"><h4>{style}</h4>{desc}</div>',unsafe_allow_html=True)
-    with p2:
-        include_images=st.checkbox("Include uploaded screenshots / diagrams",value=style=="Visual Claim Packet")
-        include_assurance=st.checkbox("Embed Reviewer Assurance Summary",value=True)
-        st.caption("Assurance is a workflow-quality screen, not a merits decision. Visual exhibits should be verified against originals.")
-    shots=[]
-    if include_images:
-        for img in uploaded_images or []:
-            img.seek(0); shots.append({"name":img.name,"caption":img.name,"bytes":img.read()})
-    try:
-        packet_style="visual_claim" if style=="Visual Claim Packet" else "formal_review"
-        payload=build_packet(result,packet_style=packet_style,case_title=case_title,executive_summary=executive_summary,
-                             mechanism_steps=mechanism_steps,rebuttal_note=rebuttal_note,screenshots=shots,
-                             assurance=assurance if include_assurance else None)
-        d1,d2=st.columns(2)
-        with d1: st.download_button("Download generated PDF",payload,file_name="evidence_auditor_visual_packet.pdf" if packet_style=="visual_claim" else "evidence_auditor_formal_review.pdf",mime="application/pdf",use_container_width=True)
-        export_json={"audit":result,"packet_assurance":assurance}
-        with d2: st.download_button("Download reviewer JSON",json.dumps(export_json,indent=2),file_name="evidence_audit.json",mime="application/json",use_container_width=True)
-        st.caption(f"Generated packet size: {len(payload)/1024:.1f} KB")
-    except Exception as exc:
-        st.error(f"Packet generation failed: {exc}")
-
-render_floating_copilot(result,sources,enabled=copilot_enabled)
-
-st.markdown('<div class="footer">Evidence Auditor Pro is a research/portfolio tool. It does not make legal, medical, disability, service-connection, or benefits determinations. Public examples are fictional; source verification and human review remain required.</div>',unsafe_allow_html=True)
+st.markdown('<div class="composer-note">Elias can organize and draft from the loaded record, but source verification and human review remain required before external use.</div>', unsafe_allow_html=True)
