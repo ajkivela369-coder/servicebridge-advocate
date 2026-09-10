@@ -4,6 +4,24 @@ A privacy-safe, source-backed evidence review and packet-building demonstration 
 
 The public repository contains **fictional examples only**. It does not contain private VA records, medical records, service records, names, claim numbers, or private case indexes.
 
+## Recommended workflow
+
+1. **Start with Elias.** Upload the source PDFs once, let the session build the page-level evidence workspace, ask source-grounded questions, and create a first evidence-packet draft.
+2. **Use the focused review pages** when you want to inspect one quality dimension in detail.
+3. **Use the floating ✦ Copilot** from review pages for quick questions without leaving the current workspace.
+4. **Human-review the result** before anything is filed or shared externally.
+
+## Workspace guide
+
+- **Elias · Start Here** — the primary intake and assistant workspace. Load the record, inspect the evidence summary, ask Elias questions, and generate a first reviewer-ready packet draft.
+- **Review Readiness** — checks whether sources are locatable and usable: source names, page locators, extractable text, and provenance quality.
+- **Quote Integrity** — verifies proposed verbatim quotations against the loaded source text and keeps unresolved quotations visibly unresolved.
+- **Packet Integrity** — checks whether a proposed packet stays traceable to the source record and whether key packet components are internally consistent.
+- **Coverage Gaps** — highlights issues, evidence categories, or source types that appear thin or missing so a reviewer knows what to investigate next.
+- **Packet Assurance** — combines provenance, evidence coverage, and quote integrity into a transparent reviewer-readiness screen. It is not a merits score.
+- **Source Inventory** — gives the reviewer a source-centered view of what is loaded and where important evidence came from.
+- **Floating Copilot** — a lower-right ✦ assistant available from review pages. It gives quick source-grounded answers and links back to Elias; it is intentionally not a separate sidebar destination.
+
 ## What v2 adds
 
 - Multi-PDF intake with page-level provenance
@@ -18,8 +36,8 @@ The public repository contains **fictional examples only**. It does not contain 
 - **Packet Assurance** — a unified reviewer trust layer combining provenance readiness, issue-coverage depth, and proposed verbatim-quote integrity into one non-merits readiness screen
 - Reviewer-supplied mechanism / sequence mapping
 - Screenshot and diagram upload for visual exhibits
-- **Evidence Copilot** — an optional floating lower-right support panel plus a full interactive Copilot page. Both use the current session audit, preserve source/page locators, and decline unsupported questions rather than guessing.
-- **Elias**, a separate citation-first evidence-assistant workspace for deeper record interrogation, source-gap review, tension analysis, and browser voice preview
+- **Floating Evidence Copilot** — a lower-right support panel that uses the current session audit, preserves source/page locators, and declines unsupported questions rather than guessing
+- **Elias**, now the first reviewer workspace, with one-place PDF intake, citation-first evidence interrogation, source-gap review, tension analysis, first-draft packet generation, and browser voice preview
 - Browser voice preview for Elias with a default **Younger Distinguished** profile: measured authority, crisp diction, slightly brighter timbre, and restrained warmth
 - **Two generated PDF styles**
   - **Visual Claim Packet** — color, evidence cards, mechanism map, visual exhibits, rebuttal desk, appendix
@@ -28,9 +46,9 @@ The public repository contains **fictional examples only**. It does not contain 
 
 ## Copilot vs. Elias
 
-**Evidence Copilot** is the quick support layer. Use the floating ✦ launcher while working in Evidence Auditor Pro, or open the full Evidence Copilot page for a larger interactive workspace. Copilot and its page share the same session-local conversation history.
+**Elias** is the main workspace and starting point. Use it when you want to load a record, interrogate the evidence deeply, find gaps and contradictions, or generate a first packet draft.
 
-**Elias** remains a separate evidence-assistant experience with its own presentation and voice studio. The two surfaces share the same deterministic grounding boundary but serve different interaction styles.
+**Evidence Copilot** is the quick support layer. Use the floating ✦ launcher while working in a review page. It intentionally stays out of the sidebar so it behaves like a true in-context copilot instead of a competing destination.
 
 The old `assistant_bot.py` entrypoint was intentionally removed. It was a backend helper, not a Streamlit page, and launching it directly could produce a blank navigation entry labeled “assistant bot.” The shared backend now lives in `copilot_engine.py`.
 
@@ -56,7 +74,7 @@ Main file:
 portfolio/evidence-auditor/dashboard.py
 ```
 
-The multipage app exposes Review Readiness, Quote Integrity, Packet Integrity, Coverage Gaps, Elias Assistant, Packet Assurance, and Evidence Copilot in the Streamlit navigation. The dashboard also includes the floating Evidence Copilot launcher.
+The multipage app exposes Elias first, followed by the focused review workspaces. The Evidence Copilot is rendered as a floating launcher rather than a separate navigation page.
 
 ## Public-demo privacy boundary
 
