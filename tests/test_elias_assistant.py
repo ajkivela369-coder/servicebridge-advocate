@@ -8,11 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 AUDITOR_DIR = ROOT / "portfolio" / "evidence-auditor"
 sys.path.insert(0, str(AUDITOR_DIR))
 
-from assistant_bot import answer_question
+from copilot_engine import answer_question
 from auditor import audit_sources
 
 
-class EliasAssistantTests(unittest.TestCase):
+class CopilotAndEliasTests(unittest.TestCase):
     def setUp(self):
         self.sources = [
             {

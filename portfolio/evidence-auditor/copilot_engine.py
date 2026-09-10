@@ -28,9 +28,8 @@ def _locator(item: dict) -> str:
 def _top_items(question: str, result: dict, limit: int = 4) -> list[dict]:
     """Return only evidence with a meaningful lexical/issue match to the question.
 
-    Earlier builds fell back to the highest-scoring evidence even when a non-empty question had no
-    actual overlap. That made a superficially fluent answer possible without grounding. A non-empty
-    question now returns no evidence when the record does not materially match it.
+    A non-empty question returns no evidence when the record does not materially match it. This
+    prevents a superficially fluent answer from being assembled out of unrelated evidence.
     """
     q = _tokens(question)
     scored: list[tuple[float, float, dict]] = []
@@ -59,7 +58,7 @@ def _response(answer: str, citations: list[str], mode: str, *, grounded: bool) -
 
 
 def answer_question(question: str, result: dict, sources: Sequence[dict] | None = None) -> dict:
-    """Citation-first deterministic helper used by the compact copilot and Elias.
+    """Citation-first deterministic helper shared by Evidence Copilot and Elias.
 
     It organizes only the current audit. It does not infer facts that are absent from the record and
     never claims to make a medical, legal, service-connection, rating, or benefits determination.
@@ -150,7 +149,7 @@ def answer_question(question: str, result: dict, sources: Sequence[dict] | None 
     if not selected:
         return _response(
             "I can't ground that question in the currently loaded evidence without guessing. Try naming an issue, source, "
-            "symptom/function term, contradiction, or record gap—or open Elias for the full review workspace.",
+            "symptom/function term, contradiction, or record gap—or use the full Evidence Copilot workspace for a broader review.",
             [],
             "unsupported",
             grounded=False,

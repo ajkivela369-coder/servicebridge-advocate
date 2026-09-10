@@ -4,7 +4,7 @@ import hashlib
 
 import streamlit as st
 
-from assistant_bot import answer_question
+from copilot_engine import answer_question
 
 
 COPILOT_PARAM = "copilot"
@@ -46,7 +46,7 @@ def _close_copilot() -> None:
     st.rerun()
 
 
-def _render_body(result: dict, sources: list[dict]) -> None:
+def _render_body(result: dict, sources: list[dict], *, modal: bool = True) -> None:
     signature = workspace_signature(sources)
     if st.session_state.get("ea_copilot_signature") != signature:
         st.session_state["ea_copilot_signature"] = signature
@@ -55,7 +55,7 @@ def _render_body(result: dict, sources: list[dict]) -> None:
     st.markdown("**Evidence Copilot**")
     st.caption(
         "A compact, source-grounded helper for quick questions while you work. "
-        "Elias remains the separate full evidence-assistant workspace."
+        "The full Copilot workspace and Elias remain separate destinations."
     )
 
     c1, c2, c3 = st.columns(3)
@@ -72,11 +72,11 @@ def _render_body(result: dict, sources: list[dict]) -> None:
     quick_question = ""
     quick_cols = st.columns(2)
     for index, suggestion in enumerate(suggestions):
-        if quick_cols[index % 2].button(suggestion, use_container_width=True, key=f"ea_copilot_quick_{index}"):
+        if quick_cols[index % 2].button(suggestion, use_container_width=True, key=f"ea_copilot_quick_{index}_{'modal' if modal else 'page'}"):
             quick_question = suggestion
 
     history = st.session_state.setdefault("ea_copilot_history", [])
-    for message in history[-4:]:
+    for message in history[-6:]:
         with st.chat_message(message["role"]):
             st.write(message["content"])
             if message.get("citations"):
@@ -85,11 +85,11 @@ def _render_body(result: dict, sources: list[dict]) -> None:
     question = st.text_input(
         "Ask about the loaded evidence",
         placeholder="Example: What evidence mentions functional impact?",
-        key="ea_copilot_question",
+        key=f"ea_copilot_question_{'modal' if modal else 'page'}",
     )
     send_col, clear_col = st.columns([3, 1])
-    send = send_col.button("Ask Copilot", use_container_width=True, type="primary")
-    clear = clear_col.button("Clear", use_container_width=True)
+    send = send_col.button("Ask Copilot", use_container_width=True, type="primary", key=f"ea_copilot_send_{'modal' if modal else 'page'}")
+    clear = clear_col.button("Clear", use_container_width=True, key=f"ea_copilot_clear_{'modal' if modal else 'page'}")
 
     if clear:
         st.session_state["ea_copilot_history"] = []
@@ -107,23 +107,34 @@ def _render_body(result: dict, sources: list[dict]) -> None:
                 "grounded": response.get("grounded", False),
             }
         )
-        st.session_state["ea_copilot_history"] = history[-8:]
+        st.session_state["ea_copilot_history"] = history[-10:]
         st.rerun()
 
     st.divider()
-    link_col, close_col = st.columns([2, 1])
-    with link_col:
+    nav_cols = st.columns(2 if not modal else 3)
+    with nav_cols[0]:
         try:
-            st.page_link("pages/6_Elias_Assistant.py", label="Open Elias full workspace →")
+            st.page_link("pages/8_Evidence_Copilot.py", label="Open full Copilot workspace →", use_container_width=True)
         except Exception:
-            st.caption("Use the app navigation to open Elias for the full assistant workspace.")
-    with close_col:
-        if st.button("Close", use_container_width=True, key="ea_copilot_close"):
-            _close_copilot()
+            st.caption("Use app navigation to open Evidence Copilot.")
+    with nav_cols[1]:
+        try:
+            st.page_link("pages/6_Elias_Assistant.py", label="Open Elias →", use_container_width=True)
+        except Exception:
+            st.caption("Use app navigation to open Elias.")
+    if modal:
+        with nav_cols[2]:
+            if st.button("Close", use_container_width=True, key="ea_copilot_close"):
+                _close_copilot()
 
     st.caption(
         "Session-local helper. It does not save the loaded record, make legal/medical findings, or turn an unsupported question into a guessed answer."
     )
+
+
+def render_copilot_workspace(result: dict, sources: list[dict]) -> None:
+    """Render the full-page interactive Copilot using the same grounded engine as the floating panel."""
+    _render_body(result, sources, modal=False)
 
 
 def render_floating_copilot(result: dict, sources: list[dict], *, enabled: bool = True) -> None:

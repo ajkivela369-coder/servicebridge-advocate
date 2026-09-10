@@ -18,12 +18,21 @@ The public repository contains **fictional examples only**. It does not contain 
 - **Packet Assurance** — a unified reviewer trust layer combining provenance readiness, issue-coverage depth, and proposed verbatim-quote integrity into one non-merits readiness screen
 - Reviewer-supplied mechanism / sequence mapping
 - Screenshot and diagram upload for visual exhibits
-- **Elias**, a citation-first mini evidence assistant that answers from the current audit, surfaces source gaps and tension pairs, and keeps page locators attached
+- **Evidence Copilot** — an optional floating lower-right support panel plus a full interactive Copilot page. Both use the current session audit, preserve source/page locators, and decline unsupported questions rather than guessing.
+- **Elias**, a separate citation-first evidence-assistant workspace for deeper record interrogation, source-gap review, tension analysis, and browser voice preview
 - Browser voice preview for Elias with a default **Younger Distinguished** profile: measured authority, crisp diction, slightly brighter timbre, and restrained warmth
 - **Two generated PDF styles**
   - **Visual Claim Packet** — color, evidence cards, mechanism map, visual exhibits, rebuttal desk, appendix
   - **Formal Evidence Review** — restrained professional styling for conservative handoff
 - Reviewer JSON export
+
+## Copilot vs. Elias
+
+**Evidence Copilot** is the quick support layer. Use the floating ✦ launcher while working in Evidence Auditor Pro, or open the full Evidence Copilot page for a larger interactive workspace. Copilot and its page share the same session-local conversation history.
+
+**Elias** remains a separate evidence-assistant experience with its own presentation and voice studio. The two surfaces share the same deterministic grounding boundary but serve different interaction styles.
+
+The old `assistant_bot.py` entrypoint was intentionally removed. It was a backend helper, not a Streamlit page, and launching it directly could produce a blank navigation entry labeled “assistant bot.” The shared backend now lives in `copilot_engine.py`.
 
 ## Elias voice note
 
@@ -37,6 +46,8 @@ python -m pip install -r requirements.txt
 streamlit run dashboard.py
 ```
 
+Do **not** run `copilot_engine.py` directly with Streamlit. It is a shared grounding engine, not an app entrypoint.
+
 ## Streamlit Community Cloud
 
 Main file:
@@ -45,7 +56,7 @@ Main file:
 portfolio/evidence-auditor/dashboard.py
 ```
 
-The multipage app automatically exposes Review Readiness, Quote Integrity, Packet Integrity, Coverage Gaps, Elias, and Packet Assurance in the Streamlit navigation.
+The multipage app exposes Review Readiness, Quote Integrity, Packet Integrity, Coverage Gaps, Elias Assistant, Packet Assurance, and Evidence Copilot in the Streamlit navigation. The dashboard also includes the floating Evidence Copilot launcher.
 
 ## Public-demo privacy boundary
 
@@ -57,13 +68,13 @@ Uploaded PDFs/images are processed by the running Streamlit session. Hosting/pro
 
 Evidence Auditor Pro helps a human reviewer find and organize evidence; it does **not** decide a claim. A quotation match does not prove authenticity, medical truth, or legal significance. A tension flag is a routing aid, not a finding that an examiner or adjudicator is wrong.
 
-Mechanism maps are reviewer-supplied explanatory organization. The app does not silently infer medical causation. Elias follows the same boundary: he is an evidence navigator, not legal or medical counsel. Packet Assurance likewise measures reviewer workflow quality, provenance, evidence depth, and quotation integrity—not the merits of a disability, legal, medical, or benefits claim.
+Mechanism maps are reviewer-supplied explanatory organization. The app does not silently infer medical causation. Evidence Copilot and Elias follow the same boundary: they are evidence navigators, not legal or medical counsel. Packet Assurance likewise measures reviewer workflow quality, provenance, evidence depth, and quotation integrity—not the merits of a disability, legal, medical, or benefits claim.
 
 ## Current limitations
 
 - Scanned/image-only PDFs require OCR before text extraction in this public baseline.
 - Quote verification is normalized exact/contextual matching, not semantic quotation reconstruction.
-- Elias is currently a deterministic local evidence assistant rather than a hosted general-purpose LLM.
+- Evidence Copilot and Elias currently use a deterministic local evidence engine rather than a hosted general-purpose LLM.
 - Browser speech synthesis differs across Chrome/Edge/macOS/Windows and cannot guarantee one identical voice everywhere.
 - Packet Assurance uses transparent heuristic weights for reviewer readiness; its composite score is not a validated legal or clinical instrument.
 - It does not independently determine duty status, service connection, diagnostic validity, rating percentage, eligibility, or legal sufficiency.
