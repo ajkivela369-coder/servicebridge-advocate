@@ -17,13 +17,18 @@ def audit_packet_quotes(quotes: Sequence[str], sources: Sequence[dict]) -> dict:
         if not clean:
             continue
         check = verify_quote_contextual(clean, sources)
+        status = check["status"]
+        candidates = check.get("matches", [])
         results.append(
             {
                 "quote_id": f"Q-{index:03d}",
                 "quote": clean,
-                "status": check["status"],
+                "status": status,
                 "confidence": check.get("confidence", 0.0),
-                "matches": check.get("matches", []),
+                # A source/page locator is exposed as a verified match only for an exact quote.
+                # Similar or not-found candidates stay separate so exports cannot imply verification.
+                "matches": candidates if status == "verified" else [],
+                "candidate_matches": candidates if status != "verified" else [],
                 "note": check.get("note", ""),
             }
         )

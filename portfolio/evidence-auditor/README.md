@@ -15,6 +15,7 @@ The public repository contains **fictional examples only**. It does not contain 
 - Contextual quote-integrity review and packet-integrity gating
 - Same-issue supporting/adverse evidence pairing for human rebuttal review
 - Evidence-coverage and review-readiness analysis
+- **Packet Assurance** — a unified reviewer trust layer combining provenance readiness, issue-coverage depth, and proposed verbatim-quote integrity into one non-merits readiness screen
 - Reviewer-supplied mechanism / sequence mapping
 - Screenshot and diagram upload for visual exhibits
 - **Elias**, a citation-first mini evidence assistant that answers from the current audit, surfaces source gaps and tension pairs, and keeps page locators attached
@@ -44,7 +45,7 @@ Main file:
 portfolio/evidence-auditor/dashboard.py
 ```
 
-The multipage app automatically exposes Review Readiness, Quote Integrity, Packet Integrity, Coverage Gaps, and Elias in the Streamlit navigation.
+The multipage app automatically exposes Review Readiness, Quote Integrity, Packet Integrity, Coverage Gaps, Elias, and Packet Assurance in the Streamlit navigation.
 
 ## Public-demo privacy boundary
 
@@ -56,7 +57,7 @@ Uploaded PDFs/images are processed by the running Streamlit session. Hosting/pro
 
 Evidence Auditor Pro helps a human reviewer find and organize evidence; it does **not** decide a claim. A quotation match does not prove authenticity, medical truth, or legal significance. A tension flag is a routing aid, not a finding that an examiner or adjudicator is wrong.
 
-Mechanism maps are reviewer-supplied explanatory organization. The app does not silently infer medical causation. Elias follows the same boundary: he is an evidence navigator, not legal or medical counsel.
+Mechanism maps are reviewer-supplied explanatory organization. The app does not silently infer medical causation. Elias follows the same boundary: he is an evidence navigator, not legal or medical counsel. Packet Assurance likewise measures reviewer workflow quality, provenance, evidence depth, and quotation integrity—not the merits of a disability, legal, medical, or benefits claim.
 
 ## Current limitations
 
@@ -64,5 +65,6 @@ Mechanism maps are reviewer-supplied explanatory organization. The app does not 
 - Quote verification is normalized exact/contextual matching, not semantic quotation reconstruction.
 - Elias is currently a deterministic local evidence assistant rather than a hosted general-purpose LLM.
 - Browser speech synthesis differs across Chrome/Edge/macOS/Windows and cannot guarantee one identical voice everywhere.
+- Packet Assurance uses transparent heuristic weights for reviewer readiness; its composite score is not a validated legal or clinical instrument.
 - It does not independently determine duty status, service connection, diagnostic validity, rating percentage, eligibility, or legal sufficiency.
 - Visual exhibits are reviewer supplied; the public repo does not ship private screenshots.

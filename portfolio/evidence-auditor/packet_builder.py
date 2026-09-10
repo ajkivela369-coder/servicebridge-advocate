@@ -84,6 +84,102 @@ def _mechanism_table(steps: list[str], styles, accent):
     return t
 
 
+def _append_assurance_summary(story, assurance: dict, styles, accent, soft):
+    """Append a transparent reviewer-readiness summary without making merits claims."""
+    story.append(PageBreak())
+    story.append(Paragraph("Reviewer Assurance Summary", styles["EA_H1"]))
+    story.append(Paragraph(
+        "This page reports workflow-quality checks for provenance, evidence coverage, and proposed verbatim quotations. "
+        "It is not a legal, medical, disability, service-connection, rating, or eligibility determination.",
+        styles["EA_Callout"],
+    ))
+
+    score_rows = [
+        ["Assurance", assurance.get("score", 0), assurance.get("band", "needs_review").replace("_", " ").title()],
+        ["Provenance", assurance.get("provenance_score", 0), "Named, page-locatable, usable source units"],
+        ["Coverage", assurance.get("coverage_score", 0), "Issue depth and source diversity"],
+        ["Quote integrity", assurance.get("quote_score", 100), "Proposed verbatim quotations only"],
+    ]
+    score_table = Table(score_rows, colWidths=[1.45*inch, 0.8*inch, 4.45*inch])
+    score_table.setStyle(TableStyle([
+        ("BOX", (0,0), (-1,-1), 0.6, accent),
+        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.HexColor("#D1D5DB")),
+        ("BACKGROUND", (0,0), (0,-1), soft),
+        ("FONTNAME", (0,0), (0,-1), "Helvetica-Bold"),
+        ("ALIGN", (1,0), (1,-1), "CENTER"),
+        ("FONTSIZE", (0,0), (-1,-1), 8.5),
+        ("TOPPADDING", (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    story.append(score_table)
+
+    blockers = assurance.get("blockers", [])
+    story.append(Paragraph("Reviewer blockers", styles["EA_H2"]))
+    if blockers:
+        for blocker in blockers:
+            story.append(Paragraph("• " + blocker, styles["EA_Body"]))
+    else:
+        story.append(Paragraph(
+            "No assurance blockers were detected by this screening pass. Human source review is still required.",
+            styles["EA_Body"],
+        ))
+
+    coverage = assurance.get("coverage", {})
+    gaps = coverage.get("priority_gaps", [])
+    story.append(Paragraph("Priority coverage gaps", styles["EA_H2"]))
+    if gaps:
+        rows = [["Issue", "Score", "Band"]]
+        for issue in gaps[:8]:
+            rows.append([
+                str(issue.get("issue", "unknown")).replace("_", " ").title(),
+                issue.get("coverage_score", 0),
+                str(issue.get("band", "thin")).replace("_", " ").title(),
+            ])
+        gap_table = Table(rows, colWidths=[4.65*inch, 0.8*inch, 1.25*inch], repeatRows=1)
+        gap_table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), accent),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("BOX", (0,0), (-1,-1), 0.5, colors.HexColor("#9CA3AF")),
+            ("INNERGRID", (0,0), (-1,-1), 0.25, colors.HexColor("#D1D5DB")),
+            ("FONTSIZE", (0,0), (-1,-1), 8),
+            ("TOPPADDING", (0,0), (-1,-1), 4),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ]))
+        story.append(gap_table)
+    else:
+        story.append(Paragraph("No priority coverage gaps were reported.", styles["EA_Body"]))
+
+    quote_report = assurance.get("quotes", {})
+    quote_results = quote_report.get("results", [])
+    story.append(Paragraph("Quote Verification Register", styles["EA_H2"]))
+    if not quote_results:
+        story.append(Paragraph("No proposed verbatim quotations were submitted for verification.", styles["EA_Body"]))
+    else:
+        qrows = [["Quote", "Status", "Source locator"]]
+        for item in quote_results[:20]:
+            matches = item.get("matches", [])
+            locator = _locator(matches[0]) if matches else "No verified source locator"
+            qrows.append([
+                Paragraph(shorten(item.get("quote", ""), width=92, placeholder="…"), styles["EA_Small"]),
+                str(item.get("status", "not_found")).replace("_", " ").title(),
+                shorten(locator, width=58, placeholder="…"),
+            ])
+        qtable = Table(qrows, colWidths=[3.8*inch, 1.15*inch, 1.75*inch], repeatRows=1)
+        qtable.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), accent),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("BOX", (0,0), (-1,-1), 0.5, colors.HexColor("#9CA3AF")),
+            ("INNERGRID", (0,0), (-1,-1), 0.25, colors.HexColor("#D1D5DB")),
+            ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("FONTSIZE", (0,0), (-1,-1), 7.4),
+            ("TOPPADDING", (0,0), (-1,-1), 4),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ]))
+        story.append(qtable)
+
+
 def build_packet(
     result: dict,
     *,
@@ -93,6 +189,7 @@ def build_packet(
     mechanism_steps: list[str] | None = None,
     rebuttal_note: str = "",
     screenshots: list[dict] | None = None,
+    assurance: dict | None = None,
 ) -> bytes:
     visual = packet_style == "visual_claim"
     styles, accent, soft = _styles(visual)
@@ -144,6 +241,9 @@ def build_packet(
         story.append(Spacer(1, 0.18*inch))
         story.append(Paragraph("Executive Summary", styles["EA_H1"]))
         story.append(Paragraph(executive_summary, styles["EA_Body"]))
+
+    if assurance:
+        _append_assurance_summary(story, assurance, styles, accent, soft)
 
     story.append(PageBreak())
     story.append(Paragraph("Issue Map", styles["EA_H1"]))
@@ -239,7 +339,6 @@ def build_packet(
 
     story.append(PageBreak())
     story.append(Paragraph("Source Appendix", styles["EA_H1"]))
-    seen = set()
     rows = [["Source", "Page", "Evidence IDs"]]
     grouped = {}
     for item in result.get("items", []):
