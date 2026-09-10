@@ -7,6 +7,8 @@ STOPWORDS = {
     "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "is", "are",
     "was", "were", "be", "been", "this", "that", "it", "as", "at", "by", "from", "what",
     "which", "who", "how", "my", "our", "your", "can", "could", "should", "would", "do",
+    "does", "about", "say", "says", "tell", "show", "record", "records", "evidence", "loaded",
+    "current", "material", "review",
 }
 
 
