@@ -4,14 +4,14 @@ import hashlib
 
 import streamlit as st
 
-from copilot_engine import answer_question
+from elias_memory import memory_context
+from elias_plugins import default_plugin_state, respond
 
 
-COPILOT_PARAM = "copilot"
+ELIAS_PARAM = "elias"
 
 
 def workspace_signature(sources: list[dict] | None) -> str:
-    """Return a short session-only signature so chat resets when the loaded record changes."""
     digest = hashlib.sha256()
     for source in sources or []:
         digest.update(str(source.get("source_name") or "").encode("utf-8", errors="ignore"))
@@ -34,10 +34,10 @@ def _param_value(name: str) -> str | None:
             return None
 
 
-def _close_copilot() -> None:
+def _close_elias() -> None:
     try:
-        if COPILOT_PARAM in st.query_params:
-            del st.query_params[COPILOT_PARAM]
+        if ELIAS_PARAM in st.query_params:
+            del st.query_params[ELIAS_PARAM]
     except Exception:
         try:
             st.experimental_set_query_params()
@@ -46,39 +46,21 @@ def _close_copilot() -> None:
     st.rerun()
 
 
-def _render_body(result: dict, sources: list[dict], *, modal: bool = True) -> None:
+def _render_body(result: dict, sources: list[dict]) -> None:
     signature = workspace_signature(sources)
-    if st.session_state.get("ea_copilot_signature") != signature:
-        st.session_state["ea_copilot_signature"] = signature
-        st.session_state["ea_copilot_history"] = []
+    if st.session_state.get("ea_quick_elias_signature") != signature:
+        st.session_state["ea_quick_elias_signature"] = signature
+        st.session_state["ea_quick_elias_history"] = []
 
-    st.markdown("**Evidence Copilot**")
-    st.caption(
-        "Quick, source-grounded help while you work. Copilot stays in this floating panel; Elias is the full evidence workspace."
-    )
+    st.markdown("**Ask Elias**")
+    st.caption("Quick evidence-grounded help without leaving this page. The full chat, case files, memory, and tools live in Elias.")
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Passages", len(result.get("items", [])))
-    c2.metric("Source/page units", result.get("source_count", 0))
-    c3.metric("Tensions", len(result.get("potential_contradictions", [])))
+    if not sources or not result:
+        st.info("No case record is loaded. Open Elias and add the case files first.")
+        st.page_link("dashboard.py", label="Open Elias →", use_container_width=True)
+        return
 
-    suggestions = [
-        "Give me a quick record summary",
-        "What is the strongest evidence?",
-        "What records look missing?",
-        "Show the main contradiction",
-    ]
-    quick_question = ""
-    quick_cols = st.columns(2)
-    for index, suggestion in enumerate(suggestions):
-        if quick_cols[index % 2].button(
-            suggestion,
-            use_container_width=True,
-            key=f"ea_copilot_quick_{index}_{'modal' if modal else 'page'}",
-        ):
-            quick_question = suggestion
-
-    history = st.session_state.setdefault("ea_copilot_history", [])
+    history = st.session_state.setdefault("ea_quick_elias_history", [])
     for message in history[-6:]:
         with st.chat_message(message["role"]):
             st.write(message["content"])
@@ -86,99 +68,79 @@ def _render_body(result: dict, sources: list[dict], *, modal: bool = True) -> No
                 st.caption("Sources: " + " · ".join(dict.fromkeys(message["citations"])))
 
     question = st.text_input(
-        "Ask about the loaded evidence",
-        placeholder="Example: What evidence mentions functional impact?",
-        key=f"ea_copilot_question_{'modal' if modal else 'page'}",
+        "Ask about the loaded record",
+        placeholder="Example: What is the strongest evidence on functional impact?",
+        key="ea_quick_elias_question",
     )
-    send_col, clear_col = st.columns([3, 1])
-    send = send_col.button(
-        "Ask Copilot",
-        use_container_width=True,
-        type="primary",
-        key=f"ea_copilot_send_{'modal' if modal else 'page'}",
-    )
-    clear = clear_col.button(
-        "Clear",
-        use_container_width=True,
-        key=f"ea_copilot_clear_{'modal' if modal else 'page'}",
-    )
-
+    c1, c2 = st.columns([3, 1])
+    send = c1.button("Ask Elias", type="primary", use_container_width=True, key="ea_quick_elias_send")
+    clear = c2.button("Clear", use_container_width=True, key="ea_quick_elias_clear")
     if clear:
-        st.session_state["ea_copilot_history"] = []
+        st.session_state["ea_quick_elias_history"] = []
         st.rerun()
-
-    submitted = question.strip() if send else quick_question
-    if submitted:
-        response = answer_question(submitted, result, sources)
-        history.append({"role": "user", "content": submitted, "citations": []})
-        history.append(
-            {
-                "role": "assistant",
-                "content": response["answer"],
-                "citations": response.get("citations", []),
-                "grounded": response.get("grounded", False),
-            }
+    if send and question.strip():
+        plugins = st.session_state.get("elias_plugins") or default_plugin_state()
+        response = respond(
+            question.strip(),
+            result,
+            sources,
+            plugins=plugins,
+            memory_context=memory_context(st.session_state.get("elias_memory") or {}),
         )
-        st.session_state["ea_copilot_history"] = history[-10:]
+        history.append({"role": "user", "content": question.strip(), "citations": []})
+        history.append({"role": "assistant", "content": response.get("answer", ""), "citations": response.get("citations", [])})
+        st.session_state["ea_quick_elias_history"] = history[-10:]
         st.rerun()
 
     st.divider()
-    nav_cols = st.columns(2)
-    with nav_cols[0]:
-        try:
-            st.page_link("pages/1_Elias_Assistant.py", label="Open Elias workspace →", use_container_width=True)
-        except Exception:
-            st.caption("Use app navigation to open Elias.")
-    with nav_cols[1]:
-        if modal and st.button("Close", use_container_width=True, key="ea_copilot_close"):
-            _close_copilot()
+    nav1, nav2 = st.columns(2)
+    with nav1:
+        st.page_link("dashboard.py", label="Open full Elias →", use_container_width=True)
+    with nav2:
+        if st.button("Close", use_container_width=True, key="ea_quick_elias_close"):
+            _close_elias()
 
-    st.caption(
-        "Session-local helper. It does not save the loaded record, make legal/medical findings, or turn an unsupported question into a guessed answer."
-    )
-
-
-def render_copilot_workspace(result: dict, sources: list[dict]) -> None:
-    """Compatibility renderer for any internal use; normal users access Copilot through the floating panel."""
-    _render_body(result, sources, modal=False)
+    st.caption("Session-local helper. Elias does not turn unsupported questions into guessed evidence.")
 
 
 def render_floating_copilot(result: dict, sources: list[dict], *, enabled: bool = True) -> None:
-    """Render a fixed lower-right Copilot launcher and native Streamlit dialog."""
+    """Render a fixed Ask Elias launcher for reviewer pages.
+
+    The historic function name remains for compatibility with page_copilot.py and older callers,
+    but the user-facing experience is now Elias rather than a separate Copilot product surface.
+    """
     if not enabled:
         return
 
     st.markdown(
         """
         <style>
-        .ea-copilot-fab{
-          position:fixed;right:1.2rem;bottom:1.2rem;z-index:999999;
-          width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-          text-decoration:none!important;font-size:1.55rem;font-weight:900;color:white!important;
-          background:linear-gradient(145deg,#2563eb,#0f766e);border:1px solid rgba(255,255,255,.30);
-          box-shadow:0 16px 42px rgba(15,23,42,.38);transition:transform .16s ease,box-shadow .16s ease;
+        .ea-elias-fab{
+          position:fixed;right:1.25rem;bottom:1.25rem;z-index:999999;
+          width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          text-decoration:none!important;font-size:1.15rem;font-weight:850;color:white!important;
+          background:linear-gradient(145deg,#111827,#2563eb);border:1px solid rgba(255,255,255,.25);
+          box-shadow:0 15px 38px rgba(15,23,42,.32);transition:transform .16s ease,box-shadow .16s ease;
         }
-        .ea-copilot-fab:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 20px 50px rgba(15,23,42,.46)}
-        .ea-copilot-label{
-          position:fixed;right:5.55rem;bottom:1.62rem;z-index:999998;padding:.4rem .68rem;border-radius:999px;
-          background:rgba(15,23,42,.90);color:white;font-size:.73rem;font-weight:780;letter-spacing:.02em;
-          box-shadow:0 8px 24px rgba(15,23,42,.22);pointer-events:none;
+        .ea-elias-fab:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 18px 45px rgba(15,23,42,.40)}
+        .ea-elias-label{
+          position:fixed;right:5.25rem;bottom:1.62rem;z-index:999998;padding:.38rem .62rem;border-radius:999px;
+          background:rgba(15,23,42,.88);color:white;font-size:.72rem;font-weight:750;box-shadow:0 8px 24px rgba(15,23,42,.20);pointer-events:none;
         }
-        @media(max-width:700px){.ea-copilot-label{display:none}.ea-copilot-fab{right:.85rem;bottom:.85rem}}
+        @media(max-width:700px){.ea-elias-label{display:none}.ea-elias-fab{right:.85rem;bottom:.85rem}}
         </style>
-        <span class="ea-copilot-label">Copilot</span>
-        <a class="ea-copilot-fab" href="?copilot=open" target="_self" title="Open Evidence Copilot" aria-label="Open Evidence Copilot">✦</a>
+        <span class="ea-elias-label">Ask Elias</span>
+        <a class="ea-elias-fab" href="?elias=open" target="_self" title="Ask Elias" aria-label="Ask Elias">E</a>
         """,
         unsafe_allow_html=True,
     )
 
-    if _param_value(COPILOT_PARAM) != "open":
+    if _param_value(ELIAS_PARAM) != "open":
         return
 
     if hasattr(st, "dialog"):
-        dialog = st.dialog("Evidence Copilot", width="large")(_render_body)
+        dialog = st.dialog("Ask Elias", width="large")(_render_body)
         dialog(result, sources)
     else:
-        st.warning("Floating modal is unavailable in this Streamlit version; showing the Copilot inline instead.")
         with st.container(border=True):
             _render_body(result, sources)
