@@ -4,6 +4,8 @@ from dataclasses import dataclass, asdict
 import re
 from typing import Iterable, Sequence
 
+from source_identity import assign_source_ids
+
 FAVORABLE_TERMS = {
     "supports", "consistent with", "at least as likely", "aggravated", "worsened",
     "functional limitation", "unable", "credible", "objective", "documented",
@@ -44,6 +46,7 @@ class EvidenceItem:
     source_name: str = "Pasted evidence"
     page: int | None = None
     evidence_id: str = ""
+    source_id: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -77,6 +80,7 @@ def classify_sentence(
     source_name: str = "Pasted evidence",
     page: int | None = None,
     evidence_id: str = "",
+    source_id: str = "",
 ) -> EvidenceItem:
     favorable = _contains_any(sentence, FAVORABLE_TERMS)
     unfavorable = _contains_any(sentence, UNFAVORABLE_TERMS)
@@ -110,6 +114,7 @@ def classify_sentence(
         source_name,
         page,
         evidence_id,
+        source_id,
     )
 
 
@@ -126,13 +131,14 @@ def verify_quote(quote: str, sources: Sequence[dict]) -> dict:
         return {"status": "empty", "matches": [], "note": "Enter a quotation to verify."}
 
     matches = []
-    for source in sources:
+    for source in assign_source_ids(sources):
         haystack = _normalize_quote(str(source.get("text", "")))
         if target in haystack:
             matches.append(
                 {
                     "source_name": source.get("source_name", "Unknown source"),
                     "page": source.get("page"),
+                    "source_id": source.get("source_id", ""),
                     "match_type": "normalized_exact",
                 }
             )
@@ -148,11 +154,13 @@ def verify_quote(quote: str, sources: Sequence[dict]) -> dict:
 
 
 def audit_sources(sources: Sequence[dict]) -> dict:
+    identified_sources = assign_source_ids(sources)
     items: list[EvidenceItem] = []
     counter = 1
-    for source in sources:
+    for source in identified_sources:
         source_name = str(source.get("source_name") or "Unknown source")
         page = source.get("page")
+        source_id = str(source.get("source_id") or "")
         for sentence in _sentences(str(source.get("text", ""))):
             items.append(
                 classify_sentence(
@@ -160,6 +168,7 @@ def audit_sources(sources: Sequence[dict]) -> dict:
                     source_name=source_name,
                     page=page,
                     evidence_id=f"E-{counter:04d}",
+                    source_id=source_id,
                 )
             )
             counter += 1
@@ -175,6 +184,7 @@ def audit_sources(sources: Sequence[dict]) -> dict:
             "evidence_id": i.evidence_id,
             "source_name": i.source_name,
             "page": i.page,
+            "source_id": i.source_id,
             "text": i.text,
         }
         for i in items
@@ -205,6 +215,7 @@ def audit_sources(sources: Sequence[dict]) -> dict:
             "source_type": i.source_type,
             "source_name": i.source_name,
             "page": i.page,
+            "source_id": i.source_id,
             "issues": ", ".join(i.issues),
             "confidence": i.confidence,
             "passage": i.text,
@@ -218,7 +229,8 @@ def audit_sources(sources: Sequence[dict]) -> dict:
         "evidence_matrix": matrix,
         "potential_contradictions": contradictions,
         "missing_record_flags": missing_records,
-        "source_count": len({(s.get("source_name"), s.get("page")) for s in sources}),
+        "source_count": len({(s.get("source_id"), s.get("page")) for s in identified_sources}),
+        "source_ids": sorted({str(s.get("source_id")) for s in identified_sources if s.get("source_id")}),
         "review_note": "Deterministic screening only. Verify every conclusion against the underlying source and governing rules.",
     }
 

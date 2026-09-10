@@ -4,6 +4,8 @@ from difflib import SequenceMatcher
 import re
 from typing import Sequence
 
+from source_identity import assign_source_ids
+
 
 def _normalize(value: str) -> str:
     value = value.replace("\u201c", '"').replace("\u201d", '"').replace("\u2019", "'")
@@ -65,12 +67,13 @@ def verify_quote_contextual(
     exact_matches = []
     partial_candidates = []
 
-    for source in sources:
+    for source in assign_source_ids(sources):
         raw_text = str(source.get("text", ""))
         normalized_text = _normalize(raw_text)
         sentences = _sentences(raw_text)
         source_name = source.get("source_name", "Unknown source")
         page = source.get("page")
+        source_id = source.get("source_id", "")
 
         if target in normalized_text:
             sentence_index = next(
@@ -90,6 +93,7 @@ def verify_quote_contextual(
                 {
                     "source_name": source_name,
                     "page": page,
+                    "source_id": source_id,
                     "match_type": "normalized_exact",
                     "score": 1.0,
                     "context": context,
@@ -103,6 +107,7 @@ def verify_quote_contextual(
                 {
                     "source_name": source_name,
                     "page": page,
+                    "source_id": source_id,
                     "match_type": "similar_not_exact",
                     "score": score,
                     "context": _context(sentences, idx),
