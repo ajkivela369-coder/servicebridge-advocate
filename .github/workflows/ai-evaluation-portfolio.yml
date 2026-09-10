@@ -5,15 +5,19 @@ on:
     paths:
       - 'portfolio/handshake-neuroeval/**'
       - 'portfolio/meridial-healthqa/**'
+      - 'portfolio/evidence-auditor/**'
+      - 'tests/test_evidence_auditor.py'
       - '.github/workflows/ai-evaluation-portfolio.yml'
   pull_request:
     paths:
       - 'portfolio/handshake-neuroeval/**'
       - 'portfolio/meridial-healthqa/**'
+      - 'portfolio/evidence-auditor/**'
+      - 'tests/test_evidence_auditor.py'
       - '.github/workflows/ai-evaluation-portfolio.yml'
 
 jobs:
-  test:
+  evaluation-projects:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -36,3 +40,19 @@ jobs:
       - name: Run benchmark metrics
         working-directory: ${{ matrix.project }}
         run: python metrics.py
+
+  evidence-auditor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Evidence Auditor Pro
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r portfolio/evidence-auditor/requirements.txt
+      - name: Compile
+        run: python -m compileall -q portfolio/evidence-auditor
+      - name: Run Evidence Auditor tests
+        run: python -m unittest tests.test_evidence_auditor -v
