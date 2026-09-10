@@ -9,6 +9,7 @@ from pypdf import PdfReader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from auditor import audit_sources, verify_quote
+from floating_assistant import render_floating_copilot
 from packet_assurance import assess_packet_assurance
 from packet_builder import build_packet
 
@@ -60,6 +61,7 @@ with st.sidebar:
     st.caption("Evidence stays session-local unless you explicitly save or export it.")
     stance_filter=st.multiselect("Evidence stance",["favorable","unfavorable","mixed","neutral"],default=["favorable","unfavorable","mixed","neutral"])
     min_confidence=st.slider("Minimum confidence",0.0,1.0,0.0,0.05)
+    copilot_enabled=st.toggle("Floating Evidence Copilot",value=True,help="Shows a compact assistant launcher in the lower-right corner. Elias remains a separate full workspace.")
     st.divider()
     st.markdown("**Packet defaults**")
     packet_style_label=st.radio("Style",["Visual Claim Packet","Formal Evidence Review"],index=0)
@@ -94,6 +96,8 @@ for uploaded in uploaded_pdfs or []:
         st.warning(f"Could not extract {uploaded.name}: {exc}")
 
 result=audit_sources(sources)
+st.session_state["ea_sources"]=sources
+st.session_state["ea_result"]=result
 summary=result["summary"]
 metrics=st.columns(6,gap="small")
 for col,(label,value,klass) in zip(metrics,[
@@ -224,5 +228,7 @@ with tabs[5]:
         st.caption(f"Generated packet size: {len(payload)/1024:.1f} KB")
     except Exception as exc:
         st.error(f"Packet generation failed: {exc}")
+
+render_floating_copilot(result,sources,enabled=copilot_enabled)
 
 st.markdown('<div class="footer">Evidence Auditor Pro is a research/portfolio tool. It does not make legal, medical, disability, service-connection, or benefits determinations. Public examples are fictional; source verification and human review remain required.</div>',unsafe_allow_html=True)
