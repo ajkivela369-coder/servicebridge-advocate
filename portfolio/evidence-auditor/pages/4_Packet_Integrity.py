@@ -94,16 +94,26 @@ for item in report["results"]:
     klass = "verified" if status == "verified" else "partial" if status == "partial" else "missing"
     label = "VERIFIED" if status == "verified" else "SIMILAR — NOT VERBATIM" if status == "partial" else "NOT VERIFIED"
     st.markdown(f'<div class="guard-card {klass}"><b>{item["quote_id"]} · {label}</b><br><br>“{item["quote"]}”</div>', unsafe_allow_html=True)
-    if item["matches"]:
-        match = item["matches"][0]
+
+    verified_matches = item.get("matches", [])
+    candidates = item.get("candidate_matches", [])
+    display_matches = verified_matches or candidates
+    if display_matches:
+        match = display_matches[0]
         loc = match["source_name"] + (f", p. {match['page']}" if match.get("page") else "")
         context = match.get("context", {})
-        st.caption(f"Best source: {loc} · confidence {item['confidence']:.0%}")
+        if verified_matches:
+            st.caption(f"Verified source: {loc} · confidence {item['confidence']:.0%}")
+        else:
+            st.warning(f"Closest wording candidate — NOT verification: {loc} · similarity {item['confidence']:.0%}")
         if context.get("before"):
             st.write("**Before:**", context["before"])
-        st.write("**Matched source wording:**", context.get("match", ""))
+        st.write("**Matched/candidate source wording:**", context.get("match", ""))
         if context.get("after"):
             st.write("**After:**", context["after"])
+    elif status != "verified":
+        st.caption("No verified source locator is attached to this proposed quotation.")
+
     st.caption(item["note"])
     st.divider()
 
