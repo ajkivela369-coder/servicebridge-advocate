@@ -12,7 +12,7 @@ from pypdf import PdfReader
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from assistant_bot import answer_question
+from copilot_engine import answer_question
 from auditor import audit_sources
 
 st.set_page_config(page_title="Elias · Evidence Assistant", page_icon="🛡️", layout="wide")
