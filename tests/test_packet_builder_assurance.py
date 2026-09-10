@@ -35,7 +35,10 @@ class PacketBuilderAssuranceTests(unittest.TestCase):
     @staticmethod
     def pdf_text(payload: bytes) -> str:
         reader = PdfReader(BytesIO(payload))
-        return "\n".join((page.extract_text() or "") for page in reader.pages)
+        # PDF extractors may insert line breaks at layout boundaries. Normalize whitespace so
+        # assertions test document semantics rather than ReportLab's wrapping decisions.
+        raw = "\n".join((page.extract_text() or "") for page in reader.pages)
+        return " ".join(raw.split())
 
     def test_assurance_summary_is_embedded_with_verified_quote_locator(self):
         assurance = assess_packet_assurance(
@@ -65,6 +68,7 @@ class PacketBuilderAssuranceTests(unittest.TestCase):
         self.assertIn("Reviewer blockers", text)
         self.assertIn("Not Found", text)
         self.assertIn("No verified source locator", text)
+        self.assertNotIn("A physician definitively attributed the condition to service. Not Found synthetic_exam.pdf, p. 2", text)
 
     def test_existing_packet_generation_remains_backward_compatible(self):
         payload = build_packet(self.result, case_title="Legacy Compatible Packet")
