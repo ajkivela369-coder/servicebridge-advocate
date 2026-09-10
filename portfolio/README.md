@@ -1,6 +1,6 @@
 # AJ AI Evaluation Lab
 
-Seven compact, auditable applications demonstrating practical AI-evaluation work across neuroscience, health-science safety, evidence review, pairwise preference evaluation, citation QA, annotation calibration, and benchmark authoring.
+A growing collection of compact, auditable AI applications spanning neuroscience, health-science safety, evidence review, pairwise preference evaluation, citation QA, annotation calibration, benchmark authoring, and creative media production.
 
 ## Applications
 
@@ -10,8 +10,8 @@ Biology and neuroscience response evaluation with transparent scoring for concep
 ### [HealthQA Auditor](meridial-healthqa/)
 Safety-first health-science AI output auditing with PASS / REVIEW / ESCALATE dispositions, patient-specific claim detection, dosing-language flags, urgent-symptom escalation checks, and machine-readable reviewer output.
 
-### [Evidence Auditor](evidence-auditor/)
-Privacy-safe benefits/disability evidence intelligence with issue mapping, favorable/unfavorable/mixed/neutral classification, missing-record signals, contradiction pairing, evidence matrices, and reviewer JSON. Synthetic or de-identified examples only.
+### [Evidence Auditor Pro](evidence-auditor/)
+Privacy-safe benefits/disability evidence intelligence with source/page provenance, quote-integrity checks, issue mapping, favorable/unfavorable/mixed/neutral classification, missing-record signals, contradiction pairing, evidence matrices, packet generation, and Elias, a citation-first evidence assistant. Synthetic or de-identified examples only.
 
 ### [PairRank](pairrank/)
 Pairwise LLM-response evaluation with weighted rubrics, A/B preference labels, failure tags, reviewer notes, written justification, and JSON export.
@@ -25,14 +25,18 @@ Annotation quality assurance and reviewer calibration with gold-set accuracy, in
 ### [Benchmark Forge](benchmark-forge/)
 Structured AI benchmark authoring for prompts, expected concepts, prohibited misconceptions, difficulty, gold labels, reviewer rationales, coverage reporting, and JSON/JSONL export.
 
+### [GrimForge Studio — App XIII](grimforge-studio/)
+A cinematic lore-production studio for original grimdark science-fiction commentary and old-world dark-fantasy storytelling. It combines a Reference DNA Lab, thesis-first Lore Scholar, Channel Forge, narrator direction, cinematic Director Timeline, controlled humor, source/canon labeling, Rights Guard, and production-package export. Reference creators inform only high-level production attributes; the app does not copy scripts, artwork, jokes, or voice identities.
+
 ## Design principles
 
 - Transparent, inspectable baselines rather than hidden claims of model intelligence.
 - Human review remains explicit in every high-stakes workflow.
 - Machine-readable outputs support reproducible evaluation and QA.
 - Portfolio examples use synthetic or de-identified data where privacy matters.
-- Projects are demonstrations of hands-on AI-evaluation work, not claims of paid AI employment or production clinical/legal systems.
+- Creative tools distinguish inspiration from imitation and track asset rights before publication.
+- Projects are demonstrations of hands-on AI-evaluation and production work, not claims of paid AI employment or production clinical/legal systems.
 
-## Road to 12
+## Direction
 
-The portfolio is being built as a coherent evaluation lab rather than a collection of unrelated demos. Future apps can extend into prompt-adversarial testing, multimodal/document-output QA, model regression testing, evaluation analytics, and workflow-quality review.
+The portfolio is being built as a coherent lab rather than a collection of unrelated demos. Future apps and upgrades can extend into prompt-adversarial testing, multimodal/document-output QA, model regression testing, evaluation analytics, workflow-quality review, voice/video production, and creator tooling.
