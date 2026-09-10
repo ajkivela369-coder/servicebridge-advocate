@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 
 from auditor import audit_sources
 from coverage import assess_issue_coverage
+from page_copilot import render_page_copilot
 
 st.set_page_config(page_title="Coverage Gaps · Evidence Auditor Pro", page_icon="🧭", layout="wide")
 
@@ -88,3 +89,5 @@ for i in coverage["issues"]:
     })
 st.dataframe(rows,use_container_width=True,hide_index=True)
 st.caption(coverage["note"])
+
+render_page_copilot(sources=sources, result=result)

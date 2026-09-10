@@ -9,6 +9,7 @@ from pypdf import PdfReader
 
 APP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP_DIR))
+from page_copilot import render_page_copilot
 from readiness import assess_provenance_readiness
 
 st.set_page_config(page_title="Review Readiness · Evidence Auditor Pro", page_icon="🧭", layout="wide")
@@ -73,3 +74,5 @@ with right:
     A packet becomes easier to audit when every passage can be traced back to a named source and page. Image-only pages with no extractable text should be routed to OCR or manual review rather than silently treated as empty evidence.</div>""",unsafe_allow_html=True)
 
 st.caption("Session hashes are short SHA-256 fingerprints shown only to help distinguish uploaded files during review; they are not uploaded by this app page.")
+
+render_page_copilot(sources=sources or None)

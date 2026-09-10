@@ -8,6 +8,7 @@ from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from page_copilot import render_page_copilot
 from quote_integrity import verify_quote_contextual
 
 st.set_page_config(page_title="Quote Integrity · Evidence Auditor Pro", page_icon="🔎", layout="wide")
@@ -103,3 +104,5 @@ else:
 
 st.divider()
 st.caption("Evidence Auditor Pro does not determine whether a statement is medically true, legally sufficient, or properly interpreted. Quote Integrity verifies source wording and context only.")
+
+render_page_copilot(sources=sources or None)

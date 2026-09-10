@@ -9,6 +9,7 @@ from pypdf import PdfReader
 APP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(APP_DIR))
 
+from page_copilot import render_page_copilot
 from packet_guard import audit_packet_quotes
 
 st.set_page_config(page_title="Packet Integrity · Evidence Auditor Pro", page_icon="🛡️", layout="wide")
@@ -119,3 +120,5 @@ for item in report["results"]:
 
 st.info(report["policy"])
 st.caption("This gate checks source fidelity, not authenticity, medical truth, legal relevance, or entitlement. Human review remains required.")
+
+render_page_copilot(sources=sources or None)
