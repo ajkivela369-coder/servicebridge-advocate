@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 
 from auditor import audit_sources
 from packet_assurance import assess_packet_assurance
+from page_copilot import render_page_copilot
 
 st.set_page_config(page_title="Packet Assurance · Evidence Auditor Pro", page_icon="🧭", layout="wide")
 
@@ -150,3 +151,5 @@ if assurance["quotes"]["results"]:
 
 st.divider()
 st.caption(assurance["note"] + " Public examples are fictional/de-identified; do not use a public deployment for sensitive records unless its data-handling controls are appropriate.")
+
+render_page_copilot(sources=sources, result=result)
