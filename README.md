@@ -2,6 +2,14 @@
 
 [![CI](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml)
 
+## Featured app — Elias Evidence Auditor Pro
+
+**▶ Test the current production app:** https://elias-evidence-assistant-simscb.v2.appdeploy.ai/
+
+**Current app entry point:** [`portfolio/evidence-auditor/00_CURRENT_APP/`](portfolio/evidence-auditor/00_CURRENT_APP/)
+
+Elias is the newest Evidence Auditor build: a signed-in, source-grounded workspace with large-PDF indexing, OCR and multimodal intake, floating one-click Copilot actions, VA Law & Rater Lens, case review, voice, web research, and packet drafting. The older Streamlit implementation is preserved under `portfolio/evidence-auditor/legacy-streamlit/` so the current build is no longer buried among legacy modules.
+
 **A privacy-first, evidence-grounded AI advocate for medical complexity, veterans, disability
 benefits, and accommodations.**
 
