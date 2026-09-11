@@ -5,6 +5,7 @@ from typing import Sequence
 from coverage import assess_issue_coverage
 from packet_guard import audit_packet_quotes
 from readiness import assess_provenance_readiness
+from source_inventory import build_source_inventory
 
 
 def assess_packet_assurance(
@@ -21,6 +22,7 @@ def assess_packet_assurance(
     provenance = assess_provenance_readiness(sources)
     coverage = assess_issue_coverage(items)
     quotes = audit_packet_quotes(proposed_quotes, sources)
+    source_inventory = build_source_inventory(sources)
 
     quote_score = 100
     if quotes["quote_count"]:
@@ -57,8 +59,9 @@ def assess_packet_assurance(
         "provenance": provenance,
         "coverage": coverage,
         "quotes": quotes,
+        "source_inventory": source_inventory,
         "note": (
-            "Packet Assurance measures provenance, evidence coverage, and quotation integrity for reviewer workflow. "
-            "It is not a legal or medical merits determination."
+            "Packet Assurance measures provenance, evidence coverage, quotation integrity, and source reconciliation for reviewer workflow. "
+            "Source-reconciliation cues are advisory and do not change the composite score. It is not a legal or medical merits determination."
         ),
     }
