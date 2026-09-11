@@ -1,89 +1,53 @@
-# Evidence Auditor Pro
+# Elias Evidence Auditor Pro
 
-A privacy-safe, source-backed evidence review and packet-building demonstration for complex medical, service, legal, disability-benefit, and administrative records.
+**Current production build:** https://elias-evidence-assistant-simscb.v2.appdeploy.ai/
 
-The public repository contains **fictional examples only**. It does not contain private VA records, medical records, service records, names, claim numbers, or private case indexes.
+**Start here:** [`00_CURRENT_APP/`](./00_CURRENT_APP/)
 
-## Three-page design
+This directory has been cleaned up so the current Elias application is the obvious entry point. The previous Streamlit implementation is preserved under [`legacy-streamlit/`](./legacy-streamlit/) rather than competing with the current build at the top level.
 
-Evidence Auditor Pro is intentionally reduced to three user-facing destinations:
+## What the current app does
 
-1. **Elias** — the main ChatGPT-style workspace. Upload the record once, keep multiple chat threads, ask natural-language questions, use built-in evidence tools, maintain session-local case memory, and route the work into packet generation.
-2. **Case Review** — the structured quality-control view. It combines provenance readiness, evidence review, quotation verification, issue coverage, contradictions, record-gap signals, and source inventory into one page.
-3. **Packet Studio** — the final packet workspace. It combines packet assurance, visual/formal packet styles, proposed quotation checks, mechanism sequencing, rebuttal notes, visual exhibits, PDF export, and reviewer JSON export.
+Elias is a private, source-grounded evidence workspace for complex VA, disability, medical, service, and administrative records. The current production build combines fast AI assistance with deliberate manual review controls instead of forcing the user into a single chat-only workflow.
 
-The default Streamlit navigation is hidden and replaced by this small three-destination shell so the app does not feel like a collection of disconnected utilities.
+Key capabilities include:
 
-## Elias interaction model
+- large searchable PDF indexing with visible upload, reading, and indexing states
+- OCR intake for screenshots and scanned document images
+- image, audio, and sampled-video-frame analysis
+- persistent case memory and multiple chat threads
+- floating **Elias Copilot** available throughout the workspace
+- one-click **Strongest Evidence**, **Missing Evidence**, **Contradiction Check**, **Build Timeline**, **C&P Rebuttal**, and **Packet QA** passes
+- manual evidence tools and plugins that remain independently selectable
+- Case Review with source inventory, evidence gaps, tensions, chronology, and strongest-evidence analysis
+- VA Law & Rater Lens with official-reference links and clear separation between governing criteria and case evidence
+- public URL / YouTube research with explicit provenance boundaries
+- optional live web search and neural voice when configured
+- browser/device voice fallback and voice presets
+- Packet Studio with one-click preflight plus full manual packet drafting
+- visible full-screen working states that prevent repeated clicks from launching duplicate jobs
 
-Elias is the front door rather than a side feature.
+## Fastest way to evaluate it
 
-- **Chat threads** — start a new chat and switch between session-local conversations from the sidebar.
-- **One-place case intake** — PDFs, text, and Markdown are uploaded only in Elias and shared with Case Review and Packet Studio for the current session.
-- **Session-local case memory** — Elias can keep a case label, goal, notes, and an automatically refreshed record summary. Memory can be disabled, exported to JSON, and imported into another session. The public demo does not pretend this is server-side persistent memory.
-- **Built-in tools / plugins** — Record Search, Gap Finder, Quote Check, and Packet Assurance can be turned on or off. These are local evidence tools, not external account connections.
-- **Transparent responses** — Elias can show source chips and the tools used for a response. Unsupported questions are declined rather than filled with invented evidence.
-- **Quick Elias** — Case Review and Packet Studio keep a floating **Ask Elias** button so the user can ask a source-grounded question without leaving the current page.
+1. Open the **current production build** above.
+2. Sign in.
+3. Add a searchable PDF or image.
+4. Wait for the file card to show **Ready**.
+5. Open the floating **Elias Copilot** and run **Strongest Evidence** or **Contradiction Check**.
+6. Open **Case Review** to inspect the structured evidence and law tools.
+7. Open **Packet Studio**, run **One-click preflight**, then generate a draft.
 
-## Evidence capabilities
+## Current vs. legacy
 
-- Multi-document intake with page-level provenance
-- Source/page locators on extracted passages
-- Favorable / unfavorable / mixed / neutral evidence classification
-- Medical, service, lay, and administrative source typing
-- Issue mapping and record-gap signals
-- Normalized exact and contextual quote verification
-- Same-issue supporting/adverse evidence pairing
-- Evidence-coverage and provenance-readiness analysis
-- Packet Assurance combining provenance, evidence depth, and quote integrity into a reviewer-workflow score
-- Reviewer-supplied mechanism / sequence mapping
-- Screenshot and diagram upload for visual exhibits
-- Two generated PDF styles:
-  - **VA Evidence Packet** / visual claim packet
-  - **Formal Evidence Review**
-- Reviewer JSON export
+| Path | Status | Purpose |
+|---|---|---|
+| [`00_CURRENT_APP/`](./00_CURRENT_APP/) | **Current** | Production Elias AppDeploy build, live test link, feature map, and evaluation path |
+| [`legacy-streamlit/`](./legacy-streamlit/) | Legacy | Prior Streamlit implementation preserved for regression/reference work |
 
-## Important boundary
+The AppDeploy deployment is the source of truth for the current production application. The legacy Streamlit code remains useful as an open reference implementation, but it should not be mistaken for the newest build.
 
-Elias is designed to feel conversational, but the public baseline still uses a deterministic, local evidence-grounding engine rather than a hosted general-purpose LLM. The interface can support future model or connector integrations without changing the core provenance rules.
+## Privacy boundary
 
-The built-in “plugins” are evidence-review modules inside the app. They do not represent connected Gmail, Drive, VA, medical-record, or other external accounts.
+The public repository contains only public-safe code and fictional/de-identified examples. Do **not** commit real VA records, medical records, service records, claim numbers, private case indexes, or personally identifying screenshots.
 
-## Run locally
-
-```bash
-cd portfolio/evidence-auditor
-python -m pip install -r requirements.txt
-streamlit run dashboard.py
-```
-
-Main Streamlit file:
-
-```text
-portfolio/evidence-auditor/dashboard.py
-```
-
-Do **not** run `copilot_engine.py`, `elias_plugins.py`, or `elias_memory.py` directly with Streamlit. They are shared backend modules.
-
-## Public-demo privacy boundary
-
-This repository is intentionally public-safe. Do not commit real medical records, VA claim files, claim numbers, service records, private indexes generated from a real case, or screenshots containing real personal identifiers. Use fictional or thoroughly de-identified examples for public demos.
-
-Uploaded documents and images are processed by the running Streamlit session. Hosting/provider retention rules still apply; do not use a public deployment for sensitive records unless its deployment and data-handling controls are appropriate for that use.
-
-## Review philosophy
-
-Evidence Auditor Pro helps a human reviewer find and organize evidence; it does **not** decide a claim. A quotation match does not prove authenticity, medical truth, or legal significance. A tension flag is a routing aid, not a finding that an examiner or adjudicator is wrong.
-
-Mechanism maps are reviewer-supplied explanatory organization. The app does not silently infer medical causation. Packet Assurance measures reviewer workflow quality, provenance, evidence depth, and quotation integrity—not the merits of a disability, legal, medical, or benefits claim.
-
-## Current limitations
-
-- Scanned/image-only PDFs require OCR before text extraction in this public baseline.
-- Quote verification is normalized exact/contextual matching, not semantic quotation reconstruction.
-- Elias currently uses a deterministic local evidence engine rather than a hosted general-purpose LLM.
-- Case memory is session-local unless the user explicitly exports/imports the memory JSON.
-- Built-in tools are local modules, not external service plugins or connectors.
-- Packet Assurance uses transparent heuristic weights for reviewer readiness; its composite score is not a validated legal or clinical instrument.
-- The app does not independently determine duty status, service connection, diagnostic validity, rating percentage, eligibility, or legal sufficiency.
-- Visual exhibits are reviewer supplied; the public repo does not ship private screenshots.
+Elias helps a human reviewer find, organize, compare, and draft from evidence. It does not independently determine service connection, diagnostic validity, disability percentage, legal sufficiency, or entitlement to benefits.
