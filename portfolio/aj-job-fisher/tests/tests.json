@@ -1,0 +1,113 @@
+[
+  {
+    "name": "Sign in, create a strong candidate, and reject a duplicate",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "authentication",
+      "dashboard loading",
+      "candidate creation",
+      "database create/read",
+      "fit scoring",
+      "duplicate detection",
+      "GET /api/dashboard",
+      "POST /api/jobs"
+    ],
+    "description": "Verifies the private ledger creates a scored opportunity, retains it in the dashboard, and prevents a duplicate record.",
+    "steps": [
+      "Sign in to Job Fisher",
+      "Add candidate company \"Northstar Health\" and role \"Member Advocate\", then raise the projected fit score to at least 85",
+      "Submit the candidate and confirm it appears in the ledger",
+      "Try to add Northstar Health — Member Advocate a second time"
+    ],
+    "expected": "The first candidate remains visible with its fit score and a visible duplicate error prevents a second row."
+  },
+  {
+    "name": "Analyze a URL and show a persistent scan event",
+    "viewport": "desktop",
+    "covers": [
+      "job URL ingestion",
+      "AI page scraping",
+      "ATS structured extraction",
+      "deterministic scoring",
+      "scan history persistence",
+      "POST /api/ingest",
+      "GET /api/dashboard"
+    ],
+    "description": "Verifies a readable URL can be analyzed, scored, saved to the ledger, and represented in scan analytics.",
+    "steps": [
+      "Sign in and choose Analyze URL",
+      "Enter https://example.com and analyze it",
+      "Confirm a candidate sourced from example.com appears in the ledger",
+      "Open Scan analytics"
+    ],
+    "expected": "The imported opportunity is visible and Scan analytics shows a recent URL-analysis event."
+  },
+  {
+    "name": "Generate and retain an ATS application package",
+    "viewport": "desktop",
+    "covers": [
+      "AI application package generation",
+      "ATS keyword tailoring",
+      "application package persistence",
+      "POST /api/jobs/:id/package"
+    ],
+    "setup": [
+      "Sign in and create company \"Granite Care\" with role \"Patient Support Specialist\""
+    ],
+    "description": "Verifies Job Fisher generates a cautious job-specific resume and cover-letter package without inventing credentials.",
+    "steps": [
+      "Open Granite Care — Patient Support Specialist",
+      "Choose Generate package",
+      "Wait for the package preview to appear",
+      "Close and reopen the candidate"
+    ],
+    "expected": "A persistent tailored application package is visible with ATS/resume, cover-letter, screening-guidance, and do-not-claim content."
+  },
+  {
+    "name": "Parse a recruiter message and dismiss it",
+    "viewport": "mobile",
+    "covers": [
+      "recruiter inbox",
+      "AI hiring-message extraction",
+      "suggested reply generation",
+      "database create/delete",
+      "POST /api/inbox/parse",
+      "DELETE /api/inbox/:id"
+    ],
+    "description": "Verifies a pasted hiring message becomes a structured inbox card with an action and suggested reply, then can be dismissed.",
+    "steps": [
+      "Sign in and open Recruiter inbox",
+      "Paste: Hello Alexander, I reviewed your resume for the Veteran Care Specialist role at True Vet Solutions and would like to schedule a phone call. Please send a couple of times that work for you. — Jimmy",
+      "Choose Analyze & save and confirm a recruiter card with a suggested reply appears",
+      "Dismiss the recruiter card"
+    ],
+    "expected": "The structured hiring card appears with a next action and suggested reply, then disappears after dismissal."
+  },
+  {
+    "name": "Enforce queue guardrails, update status, and delete",
+    "viewport": "desktop",
+    "covers": [
+      "application queue",
+      "mandatory stop conditions",
+      "autonomous-submission guardrail",
+      "candidate update",
+      "application status tracking",
+      "candidate deletion",
+      "PUT /api/jobs/:id",
+      "DELETE /api/jobs/:id"
+    ],
+    "setup": [
+      "Sign in and create company \"Harbor Labs\" with role \"AI Health Evaluator\", score at least 85, and check Background-check authorization",
+      "Create company \"Pine State Health\" with role \"Care Navigator\" and score at least 85 with no mandatory stops"
+    ],
+    "description": "Verifies blocked jobs stay out of autonomous submission while clear high-fit jobs can advance and lifecycle changes persist.",
+    "steps": [
+      "Open Application queue and confirm Harbor Labs shows a HOLD with Background-check authorization",
+      "Mark Pine State Health submitted",
+      "Open Pine State Health and confirm Submitted is visible",
+      "Delete Pine State Health and confirm deletion"
+    ],
+    "expected": "Harbor Labs remains blocked, Pine State Health advances to Submitted, and the deleted candidate no longer appears."
+  }
+]
