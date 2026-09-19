@@ -5,7 +5,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-AUDITOR_DIR = ROOT / "portfolio" / "evidence-auditor"
+AUDITOR_DIR = ROOT / "portfolio" / "evidence-auditor" / "legacy-streamlit"
 
 
 class EliasSurfaceTests(unittest.TestCase):
