@@ -5,7 +5,7 @@ import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-AUDITOR_DIR = ROOT / "portfolio" / "evidence-auditor"
+AUDITOR_DIR = ROOT / "portfolio" / "evidence-auditor" / "legacy-streamlit"
 sys.path.insert(0, str(AUDITOR_DIR))
 
 from copilot_engine import answer_question
