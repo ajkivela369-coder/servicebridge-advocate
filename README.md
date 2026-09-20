@@ -146,6 +146,27 @@ private record. That is deliberate: this approach is easier to inspect, update, 
 private. Fine-tuning may eventually help with format and style, but it must never be used as a
 substitute for source retrieval or current-law verification.
 
+## Intellectual property & organizational flexibility
+
+ServiceBridge Advocate is an early-stage technology and social-impact venture. Its products,
+business model, organizational structure, policies, pricing, partnerships, technical architecture,
+and funding strategy may evolve as the project develops.
+
+The MIT License applies to code and other material expressly distributed under that license.
+It does not, by itself, grant rights to ServiceBridge trademarks, branding, unpublished
+confidential know-how, future proprietary components, datasets, or patent rights beyond what
+applicable law and the license provide.
+
+ServiceBridge may seek appropriate protection for qualifying intellectual property through
+trademarks, copyrights, patents where applicable, trade-secret practices, licensing terms, and
+other lawful mechanisms. The venture also retains flexibility to operate through or form an LLC,
+corporation, public-benefit entity, affiliated nonprofit, subsidiary, partnership, or other suitable
+structure and to pursue commercial, grant-funded, philanthropic, government-contracting,
+research, licensing, or investment opportunities.
+
+See [Intellectual Property & Organizational Flexibility](docs/INTELLECTUAL_PROPERTY_AND_ORGANIZATIONAL_FLEXIBILITY.md)
+for the fuller project statement.
+
 ## Development
 
 ```bash
