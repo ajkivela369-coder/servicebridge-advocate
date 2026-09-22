@@ -48,3 +48,9 @@ A useful health-content evaluator should be conservative about patient-specific 
 ## Scope
 
 Portfolio and research demonstration only. This software is not medical advice, diagnosis, triage, treatment software, or a medical device and should not be used to make patient-care decisions.
+
+## Live deployment
+
+https://healthqa-auditor-k719sh.v2.appdeploy.ai/
+
+This is the current public portfolio deployment for **HealthQA Auditor**.
