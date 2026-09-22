@@ -20,3 +20,9 @@ Main file path:
 `portfolio/citeguard/dashboard.py`
 
 Portfolio/research demonstration only.
+
+## Live deployment
+
+https://citeguard-06vkq0.v2.appdeploy.ai/
+
+This is the current public portfolio deployment for **CiteGuard**.
