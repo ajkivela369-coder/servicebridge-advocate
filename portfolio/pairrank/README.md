@@ -25,3 +25,9 @@ Main file path:
 `portfolio/pairrank/dashboard.py`
 
 Portfolio/research demonstration only.
+
+## Live deployment
+
+https://pairrank-eid08f.v2.appdeploy.ai/
+
+This is the current public portfolio deployment for **PairRank**.
