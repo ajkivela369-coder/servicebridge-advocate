@@ -47,3 +47,9 @@ High-quality AI evaluation is more than deciding whether an answer sounds right.
 ## Scope
 
 Portfolio and research demonstration only. This is not a diagnostic or clinical decision-support system and does not provide patient-specific medical advice.
+
+## Live deployment
+
+https://neuroeval-t6k31i.v2.appdeploy.ai/
+
+This is the current public portfolio deployment for **NeuroEval**.
