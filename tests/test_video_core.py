@@ -1,11 +1,13 @@
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "apps" / "video-core" / "pipeline.py"
 SPEC = importlib.util.spec_from_file_location("video_core_pipeline", MODULE_PATH)
 pipeline = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = pipeline
 assert SPEC.loader is not None
 SPEC.loader.exec_module(pipeline)
 
