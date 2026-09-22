@@ -22,3 +22,13 @@ apps/wildtake-streamlit/app.py
 The Aussie Wildlife Commentator is an original broad-style preset. It must not imitate or reproduce Ozzy Man Reviews / Ethan Marrell's voice, identity, scripts, catchphrases, or branding.
 
 No API secrets are committed to this repository.
+
+## Live deployment
+
+https://wildtake-studio-i0atj8.v2.appdeploy.ai/
+
+The Streamlit prototype remains the lightweight test bench. The public AppDeploy build is the current browser-facing WildTake experience.
+
+## Shared video core
+
+Future vision, TTS, captions, mixing, continuity, render, and QC adapters should use the provider-neutral contracts under `apps/video-core/` so WildTake and GrimForge Cinema share one production model.
