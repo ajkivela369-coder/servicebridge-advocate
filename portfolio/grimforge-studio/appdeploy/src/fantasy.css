@@ -248,3 +248,8 @@ h1, h2, h3, .brand, .visualCard strong, .commandDeck strong {
  .bibleCards,.voiceCastGrid,.takeGrid{grid-template-columns:1fr}
  .shotCard header{display:grid}
 }
+
+.fullRenderPanel{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;margin:14px 0 18px;padding:14px;border:1px solid #6a5231;border-radius:14px;background:linear-gradient(145deg,#1b160f,#0c100d)}
+.fullRenderPanel>div{display:grid;gap:4px}.fullRenderPanel>div>span{font-size:.65rem;text-transform:uppercase;letter-spacing:.11em;color:#b48c4c;font-weight:900}.fullRenderPanel>div>strong{color:#ead3a0}.fullRenderPanel p{margin:0;color:#9b927f;font-size:.78rem;line-height:1.45}.fullRenderPanel>small{grid-column:1/-1;color:#c8ad6d}
+.renderConsent{display:flex!important;align-items:center;gap:8px!important;margin:0!important;max-width:260px;color:#b9aa8b!important;font-size:.75rem!important;text-transform:none!important;letter-spacing:0!important}.renderConsent input{width:auto!important;margin:0!important}
+@media(max-width:900px){.fullRenderPanel{grid-template-columns:1fr}.renderConsent{max-width:none}}
