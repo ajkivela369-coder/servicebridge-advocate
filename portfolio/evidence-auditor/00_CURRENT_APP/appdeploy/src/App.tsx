@@ -23,6 +23,7 @@ type EvidenceTimelineSnapshot = { id?: string; items: TimelineItem[]; createdAt:
 type EvidenceTraceItem = { sourceId: string; source: string; locator: string; evidenceType: string; relation: 'supports' | 'conflicts' | 'context'; evidence: string; quoteVerified: boolean; exactQuote?: string };
 type EvidenceTrace = { claim: string; assessment: 'Supported' | 'Partially supported' | 'Conflicted' | 'Unsupported'; summary: string; items: EvidenceTraceItem[]; droppedUnresolvedSources: string[]; warning: string };
 type EvidenceIllustration = { url: string; path: string; metadataPath: string; kind: string; title: string; visualGoal: string; documentedFacts: string[]; anatomy: string[]; mechanism: string[]; uncertainties: string[]; sources: Array<{ sourceId: string; name: string; locator: string }>; label: string; generatedAt: string };
+type DerivedVisualSummary = { path: string; url: string; name: string; metadata: { kind?: string; title?: string; label?: string; sourceName?: string; locator?: string; sources?: Array<{ name?: string; locator?: string }> } };
 type NeuralVoice = { voiceId: string; name: string; labels?: Record<string, string> };
 type LiveSearchResult = { answer: string; results: Array<{ title: string; url: string; content: string; publishedDate?: string }>; savedDocument?: Doc | null };
 type Chat = { id?: string; threadId: string; question: string; answer: string; tool: string; speed?: WorkMode; sources: string[]; createdAt: string };
@@ -171,6 +172,8 @@ function App() {
     const [sourceLabImage, setSourceLabImage] = useState('');
     const [illustrationInstruction, setIllustrationInstruction] = useState('');
     const [evidenceIllustration, setEvidenceIllustration] = useState<EvidenceIllustration | null>(null);
+    const [derivedVisuals, setDerivedVisuals] = useState<DerivedVisualSummary[]>([]);
+    const [selectedVisualPaths, setSelectedVisualPaths] = useState<string[]>([]);
     const [traceClaim, setTraceClaim] = useState('');
     const [evidenceTrace, setEvidenceTrace] = useState<EvidenceTrace | null>(null);
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
@@ -228,6 +231,15 @@ function App() {
         }
     };
 
+    const loadDerivedVisuals = async () => {
+        try {
+            const { data } = await api.get('/api/evidence/visuals');
+            setDerivedVisuals(data.visuals ?? []);
+        } catch {
+            setDerivedVisuals([]);
+        }
+    };
+
     const loadEvidenceTimeline = async () => {
         try {
             const { data } = await api.get('/api/evidence/timeline');
@@ -246,6 +258,7 @@ function App() {
         await loadEvidenceInventory();
         await loadEvidenceBundles();
         await loadEvidenceTimeline();
+        await loadDerivedVisuals();
     };
 
     const loadIntegrations = async () => {
@@ -281,19 +294,44 @@ function App() {
     }, [appMode]);
 
     useEffect(() => {
+        let cancelled = false;
+        let objectUrl = '';
         if (!submissionBrief) {
             setSubmissionPreviewBlob(null);
             setSubmissionPreviewUrl('');
             setSubmissionPreviewName('');
-            return undefined;
+            return () => undefined;
         }
-        const built = buildSubmissionPdf(submissionBrief, memory.caseLabel || 'Evidence_Case');
-        const url = URL.createObjectURL(built.blob);
-        setSubmissionPreviewBlob(built.blob);
-        setSubmissionPreviewUrl(url);
-        setSubmissionPreviewName(built.filename);
-        return () => URL.revokeObjectURL(url);
-    }, [submissionBrief, memory.caseLabel]);
+        const build = async () => {
+            try {
+                let brief: SubmissionBrief = submissionBrief;
+                if (selectedVisualPaths.length) {
+                    const { data } = await api.post('/api/evidence/visuals/data', { paths: selectedVisualPaths });
+                    const visuals = (data.visuals ?? []).map((visual: { path: string; data: string; mimeType: string; metadata?: Record<string, unknown> }) => {
+                        const meta = (visual.metadata ?? {}) as { title?: string; label?: string; kind?: string; sourceName?: string; locator?: string; sources?: Array<{ name?: string; locator?: string }> };
+                        const sources = Array.isArray(meta.sources)
+                            ? meta.sources.map((source) => ({ name: String(source.name ?? ''), locator: String(source.locator ?? '') })).filter((source) => source.name)
+                            : meta.sourceName ? [{ name: String(meta.sourceName), locator: String(meta.locator ?? '') }] : [];
+                        return { data: visual.data, mimeType: visual.mimeType, title: String(meta.title ?? visual.path.split('/').pop() ?? 'Derived visual'), label: String(meta.label ?? 'Derived visual. Original record controls.'), kind: String(meta.kind ?? 'derived_visual'), sources };
+                    });
+                    brief = { ...submissionBrief, visuals };
+                }
+                const built = buildSubmissionPdf(brief, memory.caseLabel || 'Evidence_Case');
+                if (cancelled) return;
+                objectUrl = URL.createObjectURL(built.blob);
+                setSubmissionPreviewBlob(built.blob);
+                setSubmissionPreviewUrl(objectUrl);
+                setSubmissionPreviewName(built.filename);
+            } catch (err) {
+                if (!cancelled) setNotice(errorMessage(err, 'The visual submission PDF could not be composed.'));
+            }
+        };
+        void build();
+        return () => {
+            cancelled = true;
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [submissionBrief, memory.caseLabel, selectedVisualPaths]);
 
     useEffect(() => {
         const refreshVoices = () => setVoices(window.speechSynthesis?.getVoices?.() ?? []);
@@ -815,12 +853,11 @@ function App() {
     };
 
     const downloadSubmissionBrief = () => {
-        if (!submissionBrief) return;
-        const built = buildSubmissionPdf(submissionBrief, memory.caseLabel || 'Evidence_Case');
-        const url = URL.createObjectURL(built.blob);
+        if (!submissionPreviewBlob || !submissionPreviewName) return;
+        const url = URL.createObjectURL(submissionPreviewBlob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = built.filename;
+        link.download = submissionPreviewName;
         link.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 1200);
     };
@@ -830,9 +867,9 @@ function App() {
         setBusy('Saving the submission PDF to your private Case Vault…');
         setNotice('');
         try {
-            const built = buildSubmissionPdf(submissionBrief, memory.caseLabel || 'Evidence_Case');
-            const base64 = await encodeBlob(built.blob);
-            await api.post('/api/vault/generated-file', { name: built.filename, base64, contentType: 'application/pdf' });
+            if (!submissionPreviewBlob || !submissionPreviewName) throw new Error('The exact submission preview is not ready yet.');
+            const base64 = await encodeBlob(submissionPreviewBlob);
+            await api.post('/api/vault/generated-file', { name: submissionPreviewName, base64, contentType: 'application/pdf' });
             const vault = await api.get('/api/vault/status');
             setVaultStatus(vault.data);
             setNotice('Submission PDF saved under 06_Submission_Packets in your private Case Vault.');
