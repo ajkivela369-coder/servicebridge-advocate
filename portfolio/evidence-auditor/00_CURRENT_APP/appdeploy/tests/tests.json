@@ -228,5 +228,81 @@
       "Confirm quoted language and cited filenames against the fictional source"
     ],
     "expected": "Unresolvable filenames are excluded, locators come from stored source metadata, exact quotes receive QUOTE VERIFIED only on literal text match, and support/conflict/context remain separate."
+  },
+  {
+    "name": "Source Page Lab saves labeled derived captures without altering originals",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/evidence/source/:id/url",
+      "POST /api/evidence/capture",
+      "retained original boundary",
+      "auto whitespace trim",
+      "source/page stamp",
+      "07_Derived_Visuals"
+    ],
+    "description": "Verifies a retained PDF page can be rendered into a clearly derived visual while indexed-only sources fail honestly.",
+    "steps": [
+      "Upload a small fictional PDF whose original binary is retained",
+      "Open Evidence Cloud and choose Page Lab",
+      "Render page 1 and inspect the source/page footer",
+      "Save the derived capture",
+      "Repeat with an indexed-only source if available"
+    ],
+    "expected": "The saved capture is labeled DERIVED CAPTURE with source filename/page; the original remains unchanged. Indexed-only sources do not receive a fake original-page preview."
+  },
+  {
+    "name": "Illustration Lab de-identifies and stores source provenance",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/evidence/illustration",
+      "de-identified illustration brief",
+      "ai.imageGen",
+      "source ID provenance",
+      "illustration-not-imaging label"
+    ],
+    "description": "Verifies generated injury/mechanism visuals are derived educational illustrations tied to selected evidence rather than representations of medical imaging.",
+    "steps": [
+      "Select fictional supporting medical/functional sources in Evidence Cloud",
+      "Enter a neutral visual goal and generate an illustration",
+      "Inspect the generated visual and its provenance summary",
+      "Confirm selected source filenames/locators are listed"
+    ],
+    "expected": "The visual contains no claimant identifiers, is labeled as an illustration rather than medical imaging, stores provenance metadata, and does not promote uncertainties into documented facts."
+  },
+  {
+    "name": "Configured authority pages are verified live without overstating legal effect",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/authorities/verify",
+      "VA/VBA authority categories",
+      "SSA authority categories",
+      "New Hampshire authority categories",
+      "verification timestamp"
+    ],
+    "description": "Verifies Evidence Auditor checks configured authority pages for reachability and category while preserving the legal-sufficiency boundary.",
+    "steps": [
+      "Choose a benefits program and issue",
+      "Click Verify authority pages",
+      "Inspect URL/title/kind/reachability and checked time",
+      "Read the verification warning"
+    ],
+    "expected": "Each configured source is marked reachable or unavailable with its authority type and timestamp; the app does not claim that reachability alone proves legal applicability or entitlement."
+  },
+  {
+    "name": "Generated PDF reports exact size and all-pages-rendered status",
+    "viewport": "desktop",
+    "covers": [
+      "exact Blob byte size",
+      "5 MB threshold",
+      "PDF.js per-page rendering",
+      "visual validation status"
+    ],
+    "description": "Verifies the final generated PDF status is based on the actual output file rather than a target estimate.",
+    "steps": [
+      "Generate a fictional submission PDF in Simple Mode",
+      "Inspect the preview header and submission-file validation panel",
+      "Allow PDF.js to finish rendering every page"
+    ],
+    "expected": "The UI reports the exact file size, UNDER 5 MB or OVER 5 MB from the actual Blob size, and all-pages-rendered only after every generated page renders successfully."
   }
 ]
