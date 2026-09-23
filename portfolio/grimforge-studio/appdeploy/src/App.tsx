@@ -143,6 +143,8 @@ function App() {
   const [productionPlan,setProductionPlan]=useState<ProductionPlan|null>(null);
   const [shotTakes,setShotTakes]=useState<Record<string,string[]>>({});
   const [goldenTakes,setGoldenTakes]=useState<Record<string,number>>({});
+  const [allowPaidFullRender,setAllowPaidFullRender]=useState(false);
+  const [fullRenderProgress,setFullRenderProgress]=useState('');
   const [styleSamples,setStyleSamples]=useState<Record<string,string>>({});
   const [cinemaStatus,setCinemaStatus]=useState<{configured:boolean;providers?:Array<{id:string;configured:boolean}>;error?:string}>({configured:false});
   const [simpleReferenceNote,setSimpleReferenceNote]=useState('');
@@ -413,6 +415,88 @@ function App() {
       const e=err as {response?:{data?:{error?:string}},message?:string};
       setNotice(e.response?.data?.error||e.message||'Shot render failed.');
     }finally{setBusy('');}
+  };
+
+  const renderFullShotQueue=async()=>{
+    if(!productionPlan||busy)return;
+    if(!allowPaidFullRender){
+      setNotice('Confirm paid-provider usage before rendering the full shot queue.');
+      return;
+    }
+    const provider=currentCinemaProvider();
+    const providerReady=Boolean(cinemaStatus.providers?.find((item)=>item.id===provider&&item.configured));
+    if(!providerReady){
+      setNotice('The selected Cinema provider is not connected. Check engines first.');
+      return;
+    }
+
+    setBusy(`Rendering full ${qualityTier} episode…`);
+    setNotice('');
+    const nextTakes:Record<string,string[]>={...shotTakes};
+    const nextGolden:Record<string,number>={...goldenTakes};
+    const clipUrls:string[]=[];
+
+    try{
+      for(let i=0;i<productionPlan.shots.length;i+=1){
+        const shot=productionPlan.shots[i];
+        setFullRenderProgress(`Rendering shot ${i+1}/${productionPlan.shots.length} · ${shot.title}`);
+        const existing=nextTakes[shot.id]||[];
+        let chosen=existing[nextGolden[shot.id]??0]||existing[0]||'';
+
+        if(!chosen){
+          const scene=episode.scenes.find(s=>s.id===shot.sceneId);
+          const imageUrl=scene?sceneImages[scene.id]:'';
+          const {data}=await api.post('/api/cinema/render-scene',{
+            provider,
+            prompt:`${shot.prompt}. Blocking: ${shot.blocking}. Camera: ${shot.cameraMove}. Continuity in: ${shot.continuityIn}. Continuity out: ${shot.continuityOut}. Dialogue: ${shot.dialogueLine||'none'}. Narration intent: ${shot.narrationText||'none'}. Sound: ${shot.sound}.`,
+            imageUrl:imageUrl||undefined,
+            seconds:Math.max(3,Math.min(10,shot.duration)),
+            fps:qualityTier==='Cinematic Max'?30:24,
+            width:qualityTier==='Cinematic Max'?1920:1280,
+            height:qualityTier==='Cinematic Max'?1080:720,
+            metadata:{
+              shotId:shot.id,
+              sceneId:shot.sceneId,
+              qualityTier,
+              generate_audio:true,
+              aspect_ratio:'16:9',
+              shot_type:'customize'
+            }
+          });
+          if(data?.url){
+            chosen=data.url;
+            nextTakes[shot.id]=[...(existing||[]),chosen];
+            nextGolden[shot.id]=nextTakes[shot.id].length-1;
+            setShotTakes({...nextTakes});
+            setGoldenTakes({...nextGolden});
+          }
+        }
+
+        if(chosen)clipUrls.push(chosen);
+      }
+
+      if(!clipUrls.length)throw new Error('No rendered shot clips were available for assembly.');
+
+      setFullRenderProgress(`Assembling ${clipUrls.length} Golden Takes into one MP4…`);
+      const assembled=await api.post('/api/cinema/assemble',{
+        clipUrls,
+        title:episode.title,
+        width:qualityTier==='Cinematic Max'?1920:1280,
+        height:qualityTier==='Cinematic Max'?1080:720,
+        fps:qualityTier==='Cinematic Max'?30:24
+      });
+      if(assembled.data?.url){
+        setMp4Url(assembled.data.url);
+        setFullRenderProgress('Full episode ready');
+        setNotice(`Full episode assembled from ${clipUrls.length} selected takes. Open Watch Full Episode below.`);
+        window.setTimeout(()=>document.getElementById('preview')?.scrollIntoView({behavior:'smooth'}),100);
+      }
+    }catch(err){
+      const e=err as {response?:{data?:{error?:string}},message?:string};
+      setNotice(e.response?.data?.error||e.message||'Full episode rendering stopped. Completed takes are preserved.');
+    }finally{
+      setBusy('');
+    }
   };
 
   const createSimpleEpisode=async()=>{
@@ -763,7 +847,7 @@ function App() {
 
       {(studioMode==='Pro'||simpleStep==='Episode ready')&&<><section className='episodeSummary'><div><div className='kicker'>Current Episode</div><h2>{episode.title}</h2><p>{episode.thesis}</p></div><div className='summaryBadges'><span>{episode.targetMinutes} min</span><span>Kokoro Local Neural</span><span>{speechProfile}</span><span>{dialogueMode}</span><span>{style}</span></div></section>
 
-      {studioMode==='Simple'&&simpleStep==='Episode ready'&&<section className='simpleEpisodePackage'><div className='sectionHead'><div><div className='kicker'>Veyr Delivery</div><h2>Your complete episode package</h2><p>Each scene includes the generated image plus the narration, dialogue, cinematography, camera movement and sound plan that Pro mode can refine later.</p></div><button onClick={()=>setStudioMode('Pro')}>Open Pro controls</button></div><div className='simpleSceneGrid'>{episode.scenes.map((scene,index)=><article key={scene.id} className='simpleSceneCard'>{sceneVideos[scene.id]?<video src={sceneVideos[scene.id]} poster={sceneImages[scene.id]} controls playsInline/>:sceneImages[scene.id]?<img src={sceneImages[scene.id]} alt={`Generated art for ${scene.title}`}/>:<div className='simpleScenePlaceholder'>Scene visual unavailable · retry in Pro</div>}<div className='simpleSceneCopy'><span>Scene {index+1} · {scene.start}</span><h3>{scene.title}</h3><b>Narration</b><p>{scene.narration}</p>{scene.dialogue&&scene.dialogue!=='None — narration only'&&<><b>Dialogue</b><blockquote>{scene.dialogue}</blockquote></>}<details><summary>Cinematography + sound</summary><small><strong>Shot:</strong> {scene.visualPrompt}</small><small><strong>Motion:</strong> {scene.motion}</small><small><strong>Sound:</strong> {scene.sound}</small></details></div></article>)}</div></section>}
+      {studioMode==='Simple'&&simpleStep==='Episode ready'&&<section className='simpleEpisodePackage'><div className='sectionHead'><div><div className='kicker'>Veyr Delivery</div><h2>Your complete episode package</h2><p>Each scene includes the generated image plus the narration, dialogue, cinematography, camera movement and sound plan that Pro mode can refine later.</p></div><button onClick={()=>setStudioMode('Pro')}>Open Pro controls</button></div>{productionPlan&&<div className='fullRenderPanel'><div><span>Full cinematic render</span><strong>{productionPlan.shots.length} planned shots · {Math.round(productionPlan.shots.reduce((sum,shot)=>sum+shot.duration,0))} sec of generated motion</strong><p>One take per missing shot is rendered, then the chosen/Golden Takes are assembled into one MP4. Extra takes remain a Pro-mode choice.</p></div><label className='renderConsent'><input type='checkbox' checked={allowPaidFullRender} onChange={e=>setAllowPaidFullRender(e.target.checked)}/><span>I understand this can consume paid Kling/GPU render credits.</span></label><button className='primary' onClick={renderFullShotQueue} disabled={!!busy||!allowPaidFullRender||qualityTier==='Draft'}>▶ Render + Assemble Full Episode</button>{fullRenderProgress&&<small>{fullRenderProgress}</small>}</div>}<div className='simpleSceneGrid'>{episode.scenes.map((scene,index)=><article key={scene.id} className='simpleSceneCard'>{sceneVideos[scene.id]?<video src={sceneVideos[scene.id]} poster={sceneImages[scene.id]} controls playsInline/>:sceneImages[scene.id]?<img src={sceneImages[scene.id]} alt={`Generated art for ${scene.title}`}/>:<div className='simpleScenePlaceholder'>Scene visual unavailable · retry in Pro</div>}<div className='simpleSceneCopy'><span>Scene {index+1} · {scene.start}</span><h3>{scene.title}</h3><b>Narration</b><p>{scene.narration}</p>{scene.dialogue&&scene.dialogue!=='None — narration only'&&<><b>Dialogue</b><blockquote>{scene.dialogue}</blockquote></>}<details><summary>Cinematography + sound</summary><small><strong>Shot:</strong> {scene.visualPrompt}</small><small><strong>Motion:</strong> {scene.motion}</small><small><strong>Sound:</strong> {scene.sound}</small></details></div></article>)}</div></section>}
 
       <section className='previewStudio' id='preview'>
         <div className='sectionHead'><div><div className='kicker'>Watch & Tweak</div><h2>Episode Preview Player</h2><p>Generated episodes play as an editable animatic. If you already have a rendered MP4, load it below and watch the real video inside GrimForge.</p></div><div className='playerButtons'><button className='primary' onClick={()=>setPreviewPlaying(!previewPlaying)}>{previewPlaying?'Ⅱ Pause':'▶ Play Episode'}</button><button onClick={()=>{setPreviewPlaying(false);window.speechSynthesis?.cancel();setPreviewIndex(0);}}>■ Stop</button></div></div>
