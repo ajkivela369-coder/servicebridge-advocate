@@ -1,0 +1,71 @@
+[
+  {
+    "name": "Reference preset enters weighted production blend",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "Reference Lab",
+      "preset channels",
+      "weight mixer"
+    ],
+    "steps": [
+      "Choose I own this footage",
+      "Add BBC Earth",
+      "Adjust weight"
+    ],
+    "expected": "BBC Earth appears in Active blend with an adjustable weight and an originality notice."
+  },
+  {
+    "name": "Import a public reference profile",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/analyze-reference",
+      "public URL analysis"
+    ],
+    "steps": [
+      "Paste a readable public channel/site URL",
+      "Click Study reference"
+    ],
+    "expected": "A new imported profile is added to the weighted blend using high-level traits only."
+  },
+  {
+    "name": "AI commentary uses the selected reference blend",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/write-commentary",
+      "reference-aware original generation",
+      "Creator Pack"
+    ],
+    "steps": [
+      "Add one or more references",
+      "Click Write with AI"
+    ],
+    "expected": "An original Creator Pack appears; the UI does not claim creator imitation or unseen video analysis."
+  },
+  {
+    "name": "Wild Copilot uses project context",
+    "viewport": "desktop",
+    "covers": [
+      "floating copilot",
+      "POST /api/copilot"
+    ],
+    "steps": [
+      "Open Wild Copilot",
+      "Click Give me 3 stronger hooks"
+    ],
+    "expected": "The copilot returns project-specific original hook suggestions."
+  },
+  {
+    "name": "Unknown rights still blocks publication-oriented generation",
+    "viewport": "mobile",
+    "covers": [
+      "rights guardrail",
+      "responsive copilot"
+    ],
+    "steps": [
+      "Select Other / Unknown",
+      "Review Write with AI and Make My Video"
+    ],
+    "expected": "Generation remains blocked until rights basis is resolved; mobile layout remains usable."
+  }
+]
