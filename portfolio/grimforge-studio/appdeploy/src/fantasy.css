@@ -156,3 +156,45 @@ h1, h2, h3, .brand, .visualCard strong, .commandDeck strong {
 .importedRefCard label{display:grid;gap:4px;font-size:10px;color:#b2a388}.importedRefCard label b{color:#e2c47e}
 .importedRefActions{display:flex!important;justify-content:space-between;align-items:center}.importedRefActions a{color:#d7b56f;text-decoration:none}.importedRefActions button{border:1px solid #6b3d36;background:#25110f;color:#dda99e;border-radius:8px;padding:6px 8px;cursor:pointer}
 @media(max-width:760px){.importedRefGrid{grid-template-columns:1fr}}
+
+/* Simple vs Pro shell */
+.studioModeToggle{display:flex;gap:3px;padding:3px;border:1px solid #51432e;border-radius:12px;background:#0a0e0c}
+.studioModeToggle button{border:0;border-radius:9px;background:transparent;color:#948a78;padding:8px 14px;font-weight:800;cursor:pointer}
+.studioModeToggle button.active{background:linear-gradient(135deg,#d0a64b,#7d5221);color:#0e0d0b;box-shadow:0 4px 18px #c58e2c30}
+.simpleModeLanding{max-width:1080px;margin:24px auto;padding:34px;border:1px solid #5b4930;background:radial-gradient(circle at 85% 8%,#5a341626,transparent 30%),linear-gradient(145deg,#17130e,#0b100e 70%);box-shadow:0 24px 80px #0008}
+.simpleModeLanding h1{max-width:820px;font-size:clamp(34px,5vw,64px);line-height:.98;margin:8px 0 14px;color:#f0ddb0}
+.simpleLead{max-width:850px;color:#b0a48f;font-size:1.02rem;line-height:1.65}
+.simpleReferenceInput,.simplePromptBox{display:grid;gap:8px;margin-top:22px}
+.simpleReferenceInput>span,.simplePromptBox>span{font:800 12px/1.2 Georgia,serif;letter-spacing:.09em;text-transform:uppercase;color:#d2b779}
+.simpleReferenceInput input{width:100%;padding:16px 17px;border:1px solid #645236;border-radius:13px;background:#080c0b;color:#f2ead8;font-size:1rem}
+.simpleReferenceInput small{color:#7e786d}
+.simplePromptBox .masterPrompt{min-height:150px;margin:0;border-color:#58492f}
+.simpleOptions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.simpleOptions label{display:grid;gap:6px;color:#aa9c83;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.simpleOptions select{width:100%;padding:11px;border:1px solid #493e2d;border-radius:10px;background:#0a0e0c;color:#e9ddc5}
+.simpleDeliverables{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0}
+.simpleDeliverables span{border:1px solid #3d5438;border-radius:999px;background:#0d1b10;color:#a9d49b;padding:7px 10px;font-size:11px;font-weight:800}
+.simpleCreateButton{width:100%;min-height:62px;font-size:1.03rem;letter-spacing:.01em}
+.simpleStatus{display:grid;gap:4px;margin-top:12px;padding:12px 14px;border:1px solid #4b5534;border-radius:12px;background:#10160d}
+.simpleStatus strong{color:#d8c37d}.simpleStatus span{color:#938c7c;font-size:.82rem;line-height:1.45}
+.proHero{margin-bottom:18px}.proHero h1{margin:5px 0 8px;color:#ead6a6}
+.simpleEpisodePackage{margin:18px 0;padding:20px;border:1px solid #4a3f2d;border-radius:18px;background:#0b0f0d}
+.simpleSceneGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:16px}
+.simpleSceneCard{overflow:hidden;border:1px solid #3a3428;border-radius:15px;background:#11130f}
+.simpleSceneCard>img,.simpleScenePlaceholder{width:100%;aspect-ratio:16/9;object-fit:cover;background:radial-gradient(circle,#34291b,#090d0b);display:grid;place-items:center;color:#8c806d;font-size:.8rem}
+.simpleSceneCopy{display:grid;gap:7px;padding:14px}
+.simpleSceneCopy>span{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#a1814b}
+.simpleSceneCopy h3{margin:0;color:#e8d6ad}.simpleSceneCopy>b{margin-top:3px;color:#bca878;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.simpleSceneCopy p,.simpleSceneCopy blockquote{margin:0;color:#c4bbab;line-height:1.55;font-size:.88rem}
+.simpleSceneCopy blockquote{padding:9px 11px;border-left:2px solid #b68b3e;background:#17130d}
+.simpleSceneCopy details{margin-top:4px;border-top:1px solid #2f2a21;padding-top:9px}.simpleSceneCopy summary{cursor:pointer;color:#d0b36e;font-size:.8rem;font-weight:800}
+.simpleSceneCopy details small{display:block;margin-top:7px;color:#988e7d;line-height:1.45}
+.animatic .caption blockquote{margin:8px 0 0;padding:8px 10px;border-left:2px solid #d0a64b;background:#0b0e0cbb;color:#e4d3af;font-size:.78rem}
+.animatic .caption blockquote b{display:block;margin-bottom:3px;color:#b99550;text-transform:uppercase;font-size:.62rem;letter-spacing:.09em}
+.simplePreviewNote{margin:12px 0 0;padding:10px 12px;border:1px solid #314333;border-radius:10px;background:#0d170f;color:#9eb39f;font-size:.78rem;line-height:1.5}
+@media(max-width:760px){
+  .topbar{align-items:flex-start}.topActions{flex-wrap:wrap;justify-content:flex-end}.studioModeToggle{order:2}
+  .simpleModeLanding{padding:22px 15px}.simpleModeLanding h1{font-size:38px}
+  .simpleOptions,.simpleSceneGrid{grid-template-columns:1fr}
+  .simpleDeliverables{gap:5px}.simpleDeliverables span{font-size:10px}
+}
