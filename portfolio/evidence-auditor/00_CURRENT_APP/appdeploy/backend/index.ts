@@ -1,6 +1,7 @@
 import { ai, db, error, json, requireAuth, router, secrets, storage } from '@appdeploy/sdk';
 import pdfParse from 'pdf-parse';
 import JSZip from 'jszip';
+import { createHash } from 'node:crypto';
 
 type WorkMode = 'Quick' | 'Standard' | 'Deep';
 type MemoryRecord = { enabled: boolean; caseLabel: string; goal: string; notes: string; updatedAt: string };
@@ -361,13 +362,8 @@ function evidenceCandidateDates(doc: DocumentRecord) {
 }
 
 function evidenceFingerprint(doc: DocumentRecord) {
-    const normalized = `${doc.contentType}|${doc.charCount}|${doc.pageCount}|${doc.text.slice(0, 50000).replace(/\s+/g, ' ').trim().toLowerCase()}`;
-    let hash = 2166136261;
-    for (let index = 0; index < normalized.length; index += 1) {
-        hash ^= normalized.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-    }
-    return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+    const normalized = `${doc.contentType}|${doc.charCount}|${doc.pageCount}|${doc.text.replace(/\s+/g, ' ').trim().toLowerCase()}`;
+    return `sha256-text-${createHash('sha256').update(normalized, 'utf8').digest('hex')}`;
 }
 
 function evidenceVersionGroup(name: string) {
@@ -1093,7 +1089,7 @@ export const handler = router({
         });
         const duplicateGroups = Array.from(duplicateMap.entries())
             .filter(([, group]) => group.length > 1)
-            .map(([fingerprint, group]) => ({ fingerprint, documentIds: group.map((item) => item.id), names: group.map((item) => item.name), note: 'Likely duplicate based on a deterministic text/content fingerprint; verify before removing anything.' }));
+            .map(([fingerprint, group]) => ({ fingerprint, documentIds: group.map((item) => item.id), names: group.map((item) => item.name), note: 'Likely duplicate based on a SHA-256 fingerprint of normalized indexed content; verify against the original files before removing anything.' }));
         const versionGroups = Array.from(versionMap.entries())
             .filter(([key, group]) => key !== 'ungrouped' && group.length > 1)
             .map(([versionGroup, group]) => ({ versionGroup, documentIds: group.map((item) => item.id), names: group.map((item) => item.name), note: 'Possible versions based on filename normalization; this is a review cue, not a conclusion.' }));
