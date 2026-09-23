@@ -12,23 +12,22 @@ The deployed AppDeploy build remains the currently live application until a late
 
 ## Unified product architecture
 
-- **Elias** — master case orchestrator and assistant
+- **Elias** — the single user-facing intelligence engine and assistant
 - **Evidence Cloud** — shared user-scoped evidence layer
 - **Evidence Auditor** — flagship support / contradiction / gap / provenance / chronology / reviewer-readiness workspace
-- **NeuroEval** — neurologic and functional evidence specialist
-- **HealthQA** — patient-friendly supplied-record explanation specialist
-- **Packet Builder** — verified-evidence packet assembly
-- **Citation Auditor** — claim-to-source and quote-integrity review
-- **Document Copilot** — evidence-backed document organization and formatting
+- **Health + Neuro lens** — contextual medical, neurologic, and functional evidence reasoning invoked by Elias when needed
+- **Packet building** — verified-evidence assembly capability invoked by Elias
+- **Citation verification** — claim-to-source and quote-integrity capability invoked by Elias
+- **Document composition** — evidence-backed organization and formatting capability invoked by Elias
 
-The floating Elias Copilot can switch specialist modes while using the same case evidence.
+The floating assistant is always Elias. Workspace context and user intent determine which capabilities/tools run behind the scenes.
 
 ## Evidence Cloud work now present in GitHub
 
 The snapshot now includes development work for:
 
 - existing authenticated private Case Vault promoted into the shared Evidence Cloud
-- upload/index once, reuse across specialist modes
+- upload/index once, reuse across every Elias workspace and capability
 - transparent evidence categories
 - source locators and storage status
 - heuristic candidate dates and document types
