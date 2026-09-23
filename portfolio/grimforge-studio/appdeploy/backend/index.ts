@@ -1,6 +1,22 @@
 import { ai, error, json, router, storage } from '@appdeploy/sdk';
 
 type WorkMode = 'Quick' | 'Standard' | 'Deep';
+const cinemaBridgeUrl=(process.env.GRIMFORGE_CINEMA_BRIDGE_URL||'').replace(/\/$/,'');
+async function cinemaBridge(path:string,body?:unknown){
+  if(!cinemaBridgeUrl)throw new Error('Cinema Bridge is not configured');
+  const response=await fetch(`${cinemaBridgeUrl}${path}`,{
+    method:body?'POST':'GET',
+    headers:body?{'content-type':'application/json'}:undefined,
+    body:body?JSON.stringify(body):undefined
+  });
+  const text=await response.text();
+  if(!response.ok)throw new Error(text.slice(0,1500)||`Cinema Bridge HTTP ${response.status}`);
+  try{return JSON.parse(text)}catch{return {raw:text}}
+}
+function mediaUrl(payload:any){
+  return payload?.url||payload?.video_url||payload?.videoUrl||payload?.output_url||payload?.outputUrl||payload?.result?.url||payload?.result?.video_url||'';
+}
+
 const veyrSystem=`You are Archivist Veyr, the original AI creative director inside GrimForge Studio. You are highly capable, friendly, practical, canon-conscious and decisive. You operate the studio for users who do not want to manage every control, while respecting users who want full manual control. You are not a Games Workshop character and never impersonate a real creator.
 Rules: separate CANON/SOURCE from INTERPRETATION, EDITORIAL and SPECULATION; never invent a source; when a claim needs verification say so. Study other channels only at the level of pacing, structure, chaptering, humor density, hook strategy, maps, visual grammar, packaging and beginner clarity. Never copy scripts, jokes, catchphrases, artwork, creator identity or voice. Speech-reference profiles describe abstract performance traits only: cadence, register, pause pattern, energy, rhetorical shape and sentence length. Never imitate, clone or impersonate a real person, celebrity, actor, creator or copyrighted character voice. Favor original, user-owned, licensed, public-domain/open-license or generated-original assets. For 5-minute episodes favor a sharp hook, minimum necessary lore, evidence ladder, counterpoint, payoff and next-episode bridge. Visual direction should feel premium and cinematic without frantic motion. Voice direction prioritizes clarity, intelligibility, gravitas, low fatigue and clean consonants. Challenge weak ideas and give a concrete better choice.`;
 const referenceProfileSchema={type:'object',properties:{name:{type:'string'},url:{type:'string'},summary:{type:'string'},traits:{type:'string'},profile:{type:'array',items:{type:'number'}}},required:['name','url','summary','traits','profile']};
@@ -9,6 +25,40 @@ function thinking(mode?:WorkMode):'NONE'|'FAST'|'DEEP'{return mode==='Quick'?'NO
 function safeSlug(v:string){return v.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'grimforge-project'}
 export const handler=router({
   'GET /api/_healthcheck':[async()=>json({message:'Success'})],
+  'GET /api/cinema/status':[async()=>{
+    if(!cinemaBridgeUrl)return json({configured:false,providers:[]});
+    try{
+      const health=await cinemaBridge('/health');
+      const providers=await cinemaBridge('/v1/providers');
+      return json({configured:true,health,providers:providers.providers||[]});
+    }catch(e){
+      return json({configured:true,error:e instanceof Error?e.message:'Cinema Bridge unavailable',providers:[]});
+    }
+  }],
+
+  'POST /api/cinema/render-scene':[async({body})=>{
+    const d=(body||{}) as {provider?:string;prompt?:string;imageUrl?:string;seconds?:number;fps?:number;width?:number;height?:number;metadata?:unknown};
+    if(!d.provider||!d.prompt)return error('provider and prompt are required',400);
+    if(!cinemaBridgeUrl)return error('Cinema Bridge is not configured',503);
+    try{
+      const result=await cinemaBridge('/v1/video/generate',{
+        provider:d.provider,
+        prompt:d.prompt,
+        image_url:d.imageUrl,
+        seconds:d.seconds||6,
+        fps:d.fps||24,
+        width:d.width||1280,
+        height:d.height||720,
+        metadata:d.metadata||{}
+      });
+      const url=mediaUrl(result);
+      if(!url)return error('The configured video provider returned no playable media URL.',502);
+      return json({url,provider:d.provider,raw:result});
+    }catch(e){
+      return error(e instanceof Error?e.message:'Cinema render failed',502);
+    }
+  }],
+
   'POST /api/simple-create':[async({body})=>{
     const d=(body||{}) as {referenceUrl?:string;prompt?:string;world?:string;targetMinutes?:number;voice?:string};
     if(!d.referenceUrl?.trim()&&!d.prompt?.trim())return error('Paste a public reference URL or tell Veyr what you want to make.',400);
