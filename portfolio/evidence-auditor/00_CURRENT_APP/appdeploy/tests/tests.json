@@ -341,5 +341,24 @@
       "Inspect the optimization note and final exact-size validation"
     ],
     "expected": "Elias retries with smaller packet-only visual copies, leaves stored assets unchanged, and reports the final exact file as UNDER 5 MB only if it actually falls below the threshold; otherwise it remains visibly OVER 5 MB."
+  },
+  {
+    "name": "Public website presents one unified Elias + Evidence Auditor product",
+    "viewport": "desktop",
+    "covers": [
+      "public landing page",
+      "Elias master product identity",
+      "Evidence Auditor flagship workspace",
+      "shared Evidence Cloud",
+      "specialist modes",
+      "human verification boundary"
+    ],
+    "description": "Verifies signed-out visitors see a complete product website rather than only an authentication card.",
+    "steps": [
+      "Open the app while signed out",
+      "Inspect the hero, capabilities, how-it-works flow, specialist list, and source-control boundary",
+      "Use the Sign in CTA"
+    ],
+    "expected": "The site explains Elias as the master evidence-intelligence workspace, Evidence Auditor as the flagship audit engine, one shared Evidence Cloud, the specialist modes, and the no-unverified-HIPAA/human-review boundary before authentication."
   }
 ]
