@@ -16,7 +16,9 @@ type Chat = { id?: string; threadId: string; question: string; answer: string; t
 type Review = { summary: string; strongestEvidence: string[]; gaps: string[]; tensions: string[]; issues: string[] };
 type LawLens = { issue: string; summary: string; whatRaterLooksFor: string[]; evidenceMatches: string[]; gaps: string[]; conflicts: string[]; nextBestEvidence: string[]; officialSources: Array<{ label: string; url: string; kind: string; title: string }> };
 type WebResult = { title: string; url: string; answer: string; savedDocument?: Doc | null };
-type View = 'chat' | 'review' | 'packet';
+type View = 'chat' | 'cloud' | 'review' | 'packet';
+type CopilotRole = 'Elias' | 'Evidence Auditor' | 'NeuroEval' | 'HealthQA' | 'Packet Builder' | 'Citation Auditor' | 'Document Copilot';
+type EvidenceCategory = 'Medical Records' | 'Imaging / Tests' | 'Military / Service' | 'VA / Benefits' | 'Disability / SSA / State' | 'Functional Capacity' | 'Correspondence' | 'Legal / Administrative' | 'Other';
 type WorkMode = 'Quick' | 'Standard' | 'Deep';
 type UploadItem = { id: string; name: string; size: number; kind: 'pdf' | 'image' | 'file'; stage: 'Queued' | 'Uploading' | 'Reading' | 'Indexing' | 'OCR' | 'Ready' | 'Error'; progress: number; detail: string; error?: string };
 type PluginName = 'Record Search' | 'Gap Finder' | 'Quote Check' | 'Packet Assurance' | 'Timeline Builder' | 'Rebuttal Lab' | 'Web Research' | 'Web Search' | 'YouTube & Video' | 'Vision & Media' | 'VA Law & Rater Lens' | 'OCR Intake' | 'Email Evidence';
@@ -47,6 +49,43 @@ const quickEliasActions: Array<{ label: string; prompt: string; tool: PluginName
     { label: 'C&P Rebuttal', prompt: 'Audit the record for examiner findings or adverse conclusions that conflict with objective evidence, longitudinal records, duty history, or documented functional limits. Draft a source-grounded rebuttal outline without overstating causation.', tool: 'Rebuttal Lab' },
     { label: 'Packet QA', prompt: 'Run a reviewer-readiness preflight on the loaded record. Check provenance, quote integrity, missing links, adverse evidence, chronology, functional-impact support, and what should be fixed before a final packet.', tool: 'Packet Assurance' },
 ];
+
+const copilotSpecialists: Array<{ name: CopilotRole; blurb: string; defaultTool: PluginName }> = [
+    { name: 'Elias', blurb: 'Master orchestrator across the entire case.', defaultTool: 'Record Search' },
+    { name: 'Evidence Auditor', blurb: 'Contradictions, gaps, provenance, chronology, and reviewer-readiness.', defaultTool: 'Packet Assurance' },
+    { name: 'NeuroEval', blurb: 'Neurologic and functional evidence review without inventing diagnosis or causation.', defaultTool: 'Rebuttal Lab' },
+    { name: 'HealthQA', blurb: 'Patient-friendly explanation of supplied health records with clear evidence boundaries.', defaultTool: 'Record Search' },
+    { name: 'Packet Builder', blurb: 'Turns verified evidence into structured submission drafts.', defaultTool: 'Packet Assurance' },
+    { name: 'Citation Auditor', blurb: 'Checks whether important statements actually trace to the record.', defaultTool: 'Quote Check' },
+    { name: 'Document Copilot', blurb: 'Organizes, rewrites, and structures evidence-backed pages and sections.', defaultTool: 'Timeline Builder' },
+];
+
+const copilotOperations: Array<{ label: string; prompt: string; tool: PluginName; view?: View }> = [
+    { label: 'Find', prompt: 'Find the most relevant source-backed evidence for the issue I am currently working on and give me precise source identities and locators.', tool: 'Record Search', view: 'cloud' },
+    { label: 'Compare', prompt: 'Compare the most relevant records on this issue. Show agreements, conflicts, date differences, and what would reconcile them.', tool: 'Rebuttal Lab', view: 'review' },
+    { label: 'Explain', prompt: 'Explain the relevant evidence in clear patient-friendly language while keeping source facts, user-reported history, opinion, and inference separate.', tool: 'Record Search' },
+    { label: 'Organize', prompt: 'Organize the loaded evidence into a useful case structure by evidence type, chronology, issue, and likely submission use. Flag uncertain classifications.', tool: 'Gap Finder', view: 'cloud' },
+    { label: 'Link', prompt: 'Create an evidence trace for the key propositions: source -> page or locator -> extracted evidence -> evidence type -> interpretation -> generated statement.', tool: 'Quote Check', view: 'review' },
+    { label: 'Draft', prompt: 'Draft a concise source-grounded section using only propositions supported by the loaded record. Preserve uncertainty and pinpoint citations.', tool: 'Record Search' },
+    { label: 'Build', prompt: 'Build a structured packet outline from the strongest verified evidence, chronology, functional impact, governing framework, and cited source appendix.', tool: 'Packet Assurance', view: 'packet' },
+    { label: 'Verify', prompt: 'Verify quote integrity, source provenance, chronology, conflicts, uncited propositions, and remaining review blockers.', tool: 'Packet Assurance', view: 'review' },
+    { label: 'Export', prompt: 'Prepare this case for export. Check packet completeness, citation integrity, visual/source appendix needs, and flag that under-5-MB validation still requires final compression and visual QA.', tool: 'Packet Assurance', view: 'packet' },
+];
+
+const evidenceCategories: EvidenceCategory[] = ['Medical Records', 'Imaging / Tests', 'Military / Service', 'VA / Benefits', 'Disability / SSA / State', 'Functional Capacity', 'Correspondence', 'Legal / Administrative', 'Other'];
+
+function categorizeDocument(document: Doc): EvidenceCategory {
+    const sample = `${document.name} ${document.excerpt}`.toLowerCase();
+    if (/mri|x-ray|xray|ct |ultrasound|emg|eeg|imaging|radiology|diagnostic test/.test(sample)) return 'Imaging / Tests';
+    if (/army|guard|military|service|orders|ngb|dd214|duty|lod|line of duty|acdutra|inacdutra|title 32/.test(sample)) return 'Military / Service';
+    if (/va |vba|veteran|dbq|c&p|compensation|tdiu|rating decision/.test(sample)) return 'VA / Benefits';
+    if (/ssdi|ssi|social security|aptd|dhhs|disability determination|state disability/.test(sample)) return 'Disability / SSA / State';
+    if (/fce|functional capacity|work capacity|attendance|pace|persistence|reliability|lifting|sitting|standing/.test(sample)) return 'Functional Capacity';
+    if (/email|letter|message|correspondence|memo/.test(sample) || document.sourceMode === 'email') return 'Correspondence';
+    if (/court|legal|attorney|hearing|appeal|administrative|decision|denial|notice/.test(sample)) return 'Legal / Administrative';
+    if (/medical|clinical|provider|hospital|clinic|patient|treatment|diagnosis|therapy|physician|nurse/.test(sample)) return 'Medical Records';
+    return 'Other';
+}
 
 function App() {
     const [user, setUser] = useState<User | null>(null);
@@ -89,6 +128,8 @@ function App() {
     const [copilotBusy, setCopilotBusy] = useState(false);
     const [copilotPhase, setCopilotPhase] = useState(0);
     const [copilotAnswer, setCopilotAnswer] = useState('');
+    const [copilotRole, setCopilotRole] = useState<CopilotRole>('Elias');
+    const [vaultQuery, setVaultQuery] = useState('');
     const fileRef = useRef<HTMLInputElement>(null);
     const mediaRef = useRef<HTMLInputElement>(null);
     const speechRunRef = useRef(0);
@@ -506,7 +547,7 @@ function App() {
         } finally { setBusy(''); }
     };
 
-    const runCopilot = async (rawPrompt: string, requestedTool: PluginName = tool) => {
+    const runCopilot = async (rawPrompt: string, requestedTool?: PluginName) => {
         const prompt = rawPrompt.trim();
         if (!prompt || copilotBusy || busy) return;
         setCopilotOpen(true);
@@ -514,8 +555,11 @@ function App() {
         setCopilotAnswer('');
         setNotice('');
         try {
-            const selectedTool = plugins[requestedTool] ? requestedTool : 'Record Search';
-            const { data } = await api.post('/api/chat', { question: prompt, threadId, tool: selectedTool, speed: workMode });
+            const specialist = copilotSpecialists.find((item) => item.name === copilotRole) ?? copilotSpecialists[0];
+            const preferredTool = requestedTool ?? specialist.defaultTool;
+            const selectedTool = plugins[preferredTool] ? preferredTool : 'Record Search';
+            const rolePrompt = copilotRole === 'Elias' ? prompt : `[${copilotRole} specialist mode] ${prompt}`;
+            const { data } = await api.post('/api/chat', { question: rolePrompt, threadId, tool: selectedTool, speed: workMode });
             setChats((prev) => [...prev, data.message]);
             setCopilotAnswer(data.message.answer);
             if (autoSpeak) speak(data.message.answer);
@@ -621,19 +665,29 @@ function App() {
     const enabledChatTools = pluginCatalog.filter((plugin) => plugin.chatTool && plugins[plugin.name]);
     const activeMessages = useMemo(() => chats.filter((message) => message.threadId === threadId), [chats, threadId]);
     const oldThreads = useMemo(() => Array.from(new Set(chats.map((message) => message.threadId))).slice(-8).reverse(), [chats]);
+    const filteredDocuments = useMemo(() => {
+        const query = vaultQuery.trim().toLowerCase();
+        if (!query) return documents;
+        return documents.filter((document) => `${document.name} ${document.excerpt} ${categorizeDocument(document)}`.toLowerCase().includes(query));
+    }, [documents, vaultQuery]);
+    const categoryCounts = useMemo(() => evidenceCategories.map((category) => ({
+        category,
+        count: documents.filter((document) => categorizeDocument(document) === category).length,
+    })), [documents]);
 
     if (!user) {
-        return <main className='login-wrap'><section className='login-card'><div className='brand-mark'><Bot size={32} /></div><p className='eyebrow'>Evidence Auditor Pro</p><h1>Meet Elias.</h1><p>A private, source-grounded evidence workspace with persistent case memory, OCR intake, adjustable reasoning depth, voice playback, case review, and packet drafting.</p><button className='primary large' onClick={signIn}><LogIn size={18} /> Sign in to Elias</button><p className='fine'>Your workspace is private to your signed-in account. Elias organizes evidence; he does not make legal or medical determinations.</p>{notice && <div className='notice'>{notice}</div>}</section></main>;
+        return <main className='login-wrap'><section className='login-card'><div className='brand-mark'><Bot size={32} /></div><p className='eyebrow'>Elias + Evidence Auditor</p><h1>One evidence intelligence workspace.</h1><p>Elias orchestrates the case. Evidence Auditor traces support, contradictions, gaps, chronology, provenance, and submission readiness. NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot live behind the same floating Copilot.</p><button className='primary large' onClick={signIn}><LogIn size={18} /> Sign in to Elias</button><p className='fine'>Human verification remains required. The workspace separates record facts, reported history, opinion, agency findings, and AI synthesis rather than turning one into another.</p>{notice && <div className='notice'>{notice}</div>}</section></main>;
     }
 
     return <div className='shell'>
         <aside className='sidebar nonprint'>
-            <div className='brand'><div className='brand-mark small'><Bot size={22} /></div><div><strong>Elias</strong><span>Evidence Assistant</span></div></div>
+            <div className='brand'><div className='brand-mark small'><Bot size={22} /></div><div><strong>Elias</strong><span>Evidence Intelligence</span></div></div>
             <div className='playbook-badge'><Brain size={14} /><span>{playbook}</span></div>
             <button className='new-chat' onClick={() => { setThreadId(crypto.randomUUID()); setView('chat'); }}><MessageSquarePlus size={17} /> New chat</button>
             <nav>
                 <button className={view === 'chat' ? 'active' : ''} onClick={() => setView('chat')}><Bot size={17} /> Elias</button>
-                <button className={view === 'review' ? 'active' : ''} onClick={() => setView('review')}><FileSearch size={17} /> Case Review</button>
+                <button className={view === 'cloud' ? 'active' : ''} onClick={() => setView('cloud')}><FolderOpen size={17} /> Evidence Cloud</button>
+                <button className={view === 'review' ? 'active' : ''} onClick={() => setView('review')}><FileSearch size={17} /> Evidence Auditor</button>
                 <button className={view === 'packet' ? 'active' : ''} onClick={() => setView('packet')}><WandSparkles size={17} /> Packet Studio</button>
             </nav>
 
@@ -671,13 +725,13 @@ function App() {
         </aside>
 
         <main className='main'>
-            <header className='topbar nonprint'><div><PanelLeft size={17} /><span>{view === 'chat' ? 'Elias' : view === 'review' ? 'Case Review' : 'Packet Studio'}</span></div><div className='top-controls'><span className={`speed-pill ${workMode.toLowerCase()}`}><Gauge size={14} /> {workMode}</span><div className='privacy'><ShieldCheck size={16} /> Private workspace</div></div></header>
+            <header className='topbar nonprint'><div><PanelLeft size={17} /><span>{view === 'chat' ? 'Elias' : view === 'cloud' ? 'Evidence Cloud' : view === 'review' ? 'Evidence Auditor' : 'Packet Studio'}</span></div><div className='top-controls'><span className={`speed-pill ${workMode.toLowerCase()}`}><Gauge size={14} /> {workMode}</span><div className='privacy'><ShieldCheck size={16} /> Private workspace</div></div></header>
             {notice && <div className='notice nonprint'>{notice}</div>}
             {busy && <><div className='busy nonprint'><Sparkles size={15} /> {busy}</div><div className='working-overlay nonprint' role='status' aria-live='polite'><div className='working-card'><div className='working-orbit'><Sparkles size={22} /></div><div><span>ELIAS IS WORKING</span><strong>{busy}</strong><p>Source controls are temporarily locked so repeated clicks do not start duplicate analysis jobs.</p><div className='working-track'><i /></div></div></div></div></>}
 
             {view === 'chat' && <section className='chat-page'>
                 <div className='chat-column'>
-                    {activeMessages.length === 0 && <div className='welcome'><div className='brand-mark'><Bot size={30} /></div><h1>How can I help with this case?</h1><p>Upload PDFs, text files, screenshots, or scanned document images. Elias can OCR images, find evidence, build timelines, compare contradictions, check quotes, and draft reviewer-ready packets.</p><button className='upload-hero' onClick={() => fileRef.current?.click()}><Paperclip size={18} /> Add case files</button><span className='upload-hint'>Multiple files · searchable PDFs up to 250 MB indexed by page range · TXT/MD/EML/MBOX up to 24 MB · JPG/PNG/WebP with OCR</span><div className='quick-evidence-grid'>{quickEliasActions.map((action) => <button key={action.label} disabled={copilotBusy || !!busy} onClick={() => void runCopilot(action.prompt, action.tool)}><Sparkles size={14} /><span><strong>{action.label}</strong><small>One-click source-grounded pass</small></span></button>)}</div></div>}
+                    {activeMessages.length === 0 && <div className='welcome'><div className='brand-mark'><Bot size={30} /></div><h1>How can I help with this case?</h1><p>Upload the record once. Elias can organize it into the Evidence Cloud, route specialist review through Evidence Auditor, NeuroEval or HealthQA, build timelines, check provenance and quotes, and prepare reviewer-ready packet drafts.</p><button className='upload-hero' onClick={() => fileRef.current?.click()}><Paperclip size={18} /> Add case files</button><span className='upload-hint'>Multiple files · searchable PDFs up to 250 MB indexed by page range · TXT/MD/EML/MBOX up to 24 MB · JPG/PNG/WebP with OCR</span><div className='quick-evidence-grid'>{quickEliasActions.map((action) => <button key={action.label} disabled={copilotBusy || !!busy} onClick={() => void runCopilot(action.prompt, action.tool)}><Sparkles size={14} /><span><strong>{action.label}</strong><small>One-click source-grounded pass</small></span></button>)}</div></div>}
                     <div className='messages'>{activeMessages.map((message, index) => <div key={`${message.createdAt}-${index}`} className='turn'><div className='user-msg'>{message.question}</div><div className='assistant-msg'><div className='avatar'><Bot size={18} /></div><div><p>{message.answer}</p><div className='chips'><span>{message.tool}</span><span>{message.speed || 'Standard'}</span>{message.sources.map((source) => <span key={source}>{source}</span>)}<button onClick={() => speak(message.answer)} title='Read Elias response aloud'><Play size={12} /> Speak</button></div></div></div></div>)}</div>
                     <div className='composer nonprint'>
                         {uploadItems.length > 0 && <div className='upload-tray' aria-live='polite'>{uploadItems.map((item) => <div className={`upload-card ${item.stage.toLowerCase()}`} key={item.id}><div className={`upload-file-icon ${item.kind}`}>{item.kind === 'pdf' ? <FileText size={20} /> : item.kind === 'image' ? <FileImage size={20} /> : <Paperclip size={19} />}</div><div className='upload-file-meta'><strong title={item.name}>{item.name}</strong><span>{formatFileSize(item.size)} · {item.error || item.detail}</span>{item.stage !== 'Ready' && item.stage !== 'Error' && <div className='upload-progress' role='progressbar' aria-label={`${item.name} upload progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={item.progress}><i style={{ width: `${item.progress}%` }} /></div>}</div><div className={`upload-state ${item.stage.toLowerCase()}`}>{item.stage === 'Ready' ? <CircleCheck size={15} /> : item.stage === 'Error' ? <CircleAlert size={15} /> : <LoaderCircle className='spin' size={15} />}<span>{item.stage === 'Ready' || item.stage === 'Error' ? item.stage : `${item.progress}%`}</span></div>{(item.stage === 'Ready' || item.stage === 'Error') && <button className='upload-dismiss' aria-label={`Hide ${item.name} upload card`} title='Hide upload card' onClick={() => setUploadItems((current) => current.filter((upload) => upload.id !== item.id))}><X size={14} /></button>}</div>)}</div>}
@@ -689,10 +743,26 @@ function App() {
                 </div>
             </section>}
 
+
+            {view === 'cloud' && <section className='workspace'>
+                <div className='page-head'><div><p className='eyebrow'>Patient evidence cloud</p><h1>Evidence Cloud</h1><p>One persistent source library for Elias, Evidence Auditor, NeuroEval, HealthQA, and every packet workflow. Upload once, then search, organize, and reference the same case evidence everywhere.</p></div><button className='primary' onClick={() => fileRef.current?.click()}><Paperclip size={17} /> Add evidence</button></div>
+                <div className='metrics'><div><span>Sources</span><strong>{documents.length}</strong></div><div><span>Indexed pages</span><strong>{documents.reduce((sum, document) => sum + (document.pageCount || 1), 0)}</strong></div><div><span>Evidence groups</span><strong>{categoryCounts.filter((item) => item.count > 0).length}</strong></div></div>
+                <div className='connector-note'><ShieldCheck size={17} /><div><strong>Original-source control</strong><span>Generated summaries, tags, interpretations, diagrams, and packet prose must remain distinguishable from the underlying record. Human verification is required before consequential use.</span></div></div>
+                <article className='research-panel'>
+                    <div className='research-title'><Search size={18} /><div><strong>Search the evidence cloud</strong><span>Search filename, excerpt, or automatic evidence category</span></div></div>
+                    <input value={vaultQuery} onChange={(e) => setVaultQuery(e.target.value)} placeholder='Try: functional capacity, MRI, Guard orders, VA decision…' />
+                </article>
+                <div className='research-grid'>{categoryCounts.map((item) => <article key={item.category} className='research-panel'><div className='research-title'><FolderOpen size={17} /><div><strong>{item.category}</strong><span>{item.count} source{item.count === 1 ? '' : 's'}</span></div></div><button className='secondary tiny' onClick={() => setVaultQuery(item.category)} disabled={!item.count}>Filter</button></article>)}</div>
+                <div className='connector-note'><Brain size={17} /><div><strong>Evidence trace standard</strong><span>Source → page / locator → extracted evidence → evidence classification → interpretation → generated statement. Citation Auditor and Evidence Auditor should flag any broken link in that chain.</span></div></div>
+                <h2 className='section-title'>Cloud source inventory</h2>
+                <div className='doc-list'>{filteredDocuments.map((document) => <article key={document.id} className='doc-card'><div>{document.sourceMode === 'ocr' ? <FileImage size={19} /> : document.sourceMode === 'email' ? <Mail size={19} /> : ['web', 'search'].includes(document.sourceMode || '') ? <Globe2 size={19} /> : document.sourceMode === 'media' ? <ImagePlus size={19} /> : <FolderOpen size={19} />}<div><strong>{document.name}</strong><span>{categorizeDocument(document)} · {document.pageCount} page{document.pageCount === 1 ? '' : 's'} · {Math.round(document.charCount / 1000)}k characters · {document.sourceMode || 'indexed'}</span>{document.sourceUrl && <a className='source-link' href={document.sourceUrl} target='_blank' rel='noreferrer'>{document.sourceUrl}</a>}</div></div><p>{document.excerpt}</p><div className='chips'><span>{categorizeDocument(document)}</span><span>{document.createdAt}</span></div><button onClick={() => void removeDoc(document.id)}><Trash2 size={15} /> Delete</button></article>)}</div>
+                {!filteredDocuments.length && <div className='empty-panel'>No loaded source matches this filter. Add evidence or clear the search.</div>}
+            </section>}
+
             {view === 'review' && <section className='workspace'>
-                <div className='page-head'><div><p className='eyebrow'>Evidence workspace</p><h1>Case Review</h1><p>One place for sources, contradictions, gaps, chronology, functional impact, and the strongest record-backed evidence.</p></div><button className='primary' onClick={() => void analyze()}><FileSearch size={17} /> Analyze record · {workMode}</button></div>
+                <div className='page-head'><div><p className='eyebrow'>Flagship audit workspace</p><h1>Evidence Auditor</h1><p>Prove it, source it, package it. Audit support, contradictions, gaps, chronology, provenance, functional reliability, and reviewer-readiness against the same evidence cloud Elias uses.</p></div><button className='primary' onClick={() => void analyze()}><FileSearch size={17} /> Run evidence audit · {workMode}</button></div>
                 <div className='metrics'><div><span>Documents</span><strong>{documents.length}</strong></div><div><span>Indexed pages</span><strong>{documents.reduce((sum, document) => sum + (document.pageCount || 1), 0)}</strong></div><div><span>OCR / email / web</span><strong>{documents.filter((document) => ['ocr', 'email', 'web'].includes(document.sourceMode || '')).length}</strong></div></div>
-                <div className='command-deck nonprint'><div><span className='command-kicker'>ELIAS COMMAND DECK</span><strong>Fast case passes without leaving Case Review</strong></div><div>{quickEliasActions.slice(0, 6).map((action) => <button key={action.label} disabled={copilotBusy || !!busy} onClick={() => void runCopilot(action.prompt, action.tool)}>{action.label}</button>)}</div></div>
+                <div className='command-deck nonprint'><div><span className='command-kicker'>EVIDENCE AUDITOR</span><strong>Fast source-grounded audit passes without leaving the flagship workspace</strong></div><div>{quickEliasActions.slice(0, 6).map((action) => <button key={action.label} disabled={copilotBusy || !!busy} onClick={() => void runCopilot(action.prompt, action.tool)}>{action.label}</button>)}</div></div>
                 <div className='research-grid nonprint'>
                     <article className='research-panel'>
                         <div className='research-title'><Scale size={18} /><div><strong>VA Law & Rater Lens</strong><span>Live official references + your uploaded evidence</span></div></div>
@@ -719,22 +789,24 @@ function App() {
                 {liveSearchResult && <article className='web-result'><div className='research-title'><Search size={18} /><div><strong>Live Web Search</strong><span>{liveSearchResult.results.length} source{liveSearchResult.results.length === 1 ? '' : 's'} returned</span></div></div><p>{liveSearchResult.answer}</p><div className='official-links'>{liveSearchResult.results.map((result) => <a key={result.url} href={result.url} target='_blank' rel='noreferrer'><ExternalLink size={12} /> {result.title}</a>)}</div></article>}
                 <div className='connector-note nonprint'><PlugZap size={17} /><div><strong>Connected capabilities</strong><span>Live web search: {integrations.webSearch ? 'connected' : 'not connected'} · Neural voice: {integrations.neuralVoice ? 'connected' : 'not connected'} · Gmail direct OAuth: {integrations.gmailDirect ? 'connected' : 'not connected'}. {integrations.gmailNote}</span></div></div>
                 <div className='connector-note nonprint'><Mail size={17} /><div><strong>Email Evidence</strong><span>Upload .eml or .mbox files with Add files and Elias will index them as email evidence. Direct Gmail/Outlook mailbox OAuth is not represented as connected unless a secure per-user connector exists.</span></div></div>
-                {review ? <div className='review-grid'><article className='wide'><h3>Reviewer summary</h3><p>{review.summary}</p></article><ReviewCard title='Strongest evidence' items={review.strongestEvidence} /><ReviewCard title='Evidence gaps' items={review.gaps} /><ReviewCard title='Tensions to reconcile' items={review.tensions} /><ReviewCard title='Major issues' items={review.issues} /></div> : <div className='empty-panel'>Run Analyze record after uploading case documents. Elias will separate supporting evidence, gaps, and tensions without making a merits decision.</div>}
+                <div className='connector-note'><ShieldCheck size={17} /><div><strong>Human verification gate</strong><span>Audit findings are review aids, not medical diagnoses, legal determinations, entitlement decisions, or substitutes for the underlying record.</span></div></div>{review ? <div className='review-grid'><article className='wide'><h3>Reviewer summary</h3><p>{review.summary}</p></article><ReviewCard title='Strongest evidence' items={review.strongestEvidence} /><ReviewCard title='Evidence gaps' items={review.gaps} /><ReviewCard title='Tensions to reconcile' items={review.tensions} /><ReviewCard title='Major issues' items={review.issues} /></div> : <div className='empty-panel'>Run Analyze record after uploading case documents. Elias will separate supporting evidence, gaps, and tensions without making a merits decision.</div>}
                 <h2 className='section-title'>Source inventory</h2><div className='doc-list'>{documents.map((document) => <article key={document.id} className='doc-card'><div>{document.sourceMode === 'ocr' ? <FileImage size={19} /> : document.sourceMode === 'email' ? <Mail size={19} /> : ['web', 'search'].includes(document.sourceMode || '') ? <Globe2 size={19} /> : document.sourceMode === 'media' ? <ImagePlus size={19} /> : <FolderOpen size={19} />}<div><strong>{document.name}</strong><span>{document.pageCount} page{document.pageCount === 1 ? '' : 's'} · {Math.round(document.charCount / 1000)}k characters · {document.sourceMode === 'ocr' ? 'OCR' : document.sourceMode === 'email' ? 'email' : document.sourceMode === 'web' ? 'web reference' : document.sourceMode === 'search' ? 'web search reference' : document.sourceMode === 'media' ? 'media analysis' : document.sourceMode || 'indexed'}</span>{document.sourceUrl && <a className='source-link' href={document.sourceUrl} target='_blank' rel='noreferrer'>{document.sourceUrl}</a>}</div></div><p>{document.excerpt}</p><button onClick={() => void removeDoc(document.id)}><Trash2 size={15} /> Delete</button></article>)}</div>
             </section>}
 
             {view === 'packet' && <section className='workspace'>
-                <div className='page-head nonprint'><div><p className='eyebrow'>Submission builder</p><h1>Packet Studio</h1><p>Turn the loaded record into a structured reviewer draft. Deep mode is recommended for final packet assembly.</p></div><div className='packet-head-actions'><button className='secondary' disabled={copilotBusy || !!busy} onClick={() => void runCopilot(quickEliasActions[5].prompt, 'Packet Assurance')}><ShieldCheck size={17} /> One-click preflight</button><button className='primary' onClick={() => void generatePacket()}><WandSparkles size={17} /> Generate draft · {workMode}</button></div></div>
-                <div className='packet-controls nonprint'><label><input type='radio' checked={packetStyle === 'Visual evidence review'} onChange={() => setPacketStyle('Visual evidence review')} /> Visual evidence review</label><label><input type='radio' checked={packetStyle === 'Formal evidence review'} onChange={() => setPacketStyle('Formal evidence review')} /> Formal evidence review</label>{packet && <button className='secondary' onClick={() => window.print()}><Printer size={16} /> Print / Save PDF</button>}</div>
+                <div className='page-head nonprint'><div><p className='eyebrow'>Submission builder</p><h1>Packet Studio</h1><p>Turn verified evidence into a structured reviewer draft. Deep mode is recommended for final assembly; Evidence Auditor should clear provenance and citation blockers first.</p></div><div className='packet-head-actions'><button className='secondary' disabled={copilotBusy || !!busy} onClick={() => void runCopilot(quickEliasActions[5].prompt, 'Packet Assurance')}><ShieldCheck size={17} /> One-click preflight</button><button className='primary' onClick={() => void generatePacket()}><WandSparkles size={17} /> Generate draft · {workMode}</button></div></div>
+                <div className='packet-controls nonprint'><label><input type='radio' checked={packetStyle === 'Visual evidence review'} onChange={() => setPacketStyle('Visual evidence review')} /> Visual evidence review</label><label><input type='radio' checked={packetStyle === 'Formal evidence review'} onChange={() => setPacketStyle('Formal evidence review')} /> Formal evidence review</label>{packet && <button className='secondary' onClick={() => window.print()}><Printer size={16} /> Print / Save PDF</button>}</div><div className='connector-note nonprint'><Gauge size={17} /><div><strong>Under-5-MB export target</strong><span>Packet generation exists now. Automated page selection, visual QA, screenshot cropping, and reliable final compression below 5 MB remain a validation target and must not be represented as guaranteed until the full pipeline passes.</span></div></div>
                 {packet ? <article className='packet-paper'><pre>{packet}</pre></article> : <div className='empty-panel'>Generate a packet after loading documents. Elias will create an executive summary, source inventory, chronology, evidence analysis, functional-impact section when supported, adverse-evidence review, missing-record plan, reviewer checklist, and source appendix.</div>}
             </section>}
         </main>
 
-        <button className={copilotOpen ? 'elias-fab open nonprint' : 'elias-fab nonprint'} onClick={() => setCopilotOpen(!copilotOpen)}><span><Bot size={19} /></span><div><strong>Elias Copilot</strong><small>{copilotOpen ? 'Close' : 'One-click evidence help'}</small></div></button>
+        <button className={copilotOpen ? 'elias-fab open nonprint' : 'elias-fab nonprint'} onClick={() => setCopilotOpen(!copilotOpen)}><span><Bot size={19} /></span><div><strong>Elias Copilot</strong><small>{copilotOpen ? 'Close' : `${copilotRole} · app-aware`}</small></div></button>
         {copilotOpen && <aside className='elias-copilot nonprint'>
-            <div className='copilot-head'><div><p className='eyebrow'>Floating evidence copilot</p><h3>Elias</h3><span>{documents.length} indexed source{documents.length === 1 ? '' : 's'} · {workMode} mode</span></div><button onClick={() => setCopilotOpen(false)}><X size={18} /></button></div>
+            <div className='copilot-head'><div><p className='eyebrow'>Unified floating copilot</p><h3>{copilotRole}</h3><span>{documents.length} indexed source{documents.length === 1 ? '' : 's'} · {workMode} mode · {copilotSpecialists.find((item) => item.name === copilotRole)?.blurb}</span></div><button onClick={() => setCopilotOpen(false)}><X size={18} /></button></div>
+            <label className='field-label'>Specialist mode<select value={copilotRole} onChange={(e) => setCopilotRole(e.target.value as CopilotRole)}>{copilotSpecialists.map((specialist) => <option key={specialist.name} value={specialist.name}>{specialist.name}</option>)}</select></label>
+            <div className='tool-row'>{copilotOperations.map((action) => <button key={action.label} disabled={copilotBusy || !!busy} onClick={() => { if (action.view) setView(action.view); void runCopilot(action.prompt, action.tool); }}>{action.label}</button>)}</div>
             <div className='copilot-actions'>{quickEliasActions.map((action) => <button key={action.label} disabled={copilotBusy || !!busy} onClick={() => void runCopilot(action.prompt, action.tool)}>{action.label}</button>)}</div>
-            <div className='copilot-result' aria-live='polite'>{copilotBusy ? <div className='copilot-thinking'><div className='thinking-dots'><i /><i /><i /></div><div><strong>Elias is thinking</strong><p>{copilotPhases[copilotPhase]}</p></div></div> : copilotAnswer ? <><div className='answer-head'><Bot size={16} /><strong>Latest Copilot answer</strong></div><p>{copilotAnswer}</p><button className='secondary tiny' onClick={() => speak(copilotAnswer)}><Play size={13} /> Speak</button><button className='secondary tiny' onClick={() => setView('chat')}><MessageSquarePlus size={13} /> Open in Elias</button></> : <div className='copilot-empty'><Brain size={22} /><p>Choose a one-click pass or ask a custom question. Elias uses the same loaded evidence and source controls as the full workspace.</p></div>}</div>
+            <div className='copilot-result' aria-live='polite'>{copilotBusy ? <div className='copilot-thinking'><div className='thinking-dots'><i /><i /><i /></div><div><strong>Elias is thinking</strong><p>{copilotPhases[copilotPhase]}</p></div></div> : copilotAnswer ? <><div className='answer-head'><Bot size={16} /><strong>Latest Copilot answer</strong></div><p>{copilotAnswer}</p><button className='secondary tiny' onClick={() => speak(copilotAnswer)}><Play size={13} /> Speak</button><button className='secondary tiny' onClick={() => setView('chat')}><MessageSquarePlus size={13} /> Open in Elias</button></> : <div className='copilot-empty'><Brain size={22} /><p>Choose a specialist, run an app action, or ask a custom question. Every specialist uses the same loaded evidence cloud and source-control rules rather than operating as a separate silo.</p></div>}</div>
             <div className='copilot-compose'><textarea value={copilotInput} onChange={(e) => setCopilotInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void runCopilot(copilotInput); setCopilotInput(''); } }} placeholder='Ask Elias about the loaded record…' /><button disabled={!copilotInput.trim() || copilotBusy || !!busy} onClick={() => { void runCopilot(copilotInput); setCopilotInput(''); }}><Send size={17} /></button></div>
         </aside>}
     </div>;
