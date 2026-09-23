@@ -32,8 +32,8 @@ All specialists use the same user-scoped case record and the same evidence-type 
 | OCR image intake | Existing implementation |
 | Automatic evidence grouping | Added as a transparent filename/excerpt heuristic in the public UI snapshot; deeper metadata classification still needs backend work |
 | Smart metadata extraction | Partial; source/page/date metadata exists in places, but provider/facility/document-type extraction is not complete end-to-end |
-| Patient timeline | Existing Timeline Builder can generate chronology; a persistent normalized timeline data model remains a next step |
-| Statement-to-source linking | Strong source-control rules exist; exact structured source→page→claim graph remains a next step |
+| Patient timeline | **Persistent normalized Evidence Timeline implemented in the GitHub development snapshot.** Generated events must resolve to indexed source filenames; uncertain dates stay explicit and a human-verification warning is retained. |
+| Statement-to-source linking | **Structured Claim → Source Trace implemented in the GitHub development snapshot.** It resolves filenames to indexed sources, attaches stored locators, separates support/conflict/context, and only preserves an exact quote when literal source-text verification succeeds. |
 | Persistent reference across specialists | Product architecture established; specialists are unified behind the same Copilot and case record |
 | Duplicate/version control | **Advisory detection implemented in the GitHub development snapshot** using deterministic content fingerprints and filename-normalized possible-version groups. No automatic deletion/overwrite; human verification remains required. |
 | Natural-language case search | Existing record search/chat supports evidence queries; dedicated vault search is now surfaced locally in the snapshot |
@@ -84,9 +84,9 @@ The desired direction is app-operating behavior: filter evidence, select sources
 1. Create a structured EvidenceItem + SourceLocator + EvidenceClaim data model.
 2. Add backend metadata extraction and confidence/verification state.
 3. Strengthen current advisory duplicate/version detection with cryptographic file hashes for stored originals and explicit human-confirmed version relationships.
-4. Persist a normalized timeline rather than generating chronology only as prose.
+4. Expand the now-persistent Evidence Timeline with manual correction/approval states, stable event IDs, and bundle-scoped chronology.
 5. Expand the now-implemented Evidence Bundles with rename/edit, bundle-scoped audit, and packet handoff.
-6. Add claim-to-source graph UI and Citation Auditor blockers.
+6. Expand the implemented Claim → Source Trace into a reusable claim graph with saved claim nodes, manual approval states, and packet-level Citation Auditor blockers.
 7. Add page-image extraction, crop selection, and source/page stamping.
 8. Add diagram/illustration generation with explicit "illustration, not source evidence" labeling.
 9. Add packet compositor that preserves selected source visuals.
