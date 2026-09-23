@@ -360,5 +360,24 @@
       "Use the Sign in CTA"
     ],
     "expected": "The site explains Elias as the master evidence-intelligence workspace, Evidence Auditor as the flagship audit engine, one shared Evidence Cloud, the specialist modes, and the no-unverified-HIPAA/human-review boundary before authentication."
+  },
+  {
+    "name": "Elias remains the single user-facing intelligence engine",
+    "viewport": "desktop",
+    "covers": [
+      "floating Elias assistant",
+      "workspace-aware routing",
+      "no specialist bot selector",
+      "Evidence Auditor flagship workspace",
+      "Health + Neuro lens"
+    ],
+    "description": "Prevents internal evidence capabilities from leaking back into the UI as a confusing list of separate assistants.",
+    "steps": [
+      "Sign in and open Elias, Evidence Cloud, Evidence Auditor, and Packet Studio",
+      "Open the floating assistant from each workspace",
+      "Confirm the assistant identity remains Elias and there is no selector for Evidence Auditor, NeuroEval, HealthQA, Packet Builder, Citation Auditor, or Document Copilot",
+      "Run Find from Evidence Cloud and Verify from Evidence Auditor"
+    ],
+    "expected": "Elias remains the only assistant identity. Workspace context and requested action change the internal tool behavior without requiring the user to choose a specialist bot."
   }
 ]
