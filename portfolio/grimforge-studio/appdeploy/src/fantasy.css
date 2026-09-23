@@ -198,3 +198,16 @@ h1, h2, h3, .brand, .visualCard strong, .commandDeck strong {
   .simpleOptions,.simpleSceneGrid{grid-template-columns:1fr}
   .simpleDeliverables{gap:5px}.simpleDeliverables span{font-size:10px}
 }
+
+.qualityTierRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0 10px}
+.qualityTierRow button{display:grid;gap:4px;text-align:left;padding:13px;border:1px solid #4a3d2b;border-radius:12px;background:#0b100e;color:#c9bfa9;cursor:pointer}
+.qualityTierRow button strong{color:#ead6a6}.qualityTierRow button span{font-size:.72rem;color:#8f8778;line-height:1.35}
+.qualityTierRow button.active{border-color:#c89d49;background:linear-gradient(145deg,#21190f,#10140f);box-shadow:inset 0 0 0 1px #d4aa5140}
+.cinemaConnection{display:grid;grid-template-columns:auto auto 1fr auto;gap:8px;align-items:center;padding:10px 12px;border:1px solid #39423a;border-radius:11px;background:#0c120f;margin-bottom:13px}
+.cinemaConnection .dot{width:9px;height:9px;border-radius:50%;background:#77443f;box-shadow:0 0 10px #7a342844}
+.cinemaConnection .dot.on{background:#7ebf70;box-shadow:0 0 12px #67c35a77}.cinemaConnection b{font-size:.78rem;color:#cfc1a6}.cinemaConnection small{color:#817b70;line-height:1.35}.cinemaConnection button{border:1px solid #55472f;background:#15130e;color:#cdb57c;border-radius:8px;padding:6px 9px;cursor:pointer}
+.simpleSceneCard>video,.animatic video{width:100%;aspect-ratio:16/9;object-fit:cover;background:#000}
+@media(max-width:760px){
+  .qualityTierRow{grid-template-columns:1fr}
+  .cinemaConnection{grid-template-columns:auto 1fr}.cinemaConnection small{grid-column:1/-1}.cinemaConnection button{grid-column:1/-1}
+}
