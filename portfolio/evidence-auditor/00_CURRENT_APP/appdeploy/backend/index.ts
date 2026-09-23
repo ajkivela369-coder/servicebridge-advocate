@@ -1010,10 +1010,66 @@ export const handler = router({
         const root = await vaultRootFor(userId);
         const stem = safeName(doc.name).replace(/\.[^.]+$/, '').slice(0, 80);
         const path = `${root}/07_Derived_Visuals/${stem}__page_${page}__DERIVED_CAPTURE.png`;
-        const [ok] = await storage.write([{ path, content: base64, contentType: 'image/png' }]);
-        if (!ok) return error('Derived page capture could not be saved.', 500);
+        const metadataPath = path.replace(/\.png$/i, '.json');
+        const metadata = { kind: 'derived_page_capture', title: `${doc.name} · page ${page}`, sourceId, sourceName: doc.name, locator: `${vaultLocator(doc)} · captured page ${page}`, page, label: `Derived page capture from ${doc.name}, page ${page}. Not original source evidence.`, generatedAt: new Date().toISOString() };
+        const results = await storage.write([
+            { path, content: base64, contentType: 'image/png' },
+            { path: metadataPath, content: Buffer.from(JSON.stringify(metadata, null, 2), 'utf8').toString('base64'), contentType: 'application/json' },
+        ]);
+        if (!results.every(Boolean)) return error('Derived page capture or its provenance metadata could not be saved.', 500);
         const [signed] = await storage.url([path]);
-        return json({ saved: true, path, url: signed?.url ?? '', sourceId, sourceName: doc.name, page, label: `Derived page capture from ${doc.name}, page ${page}. Not original source evidence.` });
+        return json({ saved: true, path, metadataPath, url: signed?.url ?? '', ...metadata });
+    }],
+    'GET /api/evidence/visuals': [requireAuth(), async (ctx) => {
+        const root = await vaultRootFor(ctx.user!.userId);
+        const prefix = `${root}/07_Derived_Visuals/`;
+        const listing = await storage.list({ prefix, limit: 120 });
+        const imagePaths = listing.paths.filter((path) => /\.(png|jpe?g|webp)$/i.test(path)).slice(0, 40);
+        const metadataPaths = listing.paths.filter((path) => /\.json$/i.test(path));
+        const metadataMap = new Map<string, Record<string, unknown>>();
+        if (metadataPaths.length) {
+            const records = await storage.read(metadataPaths);
+            for (const record of records) {
+                if (!record.content) continue;
+                try {
+                    const parsed = JSON.parse(Buffer.from(record.content, 'base64').toString('utf8')) as Record<string, unknown>;
+                    metadataMap.set(record.path.replace(/\.json$/i, ''), parsed);
+                } catch { /* keep visual even if metadata file is malformed */ }
+            }
+        }
+        const signed = imagePaths.length ? await storage.url(imagePaths) : [];
+        return json({ visuals: imagePaths.map((path, index) => {
+            const metadata = metadataMap.get(path.replace(/\.(png|jpe?g|webp)$/i, '')) ?? {};
+            return { path, url: signed[index]?.url ?? '', name: path.split('/').pop() ?? path, metadata };
+        }) });
+    }],
+    'POST /api/evidence/visuals/data': [requireAuth(), async (ctx) => {
+        const root = await vaultRootFor(ctx.user!.userId);
+        const prefix = `${root}/07_Derived_Visuals/`;
+        const body = ctx.body as { paths?: string[] };
+        const requested = Array.from(new Set((Array.isArray(body.paths) ? body.paths : []).map((path) => String(path)).filter((path) => path.startsWith(prefix)))).slice(0, 6);
+        if (!requested.length) return json({ visuals: [] });
+        const listing = await storage.list({ prefix, limit: 120 });
+        const allowed = new Set(listing.paths.filter((path) => /\.(png|jpe?g|webp)$/i.test(path)));
+        const paths = requested.filter((path) => allowed.has(path));
+        if (!paths.length) return json({ visuals: [] });
+        const imageRecords = await storage.read(paths);
+        const metadataPaths = paths.map((path) => path.replace(/\.(png|jpe?g|webp)$/i, '.json')).filter((path) => listing.paths.includes(path));
+        const metadataRecords = metadataPaths.length ? await storage.read(metadataPaths) : [];
+        const metadataMap = new Map<string, Record<string, unknown>>();
+        for (const record of metadataRecords) {
+            if (!record.content) continue;
+            try { metadataMap.set(record.path.replace(/\.json$/i, ''), JSON.parse(Buffer.from(record.content, 'base64').toString('utf8')) as Record<string, unknown>); } catch { /* ignore malformed metadata */ }
+        }
+        let totalChars = 0;
+        const visuals = imageRecords.filter((record) => record.content).map((record) => {
+            totalChars += record.content?.length ?? 0;
+            const extension = record.path.toLowerCase().match(/\.(png|jpe?g|webp)$/)?.[1] ?? 'png';
+            const mimeType = extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : extension === 'webp' ? 'image/webp' : 'image/png';
+            return { path: record.path, data: record.content ?? '', mimeType, metadata: metadataMap.get(record.path.replace(/\.(png|jpe?g|webp)$/i, '')) ?? {} };
+        });
+        if (totalChars > 10_000_000) return error('Selected derived visuals are too large to compose in one PDF. Select fewer or smaller visuals.', 413);
+        return json({ visuals });
     }],
     'GET /api/evidence/inventory': [requireAuth(), async (ctx) => {
         const docs = await getDocuments(ctx.user!.userId) as Array<DocumentRecord & { id: string }>;
