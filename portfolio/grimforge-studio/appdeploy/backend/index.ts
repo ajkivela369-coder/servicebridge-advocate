@@ -21,6 +21,21 @@ const veyrSystem=`You are Archivist Veyr, the original AI creative director insi
 Rules: separate CANON/SOURCE from INTERPRETATION, EDITORIAL and SPECULATION; never invent a source; when a claim needs verification say so. Study other channels only at the level of pacing, structure, chaptering, humor density, hook strategy, maps, visual grammar, packaging and beginner clarity. Never copy scripts, jokes, catchphrases, artwork, creator identity or voice. Speech-reference profiles describe abstract performance traits only: cadence, register, pause pattern, energy, rhetorical shape and sentence length. Never imitate, clone or impersonate a real person, celebrity, actor, creator or copyrighted character voice. Favor original, user-owned, licensed, public-domain/open-license or generated-original assets. For 5-minute episodes favor a sharp hook, minimum necessary lore, evidence ladder, counterpoint, payoff and next-episode bridge. Visual direction should feel premium and cinematic without frantic motion. Voice direction prioritizes clarity, intelligibility, gravitas, low fatigue and clean consonants. Challenge weak ideas and give a concrete better choice.`;
 const referenceProfileSchema={type:'object',properties:{name:{type:'string'},url:{type:'string'},summary:{type:'string'},traits:{type:'string'},profile:{type:'array',items:{type:'number'}}},required:['name','url','summary','traits','profile']};
 const episodeSchema={type:'object',properties:{title:{type:'string'},thesis:{type:'string'},hook:{type:'string'},world:{type:'string'},targetMinutes:{type:'number'},voice:{type:'string'},visualStyle:{type:'string'},youtubeTitle:{type:'string'},thumbnailText:{type:'string'},description:{type:'string'},nextBridge:{type:'string'},scenes:{type:'array',items:{type:'object',properties:{id:{type:'string'},title:{type:'string'},start:{type:'string'},duration:{type:'number'},narration:{type:'string'},dialogue:{type:'string'},claimType:{type:'string'},visualPrompt:{type:'string'},motion:{type:'string'},sound:{type:'string'},sourceNeed:{type:'string'}},required:['id','title','start','duration','narration','claimType','visualPrompt','motion','sound','sourceNeed']}}},required:['title','thesis','hook','world','targetMinutes','voice','visualStyle','youtubeTitle','thumbnailText','description','nextBridge','scenes']};
+const productionPlanSchema={type:'object',properties:{
+  characters:{type:'array',items:{type:'object',properties:{
+    id:{type:'string'},name:{type:'string'},role:{type:'string'},visualIdentity:{type:'string'},faceHair:{type:'string'},wardrobeArmor:{type:'string'},props:{type:'string'},continuityRules:{type:'string'},voiceDirection:{type:'string'},referencePrompts:{type:'array',items:{type:'string'}}
+  },required:['id','name','role','visualIdentity','faceHair','wardrobeArmor','props','continuityRules','voiceDirection','referencePrompts']}},
+  sets:{type:'array',items:{type:'object',properties:{
+    id:{type:'string'},name:{type:'string'},description:{type:'string'},lighting:{type:'string'},landmarks:{type:'string'},north:{type:'string'},east:{type:'string'},south:{type:'string'},west:{type:'string'},overhead:{type:'string'},continuityRules:{type:'string'}
+  },required:['id','name','description','lighting','landmarks','north','east','south','west','overhead','continuityRules']}},
+  voiceCast:{type:'array',items:{type:'object',properties:{
+    characterId:{type:'string'},characterName:{type:'string'},role:{type:'string'},enginePreference:{type:'string'},delivery:{type:'string'},voiceSeedDescription:{type:'string'}
+  },required:['characterId','characterName','role','enginePreference','delivery','voiceSeedDescription']}},
+  shots:{type:'array',items:{type:'object',properties:{
+    id:{type:'string'},sceneId:{type:'string'},order:{type:'number'},title:{type:'string'},duration:{type:'number'},purpose:{type:'string'},shotSize:{type:'string'},lens:{type:'string'},cameraMove:{type:'string'},blocking:{type:'string'},prompt:{type:'string'},characterIds:{type:'array',items:{type:'string'}},locationId:{type:'string'},dialogueSpeaker:{type:'string'},dialogueLine:{type:'string'},narrationText:{type:'string'},sound:{type:'string'},continuityIn:{type:'string'},continuityOut:{type:'string'},takesRecommended:{type:'number'},qualityPriority:{type:'string'}
+  },required:['id','sceneId','order','title','duration','purpose','shotSize','lens','cameraMove','blocking','prompt','characterIds','locationId','dialogueSpeaker','dialogueLine','narrationText','sound','continuityIn','continuityOut','takesRecommended','qualityPriority']}}
+},required:['characters','sets','voiceCast','shots']};
+
 function thinking(mode?:WorkMode):'NONE'|'FAST'|'DEEP'{return mode==='Quick'?'NONE':mode==='Deep'?'DEEP':'FAST'}
 function safeSlug(v:string){return v.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'grimforge-project'}
 export const handler=router({
@@ -57,6 +72,61 @@ export const handler=router({
     }catch(e){
       return error(e instanceof Error?e.message:'Cinema render failed',502);
     }
+  }],
+
+  'POST /api/production-plan':[async({body})=>{
+    const d=(body||{}) as {episode?:unknown;qualityTier?:string;styleTarget?:string};
+    if(!d.episode)return error('episode is required',400);
+    const result=await ai.generate({
+      system:veyrSystem,
+      prompt:`Build a FILM PRODUCTION BIBLE and SHOT QUEUE for the GrimForge episode below.
+
+QUALITY TIER: ${d.qualityTier||'Cinema'}
+VISUAL TARGET: ${d.styleTarget||'cinematic photoreal dark fantasy, realistic skin and metal, shallow depth of field, practical blue/amber lighting, grounded medieval environments, restrained cinematic grade'}
+
+EPISODE:
+${JSON.stringify(d.episode,null,2).slice(0,30000)}
+
+Requirements:
+
+CHARACTER BIBLE
+- Include only recurring speaking or visually important original characters.
+- Each character gets a stable visual identity: approximate age, build, face/hair, armor/clothing, materials, distinguishing marks, props and continuity rules.
+- referencePrompts must include 4 original image prompts: hero portrait, full-body neutral, three-quarter/profile, and action reference.
+- Do not recreate named copyrighted characters or real people.
+- voiceDirection describes an original performance, not an imitation.
+
+SET BIBLE
+- Create stable recurring locations.
+- Give each set north/east/south/west and overhead/master reference prompts so later camera angles preserve geography.
+- Include lighting, landmarks, architecture/materials, weather and continuity rules.
+
+VOICE CAST
+- Narrator plus recurring speaking characters get distinct voice directions.
+- enginePreference should be 'Chatterbox', 'Kling voice', or 'Narrator fallback'.
+- voiceSeedDescription must describe a new voice using age/register/grain/cadence/accent intensity/emotional range without naming an actor or existing character.
+
+SHOT QUEUE
+- Break every episode scene into cinematic shots of roughly 3-10 seconds. Do NOT make one video generation represent an entire 30-60 second scene.
+- Important dialogue exchanges should use coverage: master/two-shot, over-shoulder or medium singles, reaction/cutaway when useful.
+- Action should be broken into readable beats rather than one impossible continuous generation.
+- Each shot must reference the relevant character IDs and location ID.
+- prompt must include subject ACTION, shot size, lens feel, camera height/move, blocking, foreground-midground-background depth, motivated lighting, atmosphere, material realism and continuity anchor.
+- Cinematic photoreal target: realistic skin, eyes, hair, cloth, mud, aged steel, scratches, wet stone, smoke/fog, natural motion, believable weight and physics. Avoid glossy videogame CGI.
+- Dialogue must remain separate from narration.
+- takesRecommended: 1 for low-risk B-roll, 2 for dialogue/hero shots, 3 for high-risk action/close facial performance in Cinematic Max.
+- qualityPriority must be LOW, MEDIUM, HIGH or HERO.
+- continuityIn/out should record costume dirt/blood/props/weather/position/emotional state and screen direction.
+- Total shot durations should approximately cover the episode runtime, but use editorial cutaways/B-roll when narration is longer than visible dialogue.
+
+Return only the structured production plan.`,
+      schema:productionPlanSchema,
+      thinkingMode:'DEEP',
+      maxTokens:9500,
+      temperature:.32
+    });
+    try{return json({plan:JSON.parse(result.text)});}
+    catch{return error('Veyr produced an invalid production plan. Please retry.',502);}
   }],
 
   'POST /api/simple-create':[async({body})=>{
