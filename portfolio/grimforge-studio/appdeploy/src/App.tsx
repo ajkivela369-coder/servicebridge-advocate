@@ -4,6 +4,7 @@ import { api } from '@appdeploy/client';
 
 type WorkMode = 'Quick' | 'Standard' | 'Deep';
 type StudioMode = 'Simple' | 'Pro';
+type QualityTier = 'Draft' | 'Cinema' | 'Cinematic Max';
 type ClaimType = 'CANON / SOURCE' | 'INTERPRETATION' | 'EDITORIAL' | 'SPECULATION';
 type Scene = { id: string; title: string; start: string; duration: number; narration: string; dialogue?: string; claimType: ClaimType; visualPrompt: string; motion: string; sound: string; sourceNeed: string };
 type Episode = { title: string; thesis: string; hook: string; world: string; targetMinutes: number; voice: string; visualStyle: string; youtubeTitle: string; thumbnailText: string; description: string; nextBridge: string; scenes: Scene[] };
@@ -132,6 +133,9 @@ function App() {
   const [episode, setEpisode] = useState<Episode>(fallbackEpisode);
   const [studioMode,setStudioMode]=useState<StudioMode>('Simple');
   const [simpleReferenceUrl,setSimpleReferenceUrl]=useState('');
+  const [qualityTier,setQualityTier]=useState<QualityTier>('Cinema');
+  const [sceneVideos,setSceneVideos]=useState<Record<string,string>>({});
+  const [cinemaStatus,setCinemaStatus]=useState<{configured:boolean;providers?:Array<{id:string;configured:boolean}>;error?:string}>({configured:false});
   const [simpleReferenceNote,setSimpleReferenceNote]=useState('');
   const [simpleStep,setSimpleStep]=useState('');
   const [prompt, setPrompt] = useState('Make a 5-minute episode about why survival is not the same as victory for the Imperium.');
@@ -341,6 +345,11 @@ function App() {
 
   const previewSelectedDelivery=()=>generateKokoroWav(selectedDialogueMode.sample,'speech preview');
 
+  const refreshCinemaStatus=async()=>{
+    try{const {data}=await api.get('/api/cinema/status');setCinemaStatus(data);}
+    catch{setCinemaStatus({configured:false});}
+  };
+
   const createSimpleEpisode=async()=>{
     if((!simpleReferenceUrl.trim()&&!prompt.trim())||busy)return;
     setBusy('Veyr is building the complete cinematic episode…');
@@ -364,12 +373,19 @@ function App() {
       setPreviewIndex(0);
       setPreviewPlaying(false);
       setSceneImages({});
+      setSceneVideos({});
       setSimpleReferenceNote(data.referenceInfo?.note||'Reference processing complete.');
       const generated:Record<string,string>={};
+      const generatedVideo:Record<string,string>={};
+      const provider=qualityTier==='Cinematic Max'?'ltx2':'wan22';
+      const wantsMotion=qualityTier!=='Draft';
+      const providerReady=Boolean(cinemaStatus.providers?.find((item)=>item.id===provider&&item.configured));
+
       for(let i=0;i<nextEpisode.scenes.length;i+=1){
         const scene=nextEpisode.scenes[i];
-        setSimpleStep(`Generating cinematic scene art ${i+1}/${nextEpisode.scenes.length}`);
+        setSimpleStep(`Creating scene ${i+1}/${nextEpisode.scenes.length} · ${qualityTier}`);
         setStoryboardProgress(`Scene ${i+1} of ${nextEpisode.scenes.length} · ${scene.title}`);
+        let imageUrl='';
         try{
           const art=await api.post('/api/style-preview',{
             style:'Premium cinematic story-film',
@@ -378,14 +394,38 @@ function App() {
             scene:scene.visualPrompt,
             archetype:'original armored cinematic chronicler'
           });
-          generated[scene.id]=`data:${art.data.mimeType};base64,${art.data.imageBase64}`;
+          imageUrl=`data:${art.data.mimeType};base64,${art.data.imageBase64}`;
+          generated[scene.id]=imageUrl;
           setSceneImages({...generated});
         }catch{
-          // Keep the complete episode even if one image fails; Pro mode can retry individual shots.
+          // Keep the written scene even if the still frame fails.
+        }
+
+        if(wantsMotion&&providerReady){
+          setSimpleStep(`Rendering motion shot ${i+1}/${nextEpisode.scenes.length} with ${provider==='ltx2'?'LTX Cinematic Max':'Wan Cinema'}`);
+          try{
+            const rendered=await api.post('/api/cinema/render-scene',{
+              provider,
+              prompt:`${scene.visualPrompt}. Motion: ${scene.motion}. Sound intent: ${scene.sound}. Preserve continuity with the approved character and set bibles. Original composition only.`,
+              imageUrl:imageUrl||undefined,
+              seconds:Math.max(4,Math.min(10,scene.duration||6)),
+              fps:qualityTier==='Cinematic Max'?30:24,
+              width:qualityTier==='Cinematic Max'?1920:1280,
+              height:qualityTier==='Cinematic Max'?1080:720,
+              metadata:{sceneId:scene.id,title:scene.title,qualityTier}
+            });
+            if(rendered.data?.url){
+              generatedVideo[scene.id]=rendered.data.url;
+              setSceneVideos({...generatedVideo});
+            }
+          }catch{
+            // Motion providers are optional. Fall back to the generated still/animatic rather than faking a clip.
+          }
         }
       }
       setSimpleStep('Episode ready');
-      setNotice(`Veyr created “${nextEpisode.title}” with ${nextEpisode.scenes.length} directed scenes, full narration/dialogue, cinematography, sound direction and ${Object.keys(generated).length} generated scene image${Object.keys(generated).length===1?'':'s'}. Open Pro only if you want to tune the technical controls.`);
+      const motionCount=Object.keys(generatedVideo).length;
+      setNotice(`Veyr created “${nextEpisode.title}” with ${nextEpisode.scenes.length} directed scenes, full narration/dialogue, cinematography, sound direction, ${Object.keys(generated).length} generated scene image${Object.keys(generated).length===1?'':'s'} and ${motionCount} rendered motion clip${motionCount===1?'':'s'}. ${wantsMotion&&!providerReady?'The Cinema Bridge is not connected for this quality tier, so GrimForge kept the honest animatic fallback.':''}`);
       window.setTimeout(()=>document.getElementById('preview')?.scrollIntoView({behavior:'smooth'}),100);
     }catch(err){
       const e=err as {response?:{data?:{error?:string}},message?:string};
@@ -575,6 +615,8 @@ function App() {
         <p className='simpleLead'>Start with a YouTube video/channel or any public webpage you like. Veyr studies whatever public text/metadata is actually accessible, learns only the high-level production grammar, and creates a new original cinematic episode from your request.</p>
         <label className='simpleReferenceInput'><span>1 · Paste a YouTube video, channel, or website</span><input value={simpleReferenceUrl} onChange={(e)=>setSimpleReferenceUrl(e.target.value)} placeholder='https://youtube.com/watch?v=…  or  https://youtube.com/@channel'/><small>Veyr will not pretend it watched/transcribed material the public page does not expose.</small></label>
         <label className='simplePromptBox'><span>2 · What should Veyr make?</span><textarea className='masterPrompt' value={prompt} onChange={(e)=>setPrompt(e.target.value)} placeholder='Example: Make an original 5-minute episode about a doomed fortress defense. Use the reference only for broad pacing/cinematography. Give me premium narration, dramatic character dialogue, cinematic shots and scene art.'/></label>
+        <div className='qualityTierRow'><button className={qualityTier==='Draft'?'active':''} onClick={()=>setQualityTier('Draft')}><strong>Draft</strong><span>Fast storyboard + animatic</span></button><button className={qualityTier==='Cinema'?'active':''} onClick={()=>{setQualityTier('Cinema');void refreshCinemaStatus();}}><strong>Cinema</strong><span>Wan motion + expressive voices + finishing</span></button><button className={qualityTier==='Cinematic Max'?'active':''} onClick={()=>{setQualityTier('Cinematic Max');void refreshCinemaStatus();}}><strong>Cinematic Max</strong><span>LTX high-end motion/audio when connected</span></button></div>
+        <div className='cinemaConnection'><span className={cinemaStatus.configured?'dot on':'dot'}/><b>{cinemaStatus.configured?'Cinema Bridge detected':'Cinema Bridge not connected'}</b><small>{qualityTier==='Draft'?'Draft works without GPU video providers.':cinemaStatus.configured?'Configured providers will be used when available.':'GrimForge will create the full directed animatic and preserve every shot for later rendering.'}</small><button onClick={()=>void refreshCinemaStatus()}>Check engines</button></div>
         <div className='simpleOptions'><label>World<select value={world} onChange={(e)=>setWorld(e.target.value)}><option>Warhammer 40K</option><option>Old World / Warhammer Fantasy</option></select></label><label>Length<select value={length} onChange={(e)=>setLength(+e.target.value)}><option value={5}>5 minutes</option><option value={8}>8 minutes</option><option value={12}>12 minutes</option></select></label></div>
         <div className='simpleDeliverables'><span>✓ Full narration</span><span>✓ Character dialogue</span><span>✓ Cinematography</span><span>✓ Generated scene art</span><span>✓ Sound direction</span><span>✓ Title + thumbnail package</span></div>
         <button className='primary simpleCreateButton' disabled={!!busy||(!prompt.trim()&&!simpleReferenceUrl.trim())} onClick={createSimpleEpisode}>✦ Veyr — Make the Full Cinematic Episode</button>
@@ -603,12 +645,12 @@ function App() {
 
       {(studioMode==='Pro'||simpleStep==='Episode ready')&&<><section className='episodeSummary'><div><div className='kicker'>Current Episode</div><h2>{episode.title}</h2><p>{episode.thesis}</p></div><div className='summaryBadges'><span>{episode.targetMinutes} min</span><span>Kokoro Local Neural</span><span>{speechProfile}</span><span>{dialogueMode}</span><span>{style}</span></div></section>
 
-      {studioMode==='Simple'&&simpleStep==='Episode ready'&&<section className='simpleEpisodePackage'><div className='sectionHead'><div><div className='kicker'>Veyr Delivery</div><h2>Your complete episode package</h2><p>Each scene includes the generated image plus the narration, dialogue, cinematography, camera movement and sound plan that Pro mode can refine later.</p></div><button onClick={()=>setStudioMode('Pro')}>Open Pro controls</button></div><div className='simpleSceneGrid'>{episode.scenes.map((scene,index)=><article key={scene.id} className='simpleSceneCard'>{sceneImages[scene.id]?<img src={sceneImages[scene.id]} alt={`Generated art for ${scene.title}`}/>:<div className='simpleScenePlaceholder'>Scene art unavailable · retry in Pro</div>}<div className='simpleSceneCopy'><span>Scene {index+1} · {scene.start}</span><h3>{scene.title}</h3><b>Narration</b><p>{scene.narration}</p>{scene.dialogue&&scene.dialogue!=='None — narration only'&&<><b>Dialogue</b><blockquote>{scene.dialogue}</blockquote></>}<details><summary>Cinematography + sound</summary><small><strong>Shot:</strong> {scene.visualPrompt}</small><small><strong>Motion:</strong> {scene.motion}</small><small><strong>Sound:</strong> {scene.sound}</small></details></div></article>)}</div></section>}
+      {studioMode==='Simple'&&simpleStep==='Episode ready'&&<section className='simpleEpisodePackage'><div className='sectionHead'><div><div className='kicker'>Veyr Delivery</div><h2>Your complete episode package</h2><p>Each scene includes the generated image plus the narration, dialogue, cinematography, camera movement and sound plan that Pro mode can refine later.</p></div><button onClick={()=>setStudioMode('Pro')}>Open Pro controls</button></div><div className='simpleSceneGrid'>{episode.scenes.map((scene,index)=><article key={scene.id} className='simpleSceneCard'>{sceneVideos[scene.id]?<video src={sceneVideos[scene.id]} poster={sceneImages[scene.id]} controls playsInline/>:sceneImages[scene.id]?<img src={sceneImages[scene.id]} alt={`Generated art for ${scene.title}`}/>:<div className='simpleScenePlaceholder'>Scene visual unavailable · retry in Pro</div>}<div className='simpleSceneCopy'><span>Scene {index+1} · {scene.start}</span><h3>{scene.title}</h3><b>Narration</b><p>{scene.narration}</p>{scene.dialogue&&scene.dialogue!=='None — narration only'&&<><b>Dialogue</b><blockquote>{scene.dialogue}</blockquote></>}<details><summary>Cinematography + sound</summary><small><strong>Shot:</strong> {scene.visualPrompt}</small><small><strong>Motion:</strong> {scene.motion}</small><small><strong>Sound:</strong> {scene.sound}</small></details></div></article>)}</div></section>}
 
       <section className='previewStudio' id='preview'>
         <div className='sectionHead'><div><div className='kicker'>Watch & Tweak</div><h2>Episode Preview Player</h2><p>Generated episodes play as an editable animatic. If you already have a rendered MP4, load it below and watch the real video inside GrimForge.</p></div><div className='playerButtons'><button className='primary' onClick={()=>setPreviewPlaying(!previewPlaying)}>{previewPlaying?'Ⅱ Pause':'▶ Play Episode'}</button><button onClick={()=>{setPreviewPlaying(false);window.speechSynthesis?.cancel();setPreviewIndex(0);}}>■ Stop</button></div></div>
         {mp4Url?<div className='mp4Box'><video src={mp4Url} controls playsInline/><div className='playerStrip'><strong>Loaded MP4</strong><a href={mp4Url} download={`${episode.title.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.mp4`}>Download MP4</a></div></div>:<div className='animatic'>
-          <div className={`animaticFrame ${selectedStyle.archetype} ${cinematicMode?'cinematicFrame':''}`}>{sceneImages[currentScene.id]?<img className={cinematicMode?'cinematicImage':''} src={sceneImages[currentScene.id]} alt='Generated scene art'/>:<div className='characterStage'><div className='characterGlow'/><div className={`figure ${selectedStyle.archetype}`}><i/><b/><em/></div><div className='stageLabel'>{style}</div></div>}<div className='caption'><small>{currentScene.start} · {currentScene.claimType}</small><strong>{currentScene.title}</strong><p>{currentScene.narration}</p>{currentScene.dialogue&&currentScene.dialogue!=='None — narration only'&&<blockquote><b>Dialogue</b>{currentScene.dialogue}</blockquote>}</div></div>
+          <div className={`animaticFrame ${selectedStyle.archetype} ${cinematicMode?'cinematicFrame':''}`}>{sceneVideos[currentScene.id]?<video className={cinematicMode?'cinematicImage':''} src={sceneVideos[currentScene.id]} poster={sceneImages[currentScene.id]} controls playsInline/>:sceneImages[currentScene.id]?<img className={cinematicMode?'cinematicImage':''} src={sceneImages[currentScene.id]} alt='Generated scene art'/>:<div className='characterStage'><div className='characterGlow'/><div className={`figure ${selectedStyle.archetype}`}><i/><b/><em/></div><div className='stageLabel'>{style}</div></div>}<div className='caption'><small>{currentScene.start} · {currentScene.claimType}</small><strong>{currentScene.title}</strong><p>{currentScene.narration}</p>{currentScene.dialogue&&currentScene.dialogue!=='None — narration only'&&<blockquote><b>Dialogue</b>{currentScene.dialogue}</blockquote>}</div></div>
           <div className='sceneRail'>{episode.scenes.map((s,i)=><button className={i===previewIndex?'active':''} key={s.id} onClick={()=>{setPreviewPlaying(false);window.speechSynthesis?.cancel();setPreviewIndex(i);}}><span>{i+1}</span><small>{s.title}</small></button>)}</div>
         </div>}
         {studioMode==='Pro'?<><div className='mediaInputs'><label>Load / replace rendered MP4<input type='file' accept='video/mp4,video/*' onChange={(e)=>mp4Input(e.target.files?.[0])}/></label><label>Use your own final narration<input type='file' accept='audio/*' onChange={(e)=>narrationInput(e.target.files?.[0])}/></label>{narrationUrl&&<audio src={narrationUrl} controls/>}</div><p className='fine'>Important: GrimForge's generated preview is an editable directed animatic, not a claim of full AI motion rendering. A true moving MP4 still requires a connected video-render engine; any real MP4 you load plays here.</p></>:<p className='simplePreviewNote'>Simple mode gives you the complete directed animatic package immediately. The generated images, narration, dialogue and shot plan are real outputs; true moving-video MP4 rendering remains a separate provider step.</p>}
