@@ -722,6 +722,25 @@ export const handler = router({
             return error(err instanceof Error ? err.message : 'Web research failed.', 422);
         }
     }],
+    'POST /api/authorities/verify': [requireAuth(), async (ctx) => {
+        const body = ctx.body as { program?: string; issue?: string };
+        const requestedProgram = String(body.program ?? 'VA / VBA');
+        const program: BenefitsProgram = requestedProgram in BENEFITS_LENS_LIBRARY ? requestedProgram as BenefitsProgram : 'VA / VBA';
+        const library = BENEFITS_LENS_LIBRARY[program];
+        const requestedIssue = String(body.issue ?? BENEFITS_DEFAULT_ISSUE[program]);
+        const issue = library[requestedIssue] ? requestedIssue : BENEFITS_DEFAULT_ISSUE[program];
+        const checkedAt = new Date().toISOString();
+        const results: Array<{ label: string; url: string; kind: string; reachable: boolean; title: string; checkedAt: string; error?: string }> = [];
+        for (const source of library[issue]) {
+            try {
+                const page = await scrapePage(source.url);
+                results.push({ ...source, reachable: true, title: page.title, checkedAt });
+            } catch (err) {
+                results.push({ ...source, reachable: false, title: '', checkedAt, error: err instanceof Error ? err.message : 'Source could not be reached.' });
+            }
+        }
+        return json({ program, jurisdiction: BENEFITS_JURISDICTION[program], issue, checkedAt, results, allReachable: results.length > 0 && results.every((item) => item.reachable), warning: 'This verifies that the configured authority pages for the selected program/issue were reachable and identifies their authority category. It is not a legal opinion that every cited authority is sufficient or dispositive for a particular filing. Recheck immediately before filing.' });
+    }],
     'POST /api/benefits-lens': [requireAuth(), async (ctx) => {
         const body = ctx.body as { program?: string; issue?: string; speed?: WorkMode };
         const requestedProgram = String(body.program ?? 'VA / VBA');
