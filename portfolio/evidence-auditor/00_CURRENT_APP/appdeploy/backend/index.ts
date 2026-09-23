@@ -30,8 +30,9 @@ type EvidenceInventoryItem = {
     storageStatus: 'Stored original' | 'Derived reference' | 'Indexed only';
     classificationBasis: 'heuristic';
 };
+type EvidenceBundleRecord = { name: string; purpose: string; documentIds: string[]; createdAt: string; updatedAt: string };
 
-const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}` });
+const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}`, bundles: `evidence_bundles_${userId}` });
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'document';
 const safeUploadId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
 const textContext = (docs: Array<DocumentRecord & { id: string }>, query = '') => {
@@ -928,6 +929,41 @@ export const handler = router({
             .filter(([key, group]) => key !== 'ungrouped' && group.length > 1)
             .map(([versionGroup, group]) => ({ versionGroup, documentIds: group.map((item) => item.id), names: group.map((item) => item.name), note: 'Possible versions based on filename normalization; this is a review cue, not a conclusion.' }));
         return json({ items, duplicateGroups, versionGroups, generatedAt: new Date().toISOString(), warning: 'Categories, document types, candidate dates, duplicate groups, and version groups are heuristic review aids. Original records control.' });
+    }],
+
+    'GET /api/evidence/bundles': [requireAuth(), async (ctx) => {
+        const { items } = await db.list<EvidenceBundleRecord>(tables(ctx.user!.userId).bundles, { limit: 50 });
+        const docs = await getDocuments(ctx.user!.userId) as Array<DocumentRecord & { id: string }>;
+        const byId = new Map(docs.map((doc) => [doc.id, doc]));
+        return json({ bundles: items.map((bundle) => ({
+            ...bundle,
+            sources: bundle.documentIds.map((id) => {
+                const doc = byId.get(id);
+                return doc ? { id, name: doc.name, locator: vaultLocator(doc) } : { id, name: 'Source no longer available', locator: 'Unavailable' };
+            }),
+        })) });
+    }],
+    'POST /api/evidence/bundles': [requireAuth(), async (ctx) => {
+        const body = ctx.body as { name?: string; purpose?: string; documentIds?: string[] };
+        const name = String(body.name ?? '').trim().slice(0, 120);
+        const purpose = String(body.purpose ?? '').trim().slice(0, 800);
+        const requestedIds = Array.from(new Set((Array.isArray(body.documentIds) ? body.documentIds : []).map((id) => String(id)).filter(Boolean))).slice(0, 100);
+        if (!name) return error('Bundle name is required.', 400);
+        if (!requestedIds.length) return error('Select at least one evidence source for the bundle.', 400);
+        const docs = await getDocuments(ctx.user!.userId) as Array<DocumentRecord & { id: string }>;
+        const validIds = new Set(docs.map((doc) => doc.id));
+        const documentIds = requestedIds.filter((id) => validIds.has(id));
+        if (!documentIds.length) return error('None of the selected sources are available in this case.', 400);
+        const now = new Date().toISOString();
+        const record: EvidenceBundleRecord = { name, purpose, documentIds, createdAt: now, updatedAt: now };
+        const [id] = await db.add(tables(ctx.user!.userId).bundles, [record]);
+        if (!id) return error('Evidence bundle could not be saved.', 500);
+        return json({ bundle: { id, ...record }, ignoredSourceIds: requestedIds.filter((sourceId) => !validIds.has(sourceId)) });
+    }],
+    'DELETE /api/evidence/bundles/:id': [requireAuth(), async (ctx) => {
+        const [deleted] = await db.delete(tables(ctx.user!.userId).bundles, [ctx.params.id]);
+        if (!deleted) return error('Evidence bundle was not found or could not be deleted.', 404);
+        return json({ deleted: true });
     }],
 
     'POST /api/vault/organize': [requireAuth(), async (ctx) => {
