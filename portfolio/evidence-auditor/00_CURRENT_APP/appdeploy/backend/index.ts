@@ -955,18 +955,26 @@ export const handler = router({
         let parsed: { items?: EvidenceTimelineItem[] } = {};
         try { parsed = JSON.parse(generated.text) as { items?: EvidenceTimelineItem[] }; } catch { return error('Timeline output could not be structured safely. Run it again or use the chat Timeline Builder.', 422); }
         const validNames = new Set(docs.map((doc) => doc.name));
-        const items = (Array.isArray(parsed.items) ? parsed.items : []).filter((item) => item && String(item.event ?? '').trim()).slice(0, 100).map((item) => ({
-            date: String(item.date ?? 'Date uncertain').trim() || 'Date uncertain',
-            event: String(item.event ?? '').trim(),
-            source: validNames.has(String(item.source ?? '').replace(/^\[|\]$/g, '')) ? String(item.source).replace(/^\[|\]$/g, '') : String(item.source ?? '').trim(),
-            significance: String(item.significance ?? '').trim(),
-        }));
-        if (!items.length) return error('No source-grounded timeline items could be produced from this record.', 422);
+        const unresolvedSources: string[] = [];
+        const items = (Array.isArray(parsed.items) ? parsed.items : []).filter((item) => item && String(item.event ?? '').trim()).slice(0, 100).map((item) => {
+            const source = String(item.source ?? '').replace(/^\[|\]$/g, '').trim();
+            if (!validNames.has(source)) {
+                if (source) unresolvedSources.push(source);
+                return null;
+            }
+            return {
+                date: String(item.date ?? 'Date uncertain').trim() || 'Date uncertain',
+                event: String(item.event ?? '').trim(),
+                source,
+                significance: String(item.significance ?? '').trim(),
+            };
+        }).filter((item): item is EvidenceTimelineItem => Boolean(item));
+        if (!items.length) return error('No source-grounded timeline items with resolvable source filenames could be produced from this record.', 422);
         const table = tables(userId).timeline;
         const { items: previous } = await db.list<EvidenceTimelineRecord>(table, { limit: 20 });
         const priorIds = (previous as Array<EvidenceTimelineRecord & { id?: string }>).map((item) => item.id).filter((id): id is string => Boolean(id));
         if (priorIds.length) await db.delete(table, priorIds);
-        const record: EvidenceTimelineRecord = { items, createdAt: new Date().toISOString(), warning: 'AI-generated chronology derived from indexed sources. Verify dates, source locators, and context against original records before consequential use.' };
+        const record: EvidenceTimelineRecord = { items, createdAt: new Date().toISOString(), warning: `AI-generated chronology derived from indexed sources. Verify dates, source locators, and context against original records before consequential use.${unresolvedSources.length ? ` ${unresolvedSources.length} timeline item(s) were excluded because their source filename could not be resolved to the case record.` : ''}` };
         const [id] = await db.add(table, [record]);
         if (!id) return error('Timeline could not be saved.', 500);
         return json({ timeline: { id, ...record } });
