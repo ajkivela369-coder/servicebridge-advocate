@@ -112,3 +112,63 @@ Steps:
 5. Click the YouTube Mixer and apply the mix
 
 Expected: The imported reference appears with a summary, production traits and adjustable weight; the six-axis blend updates; applying the mix uses high-level traits only and the UI explicitly rejects copied scripts, jokes, voices, artwork and creator identity.
+
+
+## Test 9 - Simple mode starts with one clear cinematic workflow [sanity]
+Viewport: desktop (1280x800)
+Covers: Simple / Pro mode switch, uncluttered landing page, public reference URL input, one-click cinematic generation
+Description: Verifies the default landing page is designed for a non-technical creator rather than exposing Pro controls.
+
+Steps:
+1. Open GrimForge fresh
+2. Confirm Simple is selected
+3. Review the first screen before scrolling
+4. Paste a public YouTube/video/page URL
+5. Enter a short episode request
+
+Expected: The first screen prominently shows the reference URL, episode request, world, length and one “Veyr — Make the Full Cinematic Episode” action. YouTube Mixer, Voice Studio, Art Style, scene engineering, rights and production-readiness controls are not shown on the Simple landing page.
+
+## Test 10 - One click creates the full Simple Mode episode package
+Viewport: desktop (1280x800)
+Covers: POST /api/simple-create, reference analysis, complete episode writing, narration, dialogue, cinematography, sound direction, automatic scene-art generation, preview
+Description: Verifies Simple mode performs the whole pre-render creative pipeline instead of stopping at a script plan.
+
+Steps:
+1. Stay in Simple mode
+2. Paste a readable public reference URL
+3. Enter “Make an original five-minute dark-fantasy siege episode using the reference only for broad pacing and cinematography”
+4. Click “Veyr — Make the Full Cinematic Episode”
+5. Wait for scene-art generation to finish
+6. Review “Your complete episode package”
+7. Open the Episode Preview Player
+
+Expected: The result contains 7-10 directed scenes with narration, dialogue or a narration-only marker, detailed cinematography, camera motion, sound direction and generated scene images. The preview uses the generated images and narration. The reference note accurately states whether public page text was accessible and never claims the source video was watched/transcribed when it was not.
+
+## Test 11 - Simple result can hand off cleanly to Pro
+Viewport: desktop (1280x800)
+Covers: Simple-to-Pro handoff, state preservation, advanced controls
+Description: Verifies technical controls are available without forcing them into the initial workflow.
+
+Steps:
+1. Complete a Simple mode episode
+2. Click “Refine in Pro”
+3. Open Scenes
+4. Open Reference Lab
+5. Open Voice Studio
+
+Expected: The generated episode, scene images, narration/dialogue and reference context remain available. Pro exposes scene editing, reference weights, voice controls, art controls, cinematography, source/rights and production-readiness tools.
+
+## Test 12 - Pro mode preserves the advanced studio
+Viewport: desktop (1280x800)
+Covers: command deck, YouTube Mixer, Reference Lab, Voice Studio, Art Style, scene editing, production readiness
+Description: Verifies the simplified landing experience does not remove the technical workflow.
+
+Steps:
+1. Switch to Pro
+2. Review Quick Edit Controls
+3. Open YouTube Mixer
+4. Open Reference Lab
+5. Open Voice Studio
+6. Open Scenes
+
+Expected: The full technical studio remains available and the current episode can be edited without returning to Simple mode.
