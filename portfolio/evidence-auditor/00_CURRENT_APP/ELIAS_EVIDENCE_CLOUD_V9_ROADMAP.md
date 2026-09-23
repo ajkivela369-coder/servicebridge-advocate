@@ -8,19 +8,19 @@ This document is intentionally de-identified. It defines product boundaries and 
 
 Evidence Auditor may also receive its own public landing page/route later, but it should not create a separate patient-data silo. The shared case layer remains the Evidence Cloud.
 
-## Unified specialist model
+## One-engine capability model
 
-| Specialist | Job |
+**Elias is the only user-facing AI identity.** Evidence Auditor is its flagship feature/workspace. The following are internal capabilities or contextual lenses rather than separate bots:
+
+| Capability / lens | Job |
 | --- | --- |
-| Elias | Orchestrate the full case and route work |
 | Evidence Auditor | Audit support, contradictions, gaps, chronology, provenance and reviewer-readiness |
-| NeuroEval | Review neurologic and functional evidence without inventing diagnosis/causation |
-| HealthQA | Explain supplied medical evidence in patient-friendly language |
-| Packet Builder | Assemble verified evidence into structured draft submissions |
-| Citation Auditor | Verify that important statements trace to actual sources |
-| Document Copilot | Organize and format evidence-backed pages and sections |
+| Health + Neuro lens | Explain supplied health records and review neurologic/functional evidence without inventing diagnosis or causation |
+| Packet building | Assemble verified evidence into structured draft submissions |
+| Citation verification | Verify that important statements trace to actual sources |
+| Document composition | Organize and format evidence-backed pages and sections |
 
-All specialists use the same user-scoped case record and the same evidence-type boundaries.
+All capabilities use the same user-scoped case record, evidence-type boundaries, and Elias orchestration layer.
 
 ## Evidence Cloud capability status
 
@@ -34,7 +34,7 @@ All specialists use the same user-scoped case record and the same evidence-type 
 | Smart metadata extraction | Partial; source/page/date metadata exists in places, but provider/facility/document-type extraction is not complete end-to-end |
 | Patient timeline | **Persistent normalized Evidence Timeline implemented in the GitHub development snapshot.** Generated events must resolve to indexed source filenames; uncertain dates stay explicit and a human-verification warning is retained. |
 | Statement-to-source linking | **Structured Claim → Source Trace implemented in the GitHub development snapshot.** It resolves filenames to indexed sources, attaches stored locators, separates support/conflict/context, and only preserves an exact quote when literal source-text verification succeeds. |
-| Persistent reference across specialists | Product architecture established; specialists are unified behind the same Copilot and case record |
+| Persistent reference across capabilities | Product architecture established; Elias uses one case record across every workspace and hidden capability |
 | Duplicate/version control | **Advisory detection implemented in the GitHub development snapshot** using deterministic content fingerprints and filename-normalized possible-version groups. No automatic deletion/overwrite; human verification remains required. |
 | Natural-language case search | Existing record search/chat supports evidence queries; dedicated vault search is now surfaced locally in the snapshot |
 | Evidence bundles | **Implemented in the GitHub development snapshot** as user-scoped saved collections of source IDs. Bundles do not duplicate or rewrite underlying evidence. |
@@ -72,13 +72,13 @@ A broken or ambiguous link should become an audit warning rather than being sile
 
 ## Floating Copilot behavior
 
-The Copilot remains available across the app and can switch specialist modes without changing the underlying case.
+Elias remains available across the app as one assistant identity. Workspace context and the user request determine which internal capability/tool is invoked; there is no specialist-bot selector.
 
 Primary verbs:
 
 **Find → Compare → Explain → Organize → Link → Draft → Build → Verify → Export**
 
-The desired direction is app-operating behavior: filter evidence, select sources, build a chronology, create a bundle, populate a packet, flag contradictions, or prepare export. The user should be able to see and review those changes.
+The desired direction is app-operating behavior: filter evidence, select sources, build a chronology, create a bundle, populate a packet, flag contradictions, or prepare export. The user should see and review those changes without needing to understand which internal tool performed them.
 
 ## Next implementation sequence
 
