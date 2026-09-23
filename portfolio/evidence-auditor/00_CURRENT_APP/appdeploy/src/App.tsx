@@ -847,6 +847,37 @@ function App() {
         } finally { setBusy(''); }
     };
 
+    const toggleBundleSource = (id: string) => {
+        setBundleSelectedIds((current) => current.includes(id) ? current.filter((sourceId) => sourceId !== id) : [...current, id]);
+    };
+
+    const saveEvidenceBundle = async () => {
+        if (!bundleName.trim()) { setNotice('Give this evidence bundle a name first.'); return; }
+        if (!bundleSelectedIds.length) { setNotice('Select at least one source for this evidence bundle.'); return; }
+        setBusy('Saving evidence bundle…');
+        setNotice('');
+        try {
+            await api.post('/api/evidence/bundles', { name: bundleName.trim(), purpose: bundlePurpose.trim(), documentIds: bundleSelectedIds });
+            setBundleName('');
+            setBundlePurpose('');
+            setBundleSelectedIds([]);
+            await loadEvidenceBundles();
+            setNotice('Evidence bundle saved. The bundle references original case sources; it does not create duplicate evidence files.');
+        } catch (err) {
+            setNotice(errorMessage(err, 'Evidence bundle could not be saved.'));
+        } finally { setBusy(''); }
+    };
+
+    const deleteEvidenceBundle = async (id: string) => {
+        if (!confirm('Delete this saved evidence bundle? The underlying evidence sources will not be deleted.')) return;
+        try {
+            await api.delete('/api/evidence/bundles/' + id);
+            await loadEvidenceBundles();
+            setNotice('Evidence bundle deleted. Original case sources were left unchanged.');
+        } catch (err) {
+            setNotice(errorMessage(err, 'Evidence bundle could not be deleted.'));
+        }
+    };
     const runLawLens = async () => {
         if (!plugins['Benefits Law & Medical Lens']) {
             setNotice('Benefits Law & Medical Lens is disabled in Plugins.');
