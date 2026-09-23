@@ -1,0 +1,41 @@
+name: GrimForge Web Build
+
+on:
+  push:
+    branches:
+      - grimforge-open-source-upgrades
+    paths:
+      - "portfolio/grimforge-studio/appdeploy/**"
+      - "portfolio/grimforge-studio/cinema-bridge/**"
+      - ".github/workflows/grimforge-web.yml"
+  pull_request:
+    paths:
+      - "portfolio/grimforge-studio/appdeploy/**"
+      - "portfolio/grimforge-studio/cinema-bridge/**"
+      - ".github/workflows/grimforge-web.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portfolio/grimforge-studio/appdeploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm run build
+
+  cinema-bridge-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m py_compile portfolio/grimforge-studio/cinema-bridge/app.py
