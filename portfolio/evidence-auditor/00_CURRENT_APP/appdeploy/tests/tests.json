@@ -3,41 +3,176 @@
     "name": "Simple mode gates generation and previews the exact PDF",
     "sanity": true,
     "viewport": "desktop",
-    "covers": ["upper-right Simple/Pro toggle", "upload/indexing generation gate", "green upload-complete banner", "POST /api/submission-brief", "submission preflight status", "PDF.js exact generated-PDF preview"],
+    "covers": [
+      "upper-right Simple/Pro toggle",
+      "upload/indexing generation gate",
+      "green upload-complete banner",
+      "POST /api/submission-brief",
+      "submission preflight status",
+      "PDF.js exact generated-PDF preview"
+    ],
     "description": "Verifies backward-compatible Simple mode from evidence upload through preflighted PDF preview.",
-    "steps": ["Sign in and confirm Simple mode with the Simple/Pro switch in the upper-right and Generate Submission-Ready PDF in Step 2", "Confirm Generate is disabled before evidence is indexed, upload fictional evidence, and confirm the green Upload complete banner", "After indexing completes choose a program/issue, generate the filing, and inspect the preflight status and PDF.js preview"],
+    "steps": [
+      "Sign in and confirm Simple mode with the Simple/Pro switch in the upper-right and Generate Submission-Ready PDF in Step 2",
+      "Confirm Generate is disabled before evidence is indexed, upload fictional evidence, and confirm the green Upload complete banner",
+      "After indexing completes choose a program/issue, generate the filing, and inspect the preflight status and PDF.js preview"
+    ],
     "expected": "Generate stays disabled during upload/indexing, unlocks afterward, and the generated filing shows Draft/Needs Review/Ready to Submit preflight information while the exact PDF pages render in the preview."
   },
   {
     "name": "VA filing uses duty chronology and treats missing LOD as a development gap",
     "viewport": "desktop",
-    "covers": ["Elias v8 VA agency architecture", "duty-status chronology", "direct/secondary/aggravation theory separation", "missing-LOD development-gap handling", "functional reliability analysis"],
+    "covers": [
+      "Elias v8 VA agency architecture",
+      "duty-status chronology",
+      "direct/secondary/aggravation theory separation",
+      "missing-LOD development-gap handling",
+      "functional reliability analysis"
+    ],
     "description": "Uses synthetic evidence to verify VA analysis does not convert an absent LOD into affirmative negative evidence.",
-    "steps": ["Upload a fictional service record with dated duty periods, a fictional medical record, and a fictional note that an LOD record is not present", "Select VA / VBA and Service connection and generate a submission", "Inspect chronology, arguments, and focused development questions"],
+    "steps": [
+      "Upload a fictional service record with dated duty periods, a fictional medical record, and a fictional note that an LOD record is not present",
+      "Select VA / VBA and Service connection and generate a submission",
+      "Inspect chronology, arguments, and focused development questions"
+    ],
     "expected": "The filing organizes relevant duty chronology before nexus/aggravation reasoning, distinguishes applicable theories, and treats the missing LOD as a development gap unless the fictional record contains an actual adverse finding."
   },
   {
     "name": "SSA filing uses RFC and sustained-work reliability rather than VA framing",
     "viewport": "desktop",
-    "covers": ["Elias v8 SSA five-step framework", "RFC by function", "symptom and medical-opinion evaluation", "past-work/other-work analysis", "attendance/pace/persistence/reliability"],
+    "covers": [
+      "Elias v8 SSA five-step framework",
+      "RFC by function",
+      "symptom and medical-opinion evaluation",
+      "past-work/other-work analysis",
+      "attendance/pace/persistence/reliability"
+    ],
     "description": "Verifies synthetic SSA evidence is analyzed under SSA disability architecture rather than service-connection concepts.",
-    "steps": ["Upload fictional medical and work-history evidence describing intermittent limitations and recovery time", "Select Social Security (SSDI / SSI) and RFC / sustained work capacity", "Generate the filing and inspect the functional section and arguments"],
+    "steps": [
+      "Upload fictional medical and work-history evidence describing intermittent limitations and recovery time",
+      "Select Social Security (SSDI / SSI) and RFC / sustained work capacity",
+      "Generate the filing and inspect the functional section and arguments"
+    ],
     "expected": "The filing uses SSA sequential/RFC concepts and sustained-work reliability, with no service-connection or military nexus framing."
   },
   {
     "name": "Preflight blocks unsupported readiness and deduplicates cited sources",
     "viewport": "desktop",
-    "covers": ["empty-authority preflight failure", "uncited proposition blocker", "duplicate source appendix dedupe", "cited-sources-only appendix", "Draft/Needs Review status"],
+    "covers": [
+      "empty-authority preflight failure",
+      "uncited proposition blocker",
+      "duplicate source appendix dedupe",
+      "cited-sources-only appendix",
+      "Draft/Needs Review status"
+    ],
     "description": "Verifies a filing cannot be labeled Ready to Submit when core authority/support requirements fail and duplicate/uncited appendix entries are not padded into the filing.",
-    "steps": ["Use fictional evidence with duplicated source material and generate a filing while official authority retrieval is unavailable or while an argument lacks record citation support", "Inspect Submission Preflight", "Inspect the Cited Source Library / Appendix"],
+    "steps": [
+      "Use fictional evidence with duplicated source material and generate a filing while official authority retrieval is unavailable or while an argument lacks record citation support",
+      "Inspect Submission Preflight",
+      "Inspect the Cited Source Library / Appendix"
+    ],
     "expected": "The filing is Draft or Needs Review with visible blockers; duplicate sources are removed and the appendix normally contains only sources actually cited by the filing."
   },
   {
     "name": "Quote Check protects exact quotation versus paraphrase on mobile",
     "viewport": "mobile",
-    "covers": ["Elias v8 original-source control", "exact quote vs paraphrase", "evidence-type separation", "primary-record precedence", "Pro-mode advanced audit preservation"],
+    "covers": [
+      "Elias v8 original-source control",
+      "exact quote vs paraphrase",
+      "evidence-type separation",
+      "primary-record precedence",
+      "Pro-mode advanced audit preservation"
+    ],
     "description": "Verifies Elias does not turn similar wording or secondary summaries into an exact quotation.",
-    "steps": ["In Pro mode upload a fictional primary record containing one exact sentence and a fictional summary that paraphrases it", "Open Elias Copilot Quote Check and ask whether the summary wording is an exact quote", "Ask Elias to classify the support as exact quote, paraphrase, claimant report, clinician observation, objective test, medical opinion, agency finding, or AI synthesis"],
+    "steps": [
+      "In Pro mode upload a fictional primary record containing one exact sentence and a fictional summary that paraphrases it",
+      "Open Elias Copilot Quote Check and ask whether the summary wording is an exact quote",
+      "Ask Elias to classify the support as exact quote, paraphrase, claimant report, clinician observation, objective test, medical opinion, agency finding, or AI synthesis"
+    ],
     "expected": "Elias identifies only verbatim primary-record language as an exact quote, labels similar wording as paraphrase, preserves evidence-type distinctions, and keeps the advanced Pro audit tools available."
+  },
+  {
+    "name": "Evidence Cloud shares one record across specialist modes",
+    "viewport": "desktop",
+    "covers": [
+      "Evidence Cloud navigation",
+      "shared indexed record",
+      "Elias specialist selector",
+      "Evidence Auditor",
+      "NeuroEval",
+      "HealthQA",
+      "Packet Builder",
+      "Citation Auditor",
+      "Document Copilot"
+    ],
+    "description": "Verifies the unified app does not require separate uploads for each specialist mode.",
+    "steps": [
+      "Upload two fictional evidence files and wait for indexing",
+      "Open Evidence Cloud and confirm both sources are present",
+      "Open the floating Copilot and switch between Evidence Auditor, NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot",
+      "Run a source-grounded Find or Verify action from at least two specialist modes"
+    ],
+    "expected": "Every specialist sees and reasons over the same indexed case sources; switching modes does not create a new evidence silo or require another upload."
+  },
+  {
+    "name": "Smart evidence inventory treats duplicate and version detection as advisory",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/evidence/inventory",
+      "heuristic metadata",
+      "deterministic fingerprint duplicate grouping",
+      "filename-normalized version grouping",
+      "original-source control"
+    ],
+    "description": "Verifies duplicate/version intelligence produces review cues without deleting, replacing, or upgrading inferred metadata into fact.",
+    "steps": [
+      "Upload two identical fictional text records with different filenames plus two filenames that look like revisions",
+      "Open Evidence Cloud",
+      "Inspect Possible duplicates, Possible versions, storage status, locator, candidate dates, and HEURISTIC METADATA labels",
+      "Confirm no source is automatically removed or overwritten"
+    ],
+    "expected": "The identical records can be grouped as likely duplicates and revision-like names can be grouped as possible versions, but the UI states these are advisory and preserves every original source."
+  },
+  {
+    "name": "Evidence trace and app-aware Copilot preserve provenance",
+    "viewport": "desktop",
+    "covers": [
+      "Find",
+      "Compare",
+      "Explain",
+      "Organize",
+      "Link",
+      "Draft",
+      "Build",
+      "Verify",
+      "Export",
+      "Evidence Trace standard",
+      "Citation Auditor"
+    ],
+    "description": "Verifies the floating Copilot can operate across app workspaces while preserving a reviewable source-to-output chain.",
+    "steps": [
+      "Upload synthetic evidence with one exact quotation, one clinician observation, and one agency finding",
+      "Open Citation Auditor specialist mode and run Link",
+      "Run Compare in Evidence Auditor and Build in Packet Builder",
+      "Inspect source identities, locators, evidence classifications, and generated statements"
+    ],
+    "expected": "Outputs keep source fact, evidence type, interpretation, and generated prose distinct; ambiguous provenance is flagged rather than silently repaired."
+  },
+  {
+    "name": "Under-5-MB export is not falsely guaranteed",
+    "viewport": "desktop",
+    "covers": [
+      "Packet Studio",
+      "under-5-MB target",
+      "visual QA boundary",
+      "compression boundary"
+    ],
+    "description": "Verifies the app distinguishes existing packet generation from unfinished screenshot/crop, visual-QA, and final compression validation.",
+    "steps": [
+      "Open Packet Studio with fictional indexed evidence",
+      "Inspect the under-5-MB export target notice",
+      "Generate or preview a filing draft"
+    ],
+    "expected": "The UI describes under-5-MB output as a target requiring final validation and never claims successful compression merely because a PDF was generated."
   }
 ]
