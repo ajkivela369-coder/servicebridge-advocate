@@ -1,0 +1,99 @@
+# Tests
+
+## Test 1 - Create a full Veyr episode and open the preview [sanity]
+Viewport: desktop (1280x800)
+Covers: one-click episode creation, POST /api/generate-episode, speech-profile preferences, generated preview player, cinematic mode entry point
+Description: Verifies the simple creator path still creates an episode while carrying speech direction into Veyr.
+
+Steps:
+1. Leave the default episode request in the large Veyr prompt
+2. Click "Create Full Episode"
+3. After generation completes, click "Watch Preview"
+
+Expected: A generated episode title and thesis are visible and the preview player shows an episode scene.
+
+## Test 2 - Open the top YouTube Mixer and apply a mix
+Viewport: desktop (1280x800)
+Covers: top quick-edit deck, YouTube Mixer, mix-and-match weights, POST /api/remix-episode
+Description: Verifies the top manual controls remain immediately accessible and the mixer still performs a real episode remix.
+
+Steps:
+1. Click the top "YouTube Mixer" control
+2. Change one selected channel weight
+3. Click "Apply Mix to Episode"
+
+Expected: Manual Studio opens on YouTube Mixer and the mixer reports that the mix was applied to the current episode.
+
+## Test 3 - Show Kokoro as the free default voice engine
+Viewport: desktop (1280x800)
+Covers: Voice Studio shortcut, Kokoro local neural TTS, local WAV controls, browser fallback, optional Google premium disclosure
+Description: Verifies GrimForge exposes a zero-cost local neural narration path without requiring a paid TTS credential.
+
+Steps:
+1. Click the top "Voice Studio" control
+2. Review the "Kokoro Free Neural · Default" panel
+3. Review the available WAV generation controls and the Google Cloud section
+
+Expected: Kokoro is visibly the default free neural option, controls exist for preview/current-scene/full-episode WAV generation, browser speech remains available below it, and Google Cloud is labeled optional premium.
+
+## Test 4 - Apply a reference-derived speech profile to the episode
+Viewport: desktop (1280x800)
+Covers: Veyr Speech Director, reference-derived delivery presets, dialogue modes, POST /api/rewrite-speech
+Description: Verifies speech-direction controls still rewrite narration independently from the TTS engine.
+
+Steps:
+1. Click the top "Voice Studio" control
+2. Select "Cathedral Warlord"
+3. Select "Dark Sermon"
+4. Click "Apply Speech Style to Episode"
+
+Expected: Cathedral Warlord and Dark Sermon remain visibly selected and a success notice says the speech style was applied to the episode narration.
+
+## Test 5 - Preserve mobile recovery after generation failure
+Viewport: mobile (375x667)
+Covers: responsive top control deck, visible AI failure state, manual studio recovery
+Description: Verifies a failed episode-generation call does not block manual controls.
+
+QA Faults:
+```json
+[
+  {
+    "method": "POST",
+    "path": "/api/generate-episode",
+    "status": 500,
+    "body_json": { "error": "simulated_generation_failure" }
+  }
+]
+```
+
+Steps:
+1. Click "Create Full Episode"
+2. Confirm the failure message is visible
+3. Click the top "YouTube Mixer" control
+
+Expected: The generation error is visible and Manual Studio opens successfully from the top control deck.
+
+## Test 6 - Direct a cinematic cut from the current episode
+Viewport: desktop (1280x800)
+Covers: Cinematic Forge, POST /api/cinematic-direct, continuity-aware shot direction, cinematic animatic presentation
+Description: Verifies the cinematic workflow converts the current episode into a directed story-film plan without pretending a true MP4 render exists.
+
+Steps:
+1. Click the top "Cinematic Forge" control
+2. Wait for Veyr to finish the cinematic pass
+3. Review Production Readiness and Episode Preview Player
+
+Expected: Cinematic direction becomes ready, the success notice says the cinematic cut was applied, and the preview remains explicitly labeled as an animatic until a true video render engine is connected.
+
+## Test 7 - Production Readiness shows the honest pipeline
+Viewport: desktop (1280x800)
+Covers: production readiness dashboard, script readiness, cinematic direction status, storyboard coverage, narration status, final MP4 status
+Description: Verifies the studio summarizes what is actually ready and gives direct next-step controls without claiming an unavailable render.
+
+Steps:
+1. Review the Production Readiness panel
+2. Click "Direct cut" if cinematic direction is not ready
+3. Click "Generate storyboard" if scene art is incomplete
+4. Review the Final MP4 stage
+
+Expected: The dashboard visibly reports script/scenes, cinematic direction, storyboard frame count, narration, and final MP4 separately; missing stages are actionable and Final MP4 remains marked external/not loaded until a real file exists.
