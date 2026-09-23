@@ -35,9 +35,9 @@ All specialists use the same user-scoped case record and the same evidence-type 
 | Patient timeline | Existing Timeline Builder can generate chronology; a persistent normalized timeline data model remains a next step |
 | Statement-to-source linking | Strong source-control rules exist; exact structured source→page→claim graph remains a next step |
 | Persistent reference across specialists | Product architecture established; specialists are unified behind the same Copilot and case record |
-| Duplicate/version control | Not yet established end-to-end |
+| Duplicate/version control | **Advisory detection implemented in the GitHub development snapshot** using deterministic content fingerprints and filename-normalized possible-version groups. No automatic deletion/overwrite; human verification remains required. |
 | Natural-language case search | Existing record search/chat supports evidence queries; dedicated vault search is now surfaced locally in the snapshot |
-| Evidence bundles | Next step |
+| Evidence bundles | **Implemented in the GitHub development snapshot** as user-scoped saved collections of source IDs. Bundles do not duplicate or rewrite underlying evidence. |
 | Submission builder | Existing Packet Studio / filing workflow |
 | Provenance | Existing rules and citations; structured provenance graph remains a next step |
 | Human verification | Established product rule and visible gate |
@@ -83,9 +83,9 @@ The desired direction is app-operating behavior: filter evidence, select sources
 
 1. Create a structured EvidenceItem + SourceLocator + EvidenceClaim data model.
 2. Add backend metadata extraction and confidence/verification state.
-3. Add duplicate/version detection using stable hashes plus human-readable version relationships.
+3. Strengthen current advisory duplicate/version detection with cryptographic file hashes for stored originals and explicit human-confirmed version relationships.
 4. Persist a normalized timeline rather than generating chronology only as prose.
-5. Add evidence bundles and saved issue views.
+5. Expand the now-implemented Evidence Bundles with rename/edit, bundle-scoped audit, and packet handoff.
 6. Add claim-to-source graph UI and Citation Auditor blockers.
 7. Add page-image extraction, crop selection, and source/page stamping.
 8. Add diagram/illustration generation with explicit "illustration, not source evidence" labeling.
