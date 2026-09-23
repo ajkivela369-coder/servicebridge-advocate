@@ -13,7 +13,11 @@ type User = { userId: string; email?: string; name?: string };
 type Memory = { enabled: boolean; caseLabel: string; goal: string; notes: string };
 type Doc = { id: string; name: string; contentType: string; charCount: number; pageCount: number; sourceMode?: 'pdf' | 'text' | 'ocr' | 'email' | 'web' | 'search' | 'media'; sourceUrl?: string; createdAt: string; excerpt: string };
 type IntegrationStatus = { webSearch: boolean; neuralVoice: boolean; gmailDirect: boolean; gmailNote: string; cloudVault: boolean; googleDriveDirect: boolean; driveNote: string };
-type VaultStatus = { root: string; fileCount: number; folders: Array<{ name: string; count: number }>; googleDriveDirect: boolean; driveNote: string }; 
+type VaultStatus = { root: string; fileCount: number; folders: Array<{ name: string; count: number }>; googleDriveDirect: boolean; driveNote: string };
+type EvidenceInventoryItem = { id: string; name: string; category: EvidenceCategory; documentType: string; locator: string; candidateDates: string[]; fingerprint: string; versionGroup: string; storageStatus: 'Stored original' | 'Derived reference' | 'Indexed only'; classificationBasis: 'heuristic' };
+type EvidenceDuplicateGroup = { fingerprint: string; documentIds: string[]; names: string[]; note: string };
+type EvidenceVersionGroup = { versionGroup: string; documentIds: string[]; names: string[]; note: string };
+type EvidenceInventory = { items: EvidenceInventoryItem[]; duplicateGroups: EvidenceDuplicateGroup[]; versionGroups: EvidenceVersionGroup[]; generatedAt: string; warning: string };
 type NeuralVoice = { voiceId: string; name: string; labels?: Record<string, string> };
 type LiveSearchResult = { answer: string; results: Array<{ title: string; url: string; content: string; publishedDate?: string }>; savedDocument?: Doc | null };
 type Chat = { id?: string; threadId: string; question: string; answer: string; tool: string; speed?: WorkMode; sources: string[]; createdAt: string };
@@ -148,6 +152,7 @@ function App() {
     const [submissionPreviewUrl, setSubmissionPreviewUrl] = useState('');
     const [submissionPreviewName, setSubmissionPreviewName] = useState('');
     const [vaultStatus, setVaultStatus] = useState<VaultStatus | null>(null);
+    const [evidenceInventory, setEvidenceInventory] = useState<EvidenceInventory | null>(null);
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
     const [neuralVoiceId, setNeuralVoiceId] = useState('');
     const [mediaFiles, setMediaFiles] = useState<File[]>([]);
@@ -185,12 +190,22 @@ function App() {
 
     const formatFileSize = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`; 
 
+    const loadEvidenceInventory = async () => {
+        try {
+            const { data } = await api.get('/api/evidence/inventory');
+            setEvidenceInventory(data);
+        } catch {
+            setEvidenceInventory(null);
+        }
+    };
+
     const load = async () => {
         const { data } = await api.get('/api/bootstrap');
         setMemory(data.memory ? { ...emptyMemory, ...data.memory } : emptyMemory);
         setDocuments(data.documents ?? []);
         setChats(data.chats ?? []);
         if (data.playbook) setPlaybook(data.playbook);
+        await loadEvidenceInventory();
     };
 
     const loadIntegrations = async () => {
@@ -922,6 +937,7 @@ function App() {
         category,
         count: documents.filter((document) => categorizeDocument(document) === category).length,
     })), [documents]);
+    const inventoryById = useMemo(() => new Map((evidenceInventory?.items ?? []).map((item) => [item.id, item])), [evidenceInventory]);
 
     if (!user) {
         return <main className='login-wrap'><section className='login-card'><div className='brand-mark'><Bot size={32} /></div><p className='eyebrow'>Elias + Evidence Auditor</p><h1>One evidence intelligence workspace.</h1><p>Elias orchestrates the case. Evidence Auditor is the flagship audit workspace. NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot share the same private evidence cloud instead of creating separate silos.</p><button className='primary large' onClick={signIn}><LogIn size={18} /> Sign in to Elias</button><p className='fine'>Human verification remains required. Record facts, reported history, opinion, agency findings, and AI synthesis remain distinct.</p>{notice && <div className='notice'>{notice}</div>}</section></main>;
@@ -1035,13 +1051,18 @@ function App() {
             {view === 'cloud' && <section className='workspace'>
                 <input ref={fileRef} className='hidden' multiple type='file' accept='.pdf,.txt,.md,.eml,.mbox,.png,.jpg,.jpeg,.webp,application/pdf,text/plain,text/markdown,message/rfc822,application/mbox,image/png,image/jpeg,image/webp' onChange={(e) => void upload(e.target.files)} />
                 <div className='page-head'><div><p className='eyebrow'>Patient evidence cloud</p><h1>Evidence Cloud</h1><p>The shared source layer for Elias, Evidence Auditor, NeuroEval, HealthQA, and Packet Studio. Upload once, organize privately, then reuse the same case evidence across every workflow.</p></div><div className='packet-head-actions'><button className='primary' onClick={() => fileRef.current?.click()}><Paperclip size={17} /> Add evidence</button><button className='secondary' disabled={!!busy} onClick={() => void organizeVault()}><FolderOpen size={16} /> Organize / Refresh</button><button className='secondary' disabled={!!busy} onClick={() => void exportVault()}><Archive size={16} /> Export ZIP</button></div></div>
-                <div className='metrics'><div><span>Indexed sources</span><strong>{documents.length}</strong></div><div><span>Private vault files</span><strong>{vaultStatus?.fileCount ?? 0}</strong></div><div><span>Evidence groups</span><strong>{categoryCounts.filter((item) => item.count > 0).length}</strong></div></div>
+                <div className='metrics'><div><span>Indexed sources</span><strong>{documents.length}</strong></div><div><span>Private vault files</span><strong>{vaultStatus?.fileCount ?? 0}</strong></div><div><span>Likely duplicates</span><strong>{evidenceInventory?.duplicateGroups.length ?? 0}</strong></div></div>
                 <section className='vault-panel'><div className='vault-head'><div><span className='result-kicker'>SHARED CASE STORAGE</span><h2>Private Evidence Cloud</h2><p>The existing Case Vault is now the shared evidence layer. Stored originals are organized into case folders when available; large locally indexed PDFs can remain indexed-only and are labeled that way rather than being represented as preserved originals.</p></div><Cloud size={26} /></div>{vaultStatus && <div className='vault-folders'>{vaultStatus.folders.map((folder) => <div key={folder.name}><FolderOpen size={14} /><span><strong>{folder.name}</strong><small>{folder.count} file{folder.count === 1 ? '' : 's'}</small></span></div>)}</div>}<small className='vault-note'>{integrations.driveNote}</small></section>
                 <div className='connector-note'><ShieldCheck size={17} /><div><strong>Original-source control</strong><span>Generated summaries, labels, interpretations, diagrams, and filing prose must stay distinguishable from the underlying record. Human verification remains required.</span></div></div>
                 <article className='research-panel'><div className='research-title'><Search size={18} /><div><strong>Search the Evidence Cloud</strong><span>Filename, excerpt, or automatic evidence category</span></div></div><input value={vaultQuery} onChange={(e) => setVaultQuery(e.target.value)} placeholder='Try: FCE, MRI, Guard orders, VA decision, correspondence…' /></article>
                 <div className='research-grid'>{categoryCounts.map((item) => <article key={item.category} className='research-panel'><div className='research-title'><FolderOpen size={17} /><div><strong>{item.category}</strong><span>{item.count} source{item.count === 1 ? '' : 's'}</span></div></div><button className='secondary tiny' onClick={() => setVaultQuery(item.category)} disabled={!item.count}>Filter</button></article>)}</div>
                 <div className='connector-note'><Brain size={17} /><div><strong>Evidence trace standard</strong><span>Source → page / locator → extracted evidence → evidence classification → interpretation → generated statement. Evidence Auditor and Citation Auditor should flag broken or ambiguous links.</span></div></div>
-                <h2 className='section-title'>Cloud source inventory</h2><div className='doc-list'>{filteredDocuments.map((document) => <article key={document.id} className='doc-card'><div>{document.sourceMode === 'ocr' ? <FileImage size={19} /> : document.sourceMode === 'email' ? <Mail size={19} /> : ['web', 'search'].includes(document.sourceMode || '') ? <Globe2 size={19} /> : document.sourceMode === 'media' ? <ImagePlus size={19} /> : <FolderOpen size={19} />}<div><strong>{document.name}</strong><span>{categorizeDocument(document)} · {document.pageCount} page{document.pageCount === 1 ? '' : 's'} · {Math.round(document.charCount / 1000)}k characters</span>{document.sourceUrl && <a className='source-link' href={document.sourceUrl} target='_blank' rel='noreferrer'>{document.sourceUrl}</a>}</div></div><p>{document.excerpt}</p><div className='chips'><span>{categorizeDocument(document)}</span><span>{document.sourceMode || 'indexed'}</span></div><button onClick={() => void removeDoc(document.id)}><Trash2 size={15} /> Delete</button></article>)}</div>
+                {evidenceInventory && <div className='review-grid'>
+                    <article><h3>Possible duplicates</h3>{evidenceInventory.duplicateGroups.length ? <ul>{evidenceInventory.duplicateGroups.map((group) => <li key={group.fingerprint}><strong>{group.names.join(' · ')}</strong><br /><small>{group.note}</small></li>)}</ul> : <p>No likely duplicate groups detected by the current fingerprint check.</p>}</article>
+                    <article><h3>Possible versions</h3>{evidenceInventory.versionGroups.length ? <ul>{evidenceInventory.versionGroups.map((group) => <li key={group.versionGroup}><strong>{group.names.join(' · ')}</strong><br /><small>{group.note}</small></li>)}</ul> : <p>No filename-based version groups detected.</p>}</article>
+                </div>}
+                {evidenceInventory && <div className='connector-note'><CircleAlert size={17} /><div><strong>Smart metadata is advisory</strong><span>{evidenceInventory.warning}</span></div></div>}
+                <h2 className='section-title'>Cloud source inventory</h2><div className='doc-list'>{filteredDocuments.map((document) => { const meta = inventoryById.get(document.id); return <article key={document.id} className='doc-card'><div>{document.sourceMode === 'ocr' ? <FileImage size={19} /> : document.sourceMode === 'email' ? <Mail size={19} /> : ['web', 'search'].includes(document.sourceMode || '') ? <Globe2 size={19} /> : document.sourceMode === 'media' ? <ImagePlus size={19} /> : <FolderOpen size={19} />}<div><strong>{document.name}</strong><span>{meta?.documentType || categorizeDocument(document)} · {meta?.locator || `${document.pageCount} indexed page${document.pageCount === 1 ? '' : 's'}`} · {Math.round(document.charCount / 1000)}k characters</span>{document.sourceUrl && <a className='source-link' href={document.sourceUrl} target='_blank' rel='noreferrer'>{document.sourceUrl}</a>}</div></div><p>{document.excerpt}</p><div className='chips'><span>{meta?.category || categorizeDocument(document)}</span><span>{meta?.storageStatus || document.sourceMode || 'indexed'}</span>{meta?.candidateDates?.slice(0, 2).map((date) => <span key={`${document.id}-${date}`}>{date}</span>)}{meta && <span>HEURISTIC METADATA</span>}</div><button onClick={() => void removeDoc(document.id)}><Trash2 size={15} /> Delete</button></article>; })}</div>
                 {!filteredDocuments.length && <div className='empty-panel'>No loaded source matches this filter.</div>}
             </section>}
 
