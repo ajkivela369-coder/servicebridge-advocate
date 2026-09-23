@@ -69,11 +69,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ask.add_argument("--model", help="Optional model override for OpenAI mode")
     ask.add_argument("--json", action="store_true")
+    packet = sub.add_parser("packet", help="Assemble selected PDF pages or inspect a PDF")
+    packet_sub = packet.add_subparsers(dest="packet_command", required=True)
+    build = packet_sub.add_parser("build", help="Build from a JSON manifest and check size/links")
+    build.add_argument("manifest")
+    build.add_argument("output")
+    build.add_argument("--max-mb", type=float, default=5)
+    build.add_argument("--report", help="Save the provenance and QA report as JSON")
+    check = packet_sub.add_parser("check", help="Inspect page text, images, and URL annotations")
+    check.add_argument("pdf")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "packet":
+        from .packet import assemble, inspect_packet
+        report = (assemble(Path(args.manifest), Path(args.output), args.max_mb)
+                  if args.packet_command == "build" else inspect_packet(Path(args.pdf)))
+        rendered = json.dumps(report, indent=2)
+        if args.packet_command == "build" and args.report:
+            Path(args.report).write_text(rendered + "\n", encoding="utf-8")
+        print(rendered)
+        return 0 if report.get("ready", True) else 2
     database = _db_path(args.db)
 
     if args.command == "init":
