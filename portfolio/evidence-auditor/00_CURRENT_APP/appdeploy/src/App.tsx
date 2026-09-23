@@ -174,6 +174,7 @@ function App() {
     const [evidenceIllustration, setEvidenceIllustration] = useState<EvidenceIllustration | null>(null);
     const [derivedVisuals, setDerivedVisuals] = useState<DerivedVisualSummary[]>([]);
     const [selectedVisualPaths, setSelectedVisualPaths] = useState<string[]>([]);
+    const [pdfOptimizationNote, setPdfOptimizationNote] = useState('');
     const [traceClaim, setTraceClaim] = useState('');
     const [evidenceTrace, setEvidenceTrace] = useState<EvidenceTrace | null>(null);
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
@@ -305,16 +306,38 @@ function App() {
         const build = async () => {
             try {
                 let brief: SubmissionBrief = submissionBrief;
+                let optimizationNote = 'No derived visuals selected; no visual optimization was needed.';
                 if (selectedVisualPaths.length) {
                     const { data } = await api.post('/api/evidence/visuals/data', { paths: selectedVisualPaths });
-                    const visuals = (data.visuals ?? []).map((visual: { path: string; data: string; mimeType: string; metadata?: Record<string, unknown> }) => {
+                    const rawVisuals = (data.visuals ?? []) as Array<{ path: string; data: string; mimeType: string; metadata?: Record<string, unknown> }>;
+                    const prepare = async (visual: { path: string; data: string; mimeType: string; metadata?: Record<string, unknown> }, aggressive = false) => {
+                        const binary = atob(visual.data);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+                        const prepared = await image.resizeIfNeeded(new Blob([bytes], { type: visual.mimeType }), { maxDimension: aggressive ? 1200 : 1600, maxPixels: aggressive ? 1200000 : 2000000, quality: aggressive ? 0.62 : 0.8, mimeType: 'image/jpeg' });
                         const meta = (visual.metadata ?? {}) as { title?: string; label?: string; kind?: string; sourceName?: string; locator?: string; sources?: Array<{ name?: string; locator?: string }> };
                         const sources = Array.isArray(meta.sources)
                             ? meta.sources.map((source) => ({ name: String(source.name ?? ''), locator: String(source.locator ?? '') })).filter((source) => source.name)
                             : meta.sourceName ? [{ name: String(meta.sourceName), locator: String(meta.locator ?? '') }] : [];
-                        return { data: visual.data, mimeType: visual.mimeType, title: String(meta.title ?? visual.path.split('/').pop() ?? 'Derived visual'), label: String(meta.label ?? 'Derived visual. Original record controls.'), kind: String(meta.kind ?? 'derived_visual'), sources };
-                    });
+                        return { data: prepared.data, mimeType: prepared.mimeType, title: String(meta.title ?? visual.path.split('/').pop() ?? 'Derived visual'), label: String(meta.label ?? 'Derived visual. Original record controls.'), kind: String(meta.kind ?? 'derived_visual'), sources };
+                    };
+                    let visuals = await Promise.all(rawVisuals.map((visual) => prepare(visual, false)));
                     brief = { ...submissionBrief, visuals };
+                    let candidate = buildSubmissionPdf(brief, memory.caseLabel || 'Evidence_Case');
+                    optimizationNote = `${visuals.length} derived visual${visuals.length === 1 ? '' : 's'} optimized for the packet; stored originals/derived assets were not modified.`;
+                    if (candidate.blob.size > 5 * 1024 * 1024 && visuals.length) {
+                        visuals = await Promise.all(rawVisuals.map((visual) => prepare(visual, true)));
+                        brief = { ...submissionBrief, visuals };
+                        candidate = buildSubmissionPdf(brief, memory.caseLabel || 'Evidence_Case');
+                        optimizationNote = `The first visual packet exceeded 5 MB, so packet-only image copies were reduced more aggressively. Stored originals/derived assets were not modified. Final exact size: ${(candidate.blob.size / (1024 * 1024)).toFixed(2)} MB.`;
+                    }
+                    if (cancelled) return;
+                    objectUrl = URL.createObjectURL(candidate.blob);
+                    setSubmissionPreviewBlob(candidate.blob);
+                    setSubmissionPreviewUrl(objectUrl);
+                    setSubmissionPreviewName(candidate.filename);
+                    setPdfOptimizationNote(optimizationNote);
+                    return;
                 }
                 const built = buildSubmissionPdf(brief, memory.caseLabel || 'Evidence_Case');
                 if (cancelled) return;
@@ -322,6 +345,7 @@ function App() {
                 setSubmissionPreviewBlob(built.blob);
                 setSubmissionPreviewUrl(objectUrl);
                 setSubmissionPreviewName(built.filename);
+                setPdfOptimizationNote(optimizationNote);
             } catch (err) {
                 if (!cancelled) setNotice(errorMessage(err, 'The visual submission PDF could not be composed.'));
             }
@@ -1384,7 +1408,7 @@ function App() {
                     {derivedVisuals.length ? <><div className='vault-actions'><button className='secondary' onClick={() => setSelectedVisualPaths(derivedVisuals.slice(0, 6).map((visual) => visual.path))}>Select up to 6</button><button className='secondary' onClick={() => setSelectedVisualPaths([])}>Clear visuals</button><span className='vault-note'>{selectedVisualPaths.length} selected</span></div><div className='packet-evidence-grid'>{derivedVisuals.map((visual) => <label className='packet-evidence-card' key={visual.path}><input type='checkbox' checked={selectedVisualPaths.includes(visual.path)} onChange={() => setSelectedVisualPaths((current) => current.includes(visual.path) ? current.filter((path) => path !== visual.path) : current.length < 6 ? [...current, visual.path] : current)} /><img src={visual.url} alt={visual.metadata.title || visual.name} /><span>{visual.metadata.kind || 'DERIVED VISUAL'}</span><strong>{visual.metadata.title || visual.name}</strong><small>{visual.metadata.label || 'Derived visual. Original record controls.'}</small></label>)}</div></> : <div className='empty-panel'>No derived visuals yet. Use Source Page Lab or Illustration Lab in Evidence Cloud, then return here.</div>}
                 </section>
                 <section className='vault-panel nonprint'><div className='vault-head'><div><span className='result-kicker'>PRIVATE EVIDENCE CLOUD</span><h2>Evidence Cloud / Case Vault</h2><p>The same private foldered source library is shared across Elias, Evidence Auditor, and packet workflows. Export a Drive-ready ZIP when you want an external copy.</p></div><Cloud size={26} /></div><div className='vault-actions'><button className='secondary' disabled={!!busy} onClick={() => void organizeVault()}><FolderOpen size={16} /> Organize / Refresh Vault</button><button className='secondary' disabled={!!busy} onClick={() => void exportVault()}><Archive size={16} /> Export Drive-ready ZIP</button><a className='secondary vault-link' href='https://drive.google.com/drive/my-drive' target='_blank' rel='noreferrer'><ExternalLink size={15} /> Open Google Drive</a></div>{vaultStatus && <div className='vault-folders'>{vaultStatus.folders.map((folder) => <div key={folder.name}><FolderOpen size={14} /><span><strong>{folder.name}</strong><small>{folder.count} file{folder.count === 1 ? '' : 's'}</small></span></div>)}</div>}<small className='vault-note'>{integrations.driveNote}</small></section>
-                <div className='packet-controls nonprint'><label><input type='radio' checked={packetStyle === 'Visual evidence review'} onChange={() => setPacketStyle('Visual evidence review')} /> Internal visual audit</label><label><input type='radio' checked={packetStyle === 'Formal evidence review'} onChange={() => setPacketStyle('Formal evidence review')} /> Internal formal audit</label>{packet && <button className='secondary' onClick={() => window.print()}><Printer size={16} /> Print Internal Audit</button>}</div><div className='connector-note nonprint'><Gauge size={17} /><div><strong>Exact-file validation</strong><span>Simple Mode measures the combined generated PDF, including selected derived visuals, against the 5 MB target and confirms whether every PDF.js preview page rendered. Automatic size reduction if the exact file is over 5 MB is still unfinished.</span></div></div>
+                <div className='packet-controls nonprint'><label><input type='radio' checked={packetStyle === 'Visual evidence review'} onChange={() => setPacketStyle('Visual evidence review')} /> Internal visual audit</label><label><input type='radio' checked={packetStyle === 'Formal evidence review'} onChange={() => setPacketStyle('Formal evidence review')} /> Internal formal audit</label>{packet && <button className='secondary' onClick={() => window.print()}><Printer size={16} /> Print Internal Audit</button>}</div><div className='connector-note nonprint'><Gauge size={17} /><div><strong>Exact-file validation + packet-only optimization</strong><span>Simple Mode measures the combined generated PDF, including selected derived visuals, against the 5 MB target and confirms whether every PDF.js preview page rendered. If a visual packet first exceeds 5 MB, Elias now retries with smaller packet-only image copies; stored source/derived assets are not changed. {pdfOptimizationNote}</span></div></div>
                 {submissionBrief && <SubmissionBriefPreview brief={submissionBrief} />}
                 {packet ? <PacketPreview packet={packet} review={review} lawLens={lawLens} /> : <div className='empty-panel'>Add case records, choose a program focus, then click Build Full Case Package for the internal evidence audit or Create Submission Brief for the filing-facing advocacy document.</div>}
             </section>}
