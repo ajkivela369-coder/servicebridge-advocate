@@ -97,3 +97,18 @@ Steps:
 4. Review the Final MP4 stage
 
 Expected: The dashboard visibly reports script/scenes, cinematic direction, storyboard frame count, narration, and final MP4 separately; missing stages are actionable and Final MP4 remains marked external/not loaded until a real file exists.
+
+
+## Test 8 - Import a reusable Reference Lab profile
+Viewport: desktop (1280x800)
+Covers: Reference Lab, POST /api/reference-profile, reusable imported production profiles, weighted mixer, originality boundary
+Description: Verifies a public channel/video/page can become a reusable high-level production reference rather than a one-off note.
+
+Steps:
+1. Open the top "Reference Lab" control
+2. Paste a readable public reference URL
+3. Click "Study + Add to Mixer"
+4. Adjust the imported reference weight
+5. Click the YouTube Mixer and apply the mix
+
+Expected: The imported reference appears with a summary, production traits and adjustable weight; the six-axis blend updates; applying the mix uses high-level traits only and the UI explicitly rejects copied scripts, jokes, voices, artwork and creator identity.
