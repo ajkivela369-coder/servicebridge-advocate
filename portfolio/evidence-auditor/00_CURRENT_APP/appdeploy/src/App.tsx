@@ -20,6 +20,8 @@ type EvidenceVersionGroup = { versionGroup: string; documentIds: string[]; names
 type EvidenceInventory = { items: EvidenceInventoryItem[]; duplicateGroups: EvidenceDuplicateGroup[]; versionGroups: EvidenceVersionGroup[]; generatedAt: string; warning: string };
 type EvidenceBundle = { id: string; name: string; purpose: string; documentIds: string[]; createdAt: string; updatedAt: string; sources: Array<{ id: string; name: string; locator: string }> };
 type EvidenceTimelineSnapshot = { id?: string; items: TimelineItem[]; createdAt: string; warning: string };
+type EvidenceTraceItem = { sourceId: string; source: string; locator: string; evidenceType: string; relation: 'supports' | 'conflicts' | 'context'; evidence: string; quoteVerified: boolean; exactQuote?: string };
+type EvidenceTrace = { claim: string; assessment: 'Supported' | 'Partially supported' | 'Conflicted' | 'Unsupported'; summary: string; items: EvidenceTraceItem[]; droppedUnresolvedSources: string[]; warning: string };
 type NeuralVoice = { voiceId: string; name: string; labels?: Record<string, string> };
 type LiveSearchResult = { answer: string; results: Array<{ title: string; url: string; content: string; publishedDate?: string }>; savedDocument?: Doc | null };
 type Chat = { id?: string; threadId: string; question: string; answer: string; tool: string; speed?: WorkMode; sources: string[]; createdAt: string };
@@ -161,6 +163,8 @@ function App() {
     const [bundleName, setBundleName] = useState('');
     const [bundlePurpose, setBundlePurpose] = useState('');
     const [evidenceTimeline, setEvidenceTimeline] = useState<EvidenceTimelineSnapshot | null>(null);
+    const [traceClaim, setTraceClaim] = useState('');
+    const [evidenceTrace, setEvidenceTrace] = useState<EvidenceTrace | null>(null);
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
     const [neuralVoiceId, setNeuralVoiceId] = useState('');
     const [mediaFiles, setMediaFiles] = useState<File[]>([]);
@@ -859,6 +863,19 @@ function App() {
         } finally { setBusy(''); }
     };
 
+    const runEvidenceTrace = async () => {
+        const claim = traceClaim.trim();
+        if (!claim) { setNotice('Enter a statement to trace to the record.'); return; }
+        setBusy('Tracing the statement back to source evidence…');
+        setNotice('');
+        try {
+            const { data } = await api.post('/api/evidence/trace', { claim, speed: workMode });
+            setEvidenceTrace(data.trace ?? null);
+        } catch (err) {
+            setEvidenceTrace(null);
+            setNotice(errorMessage(err, 'Evidence Trace could not run.'));
+        } finally { setBusy(''); }
+    };
     const buildEvidenceTimeline = async () => {
         if (!documents.length) { setNotice('Upload evidence before building the persistent timeline.'); return; }
         setBusy('Building a source-grounded Evidence Timeline…');
@@ -1149,6 +1166,12 @@ function App() {
             {view === 'review' && <section className='workspace'>
                 <div className='page-head'><div><p className='eyebrow'>Flagship audit workspace</p><h1>Evidence Auditor</h1><p>Prove it, source it, package it. Audit support, contradictions, gaps, chronology, provenance, functional reliability, and reviewer-readiness against the same Evidence Cloud Elias uses.</p></div><button className='primary' onClick={() => void analyze()}><FileSearch size={17} /> Run evidence audit · {workMode}</button></div>
                 <div className='metrics'><div><span>Documents</span><strong>{documents.length}</strong></div><div><span>Indexed pages</span><strong>{documents.reduce((sum, document) => sum + (document.pageCount || 1), 0)}</strong></div><div><span>OCR / email / web</span><strong>{documents.filter((document) => ['ocr', 'email', 'web'].includes(document.sourceMode || '')).length}</strong></div></div>
+                <section className='vault-panel nonprint'>
+                    <div className='vault-head'><div><span className='result-kicker'>CLAIM → SOURCE TRACE</span><h2>Does the record actually support this statement?</h2><p>Paste a proposed sentence or proposition. Evidence Auditor resolves cited filenames to the indexed case, attaches source locators, verifies literal quotes, and separates support from conflict and context.</p></div><ShieldCheck size={26} /></div>
+                    <textarea value={traceClaim} onChange={(e) => setTraceClaim(e.target.value)} placeholder='Example: The record documents limitations in sustained attendance, pace, persistence, and recovery time.' />
+                    <div className='vault-actions'><button className='primary' disabled={!traceClaim.trim() || !!busy} onClick={() => void runEvidenceTrace()}><FileSearch size={15} /> Trace to sources</button>{evidenceTrace && <button className='secondary' onClick={() => { setTraceClaim(''); setEvidenceTrace(null); }}>Clear trace</button>}</div>
+                    {evidenceTrace && <div className='review-grid'><article className='wide'><h3>{evidenceTrace.assessment}</h3><p>{evidenceTrace.summary}</p><small>{evidenceTrace.warning}</small></article>{evidenceTrace.items.map((item, index) => <article key={item.sourceId + index}><h3>{item.relation} · {item.evidenceType}</h3><p>{item.evidence}</p><div className='chips'><span>{item.source}</span><span>{item.locator}</span>{item.quoteVerified && <span>QUOTE VERIFIED</span>}</div></article>)}{evidenceTrace.droppedUnresolvedSources.length > 0 && <article className='wide'><h3>Unresolved generated citations were excluded</h3><p>{evidenceTrace.droppedUnresolvedSources.join(' · ')}</p></article>}</div>}
+                </section>
                 <div className='command-deck nonprint'><div><span className='command-kicker'>EVIDENCE AUDITOR</span><strong>Fast source-grounded audit passes without leaving the flagship workspace</strong></div><div>{quickEliasActions.slice(0, 6).map((action) => <button key={action.label} disabled={copilotBusy || !!busy} onClick={() => void runCopilot(action.prompt, action.tool)}>{action.label}</button>)}</div></div>
                 <div className='research-grid nonprint'>
                     <article className='research-panel'>
