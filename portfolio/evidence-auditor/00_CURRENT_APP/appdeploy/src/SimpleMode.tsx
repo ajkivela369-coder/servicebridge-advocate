@@ -124,7 +124,7 @@ export default function SimpleMode(props: Props) {
 
     return <div className='simple-shell'>
         <header className='simple-topbar'>
-            <div className='simple-brand'><div className='simple-brand-mark'><Bot size={20} /></div><div><strong>Elias</strong><span>Evidence Auditor</span></div></div>
+            <div className='simple-brand'><div className='simple-brand-mark'><Bot size={20} /></div><div><strong>Elias</strong><span>+ Evidence Auditor</span></div></div>
             <div className='simple-top-actions'>
                 <button className='simple-account' onClick={props.onSignOut}><LogOut size={15} /> {props.userLabel}</button>
                 <div className='elias-mode-switch simple-mode-anchor'><button className='active'>Simple</button><button onClick={props.onOpenPro}>Pro</button></div>
@@ -137,8 +137,8 @@ export default function SimpleMode(props: Props) {
         <main className='simple-main'>
             <section className='simple-hero'>
                 <span className='simple-kicker'>SIMPLE MODE</span>
-                <h1>Upload your evidence. Get a submission-ready PDF.</h1>
-                <p>Elias reads the record, matches it to the selected benefits framework, builds a source-cited advocacy brief, and gives you the exact PDF to preview before you download it.</p>
+                <h1>Upload once. Audit, verify, and build from the same evidence.</h1>
+                <p>Elias stores and indexes the case, Evidence Auditor checks source support and provenance, and the filing builder creates a source-cited PDF from that same Evidence Cloud.</p>
                 <div className='simple-progress'><div className={props.documents.length ? 'done' : 'active'}><b>1</b><span><strong>Upload evidence</strong><small>Medical + administrative records</small></span></div><div className={props.documents.length && !props.submissionReady ? 'active' : props.submissionReady ? 'done' : ''}><b>2</b><span><strong>Build filing</strong><small>Evidence + law + medical support</small></span></div><div className={props.submissionReady ? 'active' : ''}><b>3</b><span><strong>Preview & download</strong><small>Review the exact PDF</small></span></div></div>
             </section>
 
@@ -153,7 +153,7 @@ export default function SimpleMode(props: Props) {
                         <strong>Drop evidence here or choose files</strong>
                         <span>PDF, TXT, MD, email files, JPG, PNG, WebP</span>
                     </button>
-                    <div className='simple-source-summary'><span><strong>{indexedPages}</strong> indexed pages</span><span><strong>{props.vaultFileCount}</strong> vault files</span><span><ShieldCheck size={13} /> Private workspace</span></div>
+                    <div className='simple-source-summary'><span><strong>{indexedPages}</strong> indexed pages</span><span><strong>{props.vaultFileCount}</strong> Evidence Cloud files</span><span><ShieldCheck size={13} /> Private workspace</span></div>
                     {props.uploadItems.length > 0 && <div className='simple-upload-list' aria-live='polite'>{props.uploadItems.map((item) => <div className={`simple-upload-row ${item.stage.toLowerCase()}`} key={item.id}><FileText size={16} /><div><strong>{item.name}</strong><span>{sizeLabel(item.size)} · {item.error || item.detail}</span>{item.stage !== 'Ready' && item.stage !== 'Error' && <div className='simple-upload-progress'><i style={{ width: `${item.progress}%` }} /></div>}</div><b>{item.stage === 'Ready' ? 'Ready' : item.stage === 'Error' ? 'Error' : `${item.progress}%`}</b>{(item.stage === 'Ready' || item.stage === 'Error') && <button aria-label={`Hide ${item.name}`} onClick={(event) => { event.stopPropagation(); props.onDismissUpload(item.id); }}><X size={13} /></button>}</div>)}</div>}
                     {props.documents.length > 0 && <div className='simple-loaded-sources'>{props.documents.slice(0, 8).map((document) => <div key={document.id}><FileText size={14} /><span><strong>{document.name}</strong><small>{document.pageCount} page{document.pageCount === 1 ? '' : 's'}</small></span><button aria-label={`Delete ${document.name}`} onClick={() => props.onDeleteDocument(document.id)}><Trash2 size={13} /></button></div>)}{props.documents.length > 8 && <small className='more-sources'>+ {props.documents.length - 8} more indexed source{props.documents.length - 8 === 1 ? '' : 's'}</small>}</div>}
                 </article>
@@ -169,8 +169,8 @@ export default function SimpleMode(props: Props) {
             </section>
 
             <section className='simple-preview-section' ref={previewRef}>
-                <div className='simple-preview-head'><div><span className='simple-kicker'>STEP 3 · PDF PREVIEW</span><h2>Review exactly what you will download</h2><p>PDF.js renders the same generated PDF bytes used by the download button, so the preview does not depend on the browser PDF plug-in.</p></div>{props.submissionReady && <div className='simple-preview-actions'><button onClick={props.onDownload}><Download size={15} /> Download PDF</button><button onClick={props.onSaveVault}><Cloud size={15} /> Save to Case Vault</button>{props.submissionPreviewUrl && <a href={props.submissionPreviewUrl} target='_blank' rel='noreferrer'><FolderOpen size={15} /> Open PDF in browser</a>}</div>}</div>
-                {props.submissionReady && props.submissionPreviewBlob ? <div className='simple-pdf-frame'><div className='simple-pdf-meta'><FileText size={15} /><span>{props.submissionPreviewName || 'Submission_Advocacy_Brief.pdf'}</span><b>LIVE PREVIEW</b></div><PdfCanvasPreview blob={props.submissionPreviewBlob} /></div> : <div className='simple-preview-empty'><div><FileText size={34} /><h3>Your PDF preview will appear here</h3><p>Upload evidence and click Generate Submission-Ready PDF. You can inspect every page before downloading or saving it to the private Case Vault.</p></div></div>}
+                <div className='simple-preview-head'><div><span className='simple-kicker'>STEP 3 · PDF PREVIEW</span><h2>Review exactly what you will download</h2><p>PDF.js renders the same generated PDF bytes used by the download button, so the preview does not depend on the browser PDF plug-in.</p></div>{props.submissionReady && <div className='simple-preview-actions'><button onClick={props.onDownload}><Download size={15} /> Download PDF</button><button onClick={props.onSaveVault}><Cloud size={15} /> Save to Evidence Cloud</button>{props.submissionPreviewUrl && <a href={props.submissionPreviewUrl} target='_blank' rel='noreferrer'><FolderOpen size={15} /> Open PDF in browser</a>}</div>}</div>
+                {props.submissionReady && props.submissionPreviewBlob ? <div className='simple-pdf-frame'><div className='simple-pdf-meta'><FileText size={15} /><span>{props.submissionPreviewName || 'Submission_Advocacy_Brief.pdf'}</span><b>LIVE PREVIEW</b></div><PdfCanvasPreview blob={props.submissionPreviewBlob} /></div> : <div className='simple-preview-empty'><div><FileText size={34} /><h3>Your PDF preview will appear here</h3><p>Upload evidence and click Generate Submission-Ready PDF. You can inspect every page before downloading or saving it to the private Evidence Cloud.</p></div></div>}
                 <small className='simple-drive-note'>{props.driveNote}</small>
             </section>
         </main>
