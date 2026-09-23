@@ -174,5 +174,59 @@
       "Generate or preview a filing draft"
     ],
     "expected": "The UI describes under-5-MB output as a target requiring final validation and never claims successful compression merely because a PDF was generated."
+  },
+  {
+    "name": "Evidence Bundles reference originals without copying sources",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/evidence/bundles",
+      "POST /api/evidence/bundles",
+      "DELETE /api/evidence/bundles/:id",
+      "user-scoped source collections"
+    ],
+    "description": "Verifies saved reviewer/issue collections reference original source IDs rather than creating another evidence silo.",
+    "steps": [
+      "Upload three fictional case sources",
+      "Open Evidence Cloud and select two sources",
+      "Save a bundle named APTD functional reliability",
+      "Select the saved bundle and then delete the bundle"
+    ],
+    "expected": "The bundle contains references to the selected source IDs and locators. Deleting the bundle leaves the underlying evidence sources unchanged."
+  },
+  {
+    "name": "Persistent Evidence Timeline only keeps resolvable source citations",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/evidence/timeline",
+      "GET /api/evidence/timeline",
+      "persistent normalized chronology",
+      "source filename resolution"
+    ],
+    "description": "Verifies the saved timeline is separate AI synthesis and cannot silently persist a generated citation to a source that is not in the indexed record.",
+    "steps": [
+      "Upload fictional dated medical, service, and administrative sources",
+      "Build the Evidence Timeline",
+      "Inspect each timeline row source filename",
+      "Refresh the page and reopen Evidence Cloud"
+    ],
+    "expected": "The chronology persists, every retained row resolves to an indexed source filename, uncertain dates remain visibly uncertain, and the human-verification warning remains visible."
+  },
+  {
+    "name": "Claim Trace verifies source identity and literal quotes",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/evidence/trace",
+      "source identity resolution",
+      "literal quote verification",
+      "claim support/conflict/context separation"
+    ],
+    "description": "Verifies a proposed claim is traced to actual indexed sources and generated exact quotations cannot pass unless they literally match source text.",
+    "steps": [
+      "Upload fictional evidence containing one exact sentence and a conflicting record",
+      "Open Evidence Auditor and paste a proposed statement into Claim → Source Trace",
+      "Run the trace and inspect support/conflict items",
+      "Confirm quoted language and cited filenames against the fictional source"
+    ],
+    "expected": "Unresolvable filenames are excluded, locators come from stored source metadata, exact quotes receive QUOTE VERIFIED only on literal text match, and support/conflict/context remain separate."
   }
 ]
