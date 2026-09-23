@@ -917,6 +917,41 @@ export const handler = router({
             return error(err instanceof Error ? err.message : 'Submission Advocacy Brief could not finish this record.', 422);
         }
     }],
+    'GET /api/evidence/source/:id/url': [requireAuth(), async (ctx) => {
+        const userId = ctx.user!.userId;
+        const [doc] = await db.get<DocumentRecord>(tables(userId).documents, [ctx.params.id]);
+        if (!doc) return error('Evidence source not found.', 404);
+        const sourcePaths = doc.storagePaths?.length ? doc.storagePaths : doc.storagePath ? [doc.storagePath] : [];
+        if (!sourcePaths.length) return error('This source is indexed-only or externally derived; a retained original binary is not available for page rendering.', 409);
+        const parts = await storage.read(sourcePaths);
+        if (!parts.length || parts.some((part) => !part.content)) return error('The retained source could not be reconstructed.', 422);
+        const payloadChars = parts.reduce((sum, part) => sum + (part.content?.length ?? 0), 0);
+        if (payloadChars > 55_000_000) return error('This retained source is too large for browser page rendering. Use the indexed text or a smaller source copy.', 413);
+        const assembled = Buffer.concat(parts.map((part) => Buffer.from(part.content ?? '', 'base64'))).toString('base64');
+        const path = `${userId}/preview-sources/${ctx.params.id}/${safeName(doc.name)}`;
+        const [ok] = await storage.write([{ path, content: assembled, contentType: doc.contentType || 'application/octet-stream' }]);
+        if (!ok) return error('Could not prepare the retained source for preview.', 500);
+        const [signed] = await storage.url([path]);
+        return json({ id: ctx.params.id, name: doc.name, contentType: doc.contentType, url: signed?.url ?? '', pageCount: doc.pageCount, locator: vaultLocator(doc), derived: false });
+    }],
+    'POST /api/evidence/capture': [requireAuth(), async (ctx) => {
+        const userId = ctx.user!.userId;
+        const body = ctx.body as { sourceId?: string; page?: number; base64?: string };
+        const sourceId = String(body.sourceId ?? '');
+        const page = Math.max(1, Math.round(Number(body.page ?? 1)));
+        const base64 = String(body.base64 ?? '');
+        if (!sourceId || !base64) return error('Source ID and capture image are required.', 400);
+        if (base64.length > 7_000_000) return error('The derived page capture is too large to save.', 413);
+        const [doc] = await db.get<DocumentRecord>(tables(userId).documents, [sourceId]);
+        if (!doc) return error('Evidence source not found.', 404);
+        const root = await vaultRootFor(userId);
+        const stem = safeName(doc.name).replace(/\.[^.]+$/, '').slice(0, 80);
+        const path = `${root}/07_Derived_Visuals/${stem}__page_${page}__DERIVED_CAPTURE.png`;
+        const [ok] = await storage.write([{ path, content: base64, contentType: 'image/png' }]);
+        if (!ok) return error('Derived page capture could not be saved.', 500);
+        const [signed] = await storage.url([path]);
+        return json({ saved: true, path, url: signed?.url ?? '', sourceId, sourceName: doc.name, page, label: `Derived page capture from ${doc.name}, page ${page}. Not original source evidence.` });
+    }],
     'GET /api/evidence/inventory': [requireAuth(), async (ctx) => {
         const docs = await getDocuments(ctx.user!.userId) as Array<DocumentRecord & { id: string }>;
         const items = docs.map(evidenceInventoryItem);
@@ -1092,7 +1127,7 @@ export const handler = router({
         const manifestPath = `${root}/Case_Vault_Manifest.json`;
         const readmePath = `${root}/README_Case_Vault.txt`;
         await storage.write([
-            { path: manifestPath, content: JSON.stringify({ generatedAt: new Date().toISOString(), folders: ['01_Original_Evidence', '02_Medical', '03_Administrative_and_Agency', '04_Service_and_Employment', '05_Legal_and_Medical_Research', '06_Submission_Packets'], documents: manifest }, null, 2), contentType: 'application/json' },
+            { path: manifestPath, content: JSON.stringify({ generatedAt: new Date().toISOString(), folders: ['01_Original_Evidence', '02_Medical', '03_Administrative_and_Agency', '04_Service_and_Employment', '05_Legal_and_Medical_Research', '06_Submission_Packets', '07_Derived_Visuals'], documents: manifest }, null, 2), contentType: 'application/json' },
             { path: readmePath, content: 'Elias Case Vault\n\nPrivate app cloud storage organized for evidence review. The Drive-ready ZIP preserves these folders when extracted or uploaded. Direct Google Drive sync is not connected unless secure per-user Google OAuth is available.', contentType: 'text/plain' },
         ]);
         return json({ root, organized: copied, indexedOnly, manifest });
