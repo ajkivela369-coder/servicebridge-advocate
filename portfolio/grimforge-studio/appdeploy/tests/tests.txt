@@ -172,3 +172,42 @@ Steps:
 6. Open Scenes
 
 Expected: The full technical studio remains available and the current episode can be edited without returning to Simple mode.
+
+
+## Test 13 - Cinema quality tier uses configured GPU video engine
+Viewport: desktop (1280x800)
+Covers: Simple quality tiers, Cinema Bridge status, Wan2.2 render path, honest fallback
+Description: Verifies Cinema mode sends scenes to the configured Wan2.2 provider and never claims motion rendering if the provider is unavailable.
+
+Steps:
+1. Open Simple mode
+2. Select Cinema
+3. Click Check engines
+4. Paste a reference URL and episode request
+5. Generate the full episode
+
+Expected: If Wan2.2 is configured, rendered scene clips appear in the episode package and preview. If it is not configured, GrimForge explicitly reports the animatic fallback and keeps the scene images/shot plans intact.
+
+## Test 14 - Cinematic Max targets LTX without breaking fallback
+Viewport: desktop (1280x800)
+Covers: Cinematic Max, LTX-2 provider routing, provider-aware UI
+Description: Verifies Max mode is an optional high-compute route rather than a fake quality badge.
+
+Steps:
+1. Select Cinematic Max
+2. Click Check engines
+3. Generate a short episode
+
+Expected: LTX-2 is used only when its provider is configured. Otherwise the app reports that the Cinema Bridge is not available for the tier and produces the directed animatic fallback.
+
+## Test 15 - Chronicles-quality workflow preserves continuity assets
+Viewport: desktop (1280x800)
+Covers: style bible workflow, set bible workflow, shot batches, continuity intent
+Description: Verifies the documented quality pipeline is represented in the Pro workflow rather than treating cinematic quality as one prompt.
+
+Steps:
+1. Switch to Pro
+2. Review the production workflow documentation / controls
+3. Generate or edit multiple scenes
+
+Expected: The workflow emphasizes locked character/set references, continuity between shots, multiple takes for high-value shots, separate voice/dialogue/sound layers, and sequence-level review before final assembly.
