@@ -22,6 +22,7 @@ type EvidenceBundle = { id: string; name: string; purpose: string; documentIds: 
 type EvidenceTimelineSnapshot = { id?: string; items: TimelineItem[]; createdAt: string; warning: string };
 type EvidenceTraceItem = { sourceId: string; source: string; locator: string; evidenceType: string; relation: 'supports' | 'conflicts' | 'context'; evidence: string; quoteVerified: boolean; exactQuote?: string };
 type EvidenceTrace = { claim: string; assessment: 'Supported' | 'Partially supported' | 'Conflicted' | 'Unsupported'; summary: string; items: EvidenceTraceItem[]; droppedUnresolvedSources: string[]; warning: string };
+type EvidenceIllustration = { url: string; path: string; metadataPath: string; kind: string; title: string; visualGoal: string; documentedFacts: string[]; anatomy: string[]; mechanism: string[]; uncertainties: string[]; sources: Array<{ sourceId: string; name: string; locator: string }>; label: string; generatedAt: string };
 type NeuralVoice = { voiceId: string; name: string; labels?: Record<string, string> };
 type LiveSearchResult = { answer: string; results: Array<{ title: string; url: string; content: string; publishedDate?: string }>; savedDocument?: Doc | null };
 type Chat = { id?: string; threadId: string; question: string; answer: string; tool: string; speed?: WorkMode; sources: string[]; createdAt: string };
@@ -166,6 +167,8 @@ function App() {
     const [sourceLab, setSourceLab] = useState<{ id: string; name: string; url: string; totalPages: number } | null>(null);
     const [sourceLabPage, setSourceLabPage] = useState(1);
     const [sourceLabImage, setSourceLabImage] = useState('');
+    const [illustrationInstruction, setIllustrationInstruction] = useState('');
+    const [evidenceIllustration, setEvidenceIllustration] = useState<EvidenceIllustration | null>(null);
     const [traceClaim, setTraceClaim] = useState('');
     const [evidenceTrace, setEvidenceTrace] = useState<EvidenceTrace | null>(null);
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
@@ -953,6 +956,21 @@ function App() {
             setNotice(errorMessage(err, 'Derived page capture could not be saved.'));
         } finally { setBusy(''); }
     };
+    const generateEvidenceIllustration = async () => {
+        if (!bundleSelectedIds.length) { setNotice('Select one or more supporting sources in the Evidence Cloud before generating an illustration.'); return; }
+        setBusy('Building a de-identified, source-linked evidence illustration…');
+        setNotice('');
+        try {
+            const { data } = await api.post('/api/evidence/illustration', { sourceIds: bundleSelectedIds, instruction: illustrationInstruction.trim() });
+            setEvidenceIllustration(data.illustration ?? null);
+            const vault = await api.get('/api/vault/status');
+            setVaultStatus(vault.data);
+            setNotice('Illustration saved with provenance metadata under Derived Visuals. Original records still control.');
+        } catch (err) {
+            setEvidenceIllustration(null);
+            setNotice(errorMessage(err, 'Evidence illustration could not be generated.'));
+        } finally { setBusy(''); }
+    };
     const runEvidenceTrace = async () => {
         const claim = traceClaim.trim();
         if (!claim) { setNotice('Enter a statement to trace to the record.'); return; }
@@ -1245,6 +1263,12 @@ function App() {
                 <section className='vault-panel'>
                     <div className='vault-head'><div><span className='result-kicker'>SOURCE PAGE LAB</span><h2>Page capture + source stamp</h2><p>Open a retained PDF original, render a page, automatically trim excess white margins, and save a clearly labeled derived PNG for packet design. This does not replace or alter the original source.</p></div><FileImage size={26} /></div>
                     {sourceLab ? <><div className='vault-actions'><button className='secondary' disabled={sourceLabPage <= 1 || !!busy} onClick={() => void renderSourcePage(sourceLab, sourceLabPage - 1)}>Previous page</button><input type='number' min={1} max={sourceLab.totalPages} value={sourceLabPage} onChange={(e) => setSourceLabPage(Math.max(1, Math.min(sourceLab.totalPages, Number(e.target.value) || 1)))} /><button className='secondary' disabled={sourceLabPage >= sourceLab.totalPages || !!busy} onClick={() => void renderSourcePage(sourceLab, sourceLabPage + 1)}>Next page</button><button className='secondary' disabled={!!busy} onClick={() => void renderSourcePage(sourceLab, sourceLabPage)}>Render page</button><button className='primary' disabled={!sourceLabImage || !!busy} onClick={() => void saveSourceCapture()}><Cloud size={15} /> Save derived capture</button><button className='secondary' onClick={() => { setSourceLab(null); setSourceLabImage(''); }}>Close</button></div>{sourceLabImage && <div className='submission-preview'><img src={sourceLabImage} alt={'Derived source capture from ' + sourceLab.name + ', page ' + sourceLabPage} /></div>}<small className='vault-note'>Current source: {sourceLab.name} · page {sourceLabPage} of {sourceLab.totalPages}. Auto-trim removes outer whitespace only; it does not yet choose the most relevant region within a medical page.</small></> : <small className='vault-note'>Choose Page Lab on a retained PDF source below. Indexed-only large PDFs remain searchable but cannot be rendered unless an original binary is retained.</small>}
+                </section>
+                <section className='vault-panel'>
+                    <div className='vault-head'><div><span className='result-kicker'>ILLUSTRATION LAB</span><h2>Source-linked injury / mechanism illustration</h2><p>Use the currently selected bundle sources to build a de-identified explanatory visual. The generated image is saved with a JSON provenance record and is always labeled as an illustration—not medical imaging or diagnostic proof.</p></div><ImagePlus size={26} /></div>
+                    <textarea value={illustrationInstruction} onChange={(e) => setIllustrationInstruction(e.target.value)} placeholder='Optional visual goal — e.g. show the documented relationship between cervical/shoulder anatomy and the described functional mechanism without adding unsupported anatomy.' />
+                    <div className='vault-actions'><button className='primary' disabled={!bundleSelectedIds.length || !!busy} onClick={() => void generateEvidenceIllustration()}><Sparkles size={15} /> Generate from {bundleSelectedIds.length} selected source{bundleSelectedIds.length === 1 ? '' : 's'}</button>{evidenceIllustration && <button className='secondary' onClick={() => setEvidenceIllustration(null)}>Clear preview</button>}</div>
+                    {evidenceIllustration ? <div className='submission-preview'><img src={evidenceIllustration.url} alt={evidenceIllustration.title} /><div className='submission-request'><strong>DERIVED VISUAL</strong><p>{evidenceIllustration.label}</p><small>Supporting sources: {evidenceIllustration.sources.map((source) => source.name + ' · ' + source.locator).join(' | ')}</small>{evidenceIllustration.uncertainties.length > 0 && <small>Uncertainties kept out of the established-fact layer: {evidenceIllustration.uncertainties.join(' · ')}</small>}</div></div> : <small className='vault-note'>Select supporting sources using the checkboxes in the source inventory below. The illustration generator receives a de-identified brief rather than raw identifiers.</small>}
                 </section>
                 <div className='research-grid'>{categoryCounts.map((item) => <article key={item.category} className='research-panel'><div className='research-title'><FolderOpen size={17} /><div><strong>{item.category}</strong><span>{item.count} source{item.count === 1 ? '' : 's'}</span></div></div><button className='secondary tiny' onClick={() => setVaultQuery(item.category)} disabled={!item.count}>Filter</button></article>)}</div>
                 <div className='connector-note'><Brain size={17} /><div><strong>Evidence trace standard</strong><span>Source → page / locator → extracted evidence → evidence classification → interpretation → generated statement. Evidence Auditor and Citation Auditor should flag broken or ambiguous links.</span></div></div>
