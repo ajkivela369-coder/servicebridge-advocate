@@ -31,8 +31,10 @@ type EvidenceInventoryItem = {
     classificationBasis: 'heuristic';
 };
 type EvidenceBundleRecord = { name: string; purpose: string; documentIds: string[]; createdAt: string; updatedAt: string };
+type EvidenceTimelineItem = { date: string; event: string; source: string; significance: string };
+type EvidenceTimelineRecord = { items: EvidenceTimelineItem[]; createdAt: string; warning: string };
 
-const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}`, bundles: `evidence_bundles_${userId}` });
+const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}`, bundles: `evidence_bundles_${userId}`, timeline: `evidence_timeline_${userId}` });
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'document';
 const safeUploadId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
 const textContext = (docs: Array<DocumentRecord & { id: string }>, query = '') => {
@@ -931,6 +933,44 @@ export const handler = router({
         return json({ items, duplicateGroups, versionGroups, generatedAt: new Date().toISOString(), warning: 'Categories, document types, candidate dates, duplicate groups, and version groups are heuristic review aids. Original records control.' });
     }],
 
+    'GET /api/evidence/timeline': [requireAuth(), async (ctx) => {
+        const { items } = await db.list<EvidenceTimelineRecord>(tables(ctx.user!.userId).timeline, { limit: 10 });
+        const snapshots = (items as Array<EvidenceTimelineRecord & { id?: string }>).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        return json({ timeline: snapshots[0] ?? null });
+    }],
+    'POST /api/evidence/timeline': [requireAuth(), async (ctx) => {
+        const userId = ctx.user!.userId;
+        const docs = await getDocuments(userId) as Array<DocumentRecord & { id: string }>;
+        if (!docs.length) return error('Upload evidence before building a timeline.', 400);
+        const context = textContext(docs, 'timeline chronology dates events treatment service duty functional capacity decisions correspondence');
+        const generated = await resilientGenerate({
+            system: ELIAS_PLAYBOOK,
+            prompt: `Build a normalized case timeline from the supplied record. Use only events supported by the supplied sources. Every item must identify a source filename exactly as provided. If a date is incomplete or conflicting, say so in the date field rather than inventing precision. Keep source fact separate from interpretation. Return the most material chronology for medical, service/duty, functional, agency, and correspondence evidence.\n\nRECORD:\n${context}`,
+            schema: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { date: { type: 'string' }, event: { type: 'string' }, source: { type: 'string' }, significance: { type: 'string' } }, required: ['date', 'event', 'source', 'significance'] } } }, required: ['items'] },
+            speed: 'Standard',
+            maxTokens: 3200,
+            temperature: 0.03,
+            label: 'Evidence Timeline',
+        });
+        let parsed: { items?: EvidenceTimelineItem[] } = {};
+        try { parsed = JSON.parse(generated.text) as { items?: EvidenceTimelineItem[] }; } catch { return error('Timeline output could not be structured safely. Run it again or use the chat Timeline Builder.', 422); }
+        const validNames = new Set(docs.map((doc) => doc.name));
+        const items = (Array.isArray(parsed.items) ? parsed.items : []).filter((item) => item && String(item.event ?? '').trim()).slice(0, 100).map((item) => ({
+            date: String(item.date ?? 'Date uncertain').trim() || 'Date uncertain',
+            event: String(item.event ?? '').trim(),
+            source: validNames.has(String(item.source ?? '').replace(/^\[|\]$/g, '')) ? String(item.source).replace(/^\[|\]$/g, '') : String(item.source ?? '').trim(),
+            significance: String(item.significance ?? '').trim(),
+        }));
+        if (!items.length) return error('No source-grounded timeline items could be produced from this record.', 422);
+        const table = tables(userId).timeline;
+        const { items: previous } = await db.list<EvidenceTimelineRecord>(table, { limit: 20 });
+        const priorIds = (previous as Array<EvidenceTimelineRecord & { id?: string }>).map((item) => item.id).filter((id): id is string => Boolean(id));
+        if (priorIds.length) await db.delete(table, priorIds);
+        const record: EvidenceTimelineRecord = { items, createdAt: new Date().toISOString(), warning: 'AI-generated chronology derived from indexed sources. Verify dates, source locators, and context against original records before consequential use.' };
+        const [id] = await db.add(table, [record]);
+        if (!id) return error('Timeline could not be saved.', 500);
+        return json({ timeline: { id, ...record } });
+    }],
     'GET /api/evidence/bundles': [requireAuth(), async (ctx) => {
         const { items } = await db.list<EvidenceBundleRecord>(tables(ctx.user!.userId).bundles, { limit: 50 });
         const docs = await getDocuments(ctx.user!.userId) as Array<DocumentRecord & { id: string }>;
