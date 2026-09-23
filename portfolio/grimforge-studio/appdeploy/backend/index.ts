@@ -56,10 +56,24 @@ export const handler=router({
     if(!d.provider||!d.prompt)return error('provider and prompt are required',400);
     if(!cinemaBridgeUrl)return error('Cinema Bridge is not configured',503);
     try{
+      let hostedImageUrl=d.imageUrl||'';
+      if(hostedImageUrl.startsWith('data:image/')){
+        const match=hostedImageUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+        if(match){
+          const contentType=match[1];
+          const extension=contentType.includes('png')?'png':contentType.includes('webp')?'webp':'jpg';
+          const path=`cinema-refs/${Date.now()}-${Math.random().toString(36).slice(2,10)}.${extension}`;
+          const [ok]=await storage.write([{path,content:match[2],contentType}]);
+          if(ok){
+            const [signed]=await storage.url([path]);
+            hostedImageUrl=signed.url;
+          }
+        }
+      }
       const result=await cinemaBridge('/v1/video/generate',{
         provider:d.provider,
         prompt:d.prompt,
-        image_url:d.imageUrl,
+        image_url:hostedImageUrl||undefined,
         seconds:d.seconds||6,
         fps:d.fps||24,
         width:d.width||1280,
