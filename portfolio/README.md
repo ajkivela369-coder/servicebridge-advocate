@@ -28,6 +28,12 @@ Structured AI benchmark authoring for prompts, expected concepts, prohibited mis
 ### [GrimForge Studio — App XIII](grimforge-studio/)
 A cinematic lore-production studio for original grimdark science-fiction commentary and old-world dark-fantasy storytelling. It combines a Reference DNA Lab, thesis-first Lore Scholar, Channel Forge, narrator direction, cinematic Director Timeline, controlled humor, source/canon labeling, Rights Guard, and production-package export. Reference creators inform only high-level production attributes; the app does not copy scripts, artwork, jokes, or voice identities.
 
+### [StudyForge](studyforge/)
+An adaptive MLT/ABOR study coach with source-grounded study-pack generation, Exam Coach scoring, weak-area remediation, a Reference Lab that learns accessible high-level teaching patterns from public channels/sites, curated education-channel presets, and the floating Forge Tutor copilot.
+
+### [WildTake Studio](wildtake-studio/)
+A rights-aware short-form wildlife/animal commentary studio with timed action beats, original AI commentary packs, a weighted Reference Lab for public channels/sites, curated production presets, and the floating Wild Copilot. Reference sources shape abstract pacing, hooks, structure, humor density, and educational framing—not scripts, voices, catchphrases, artwork, or creator identity.
+
 ## Design principles
 
 - Transparent, inspectable baselines rather than hidden claims of model intelligence.
