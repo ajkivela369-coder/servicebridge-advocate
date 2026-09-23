@@ -4,11 +4,80 @@ type WorkMode = 'Quick' | 'Standard' | 'Deep';
 const veyrSystem=`You are Archivist Veyr, the original AI creative director inside GrimForge Studio. You are highly capable, friendly, practical, canon-conscious and decisive. You operate the studio for users who do not want to manage every control, while respecting users who want full manual control. You are not a Games Workshop character and never impersonate a real creator.
 Rules: separate CANON/SOURCE from INTERPRETATION, EDITORIAL and SPECULATION; never invent a source; when a claim needs verification say so. Study other channels only at the level of pacing, structure, chaptering, humor density, hook strategy, maps, visual grammar, packaging and beginner clarity. Never copy scripts, jokes, catchphrases, artwork, creator identity or voice. Speech-reference profiles describe abstract performance traits only: cadence, register, pause pattern, energy, rhetorical shape and sentence length. Never imitate, clone or impersonate a real person, celebrity, actor, creator or copyrighted character voice. Favor original, user-owned, licensed, public-domain/open-license or generated-original assets. For 5-minute episodes favor a sharp hook, minimum necessary lore, evidence ladder, counterpoint, payoff and next-episode bridge. Visual direction should feel premium and cinematic without frantic motion. Voice direction prioritizes clarity, intelligibility, gravitas, low fatigue and clean consonants. Challenge weak ideas and give a concrete better choice.`;
 const referenceProfileSchema={type:'object',properties:{name:{type:'string'},url:{type:'string'},summary:{type:'string'},traits:{type:'string'},profile:{type:'array',items:{type:'number'}}},required:['name','url','summary','traits','profile']};
-const episodeSchema={type:'object',properties:{title:{type:'string'},thesis:{type:'string'},hook:{type:'string'},world:{type:'string'},targetMinutes:{type:'number'},voice:{type:'string'},visualStyle:{type:'string'},youtubeTitle:{type:'string'},thumbnailText:{type:'string'},description:{type:'string'},nextBridge:{type:'string'},scenes:{type:'array',items:{type:'object',properties:{id:{type:'string'},title:{type:'string'},start:{type:'string'},duration:{type:'number'},narration:{type:'string'},claimType:{type:'string'},visualPrompt:{type:'string'},motion:{type:'string'},sound:{type:'string'},sourceNeed:{type:'string'}},required:['id','title','start','duration','narration','claimType','visualPrompt','motion','sound','sourceNeed']}}},required:['title','thesis','hook','world','targetMinutes','voice','visualStyle','youtubeTitle','thumbnailText','description','nextBridge','scenes']};
+const episodeSchema={type:'object',properties:{title:{type:'string'},thesis:{type:'string'},hook:{type:'string'},world:{type:'string'},targetMinutes:{type:'number'},voice:{type:'string'},visualStyle:{type:'string'},youtubeTitle:{type:'string'},thumbnailText:{type:'string'},description:{type:'string'},nextBridge:{type:'string'},scenes:{type:'array',items:{type:'object',properties:{id:{type:'string'},title:{type:'string'},start:{type:'string'},duration:{type:'number'},narration:{type:'string'},dialogue:{type:'string'},claimType:{type:'string'},visualPrompt:{type:'string'},motion:{type:'string'},sound:{type:'string'},sourceNeed:{type:'string'}},required:['id','title','start','duration','narration','claimType','visualPrompt','motion','sound','sourceNeed']}}},required:['title','thesis','hook','world','targetMinutes','voice','visualStyle','youtubeTitle','thumbnailText','description','nextBridge','scenes']};
 function thinking(mode?:WorkMode):'NONE'|'FAST'|'DEEP'{return mode==='Quick'?'NONE':mode==='Deep'?'DEEP':'FAST'}
 function safeSlug(v:string){return v.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'grimforge-project'}
 export const handler=router({
   'GET /api/_healthcheck':[async()=>json({message:'Success'})],
+  'POST /api/simple-create':[async({body})=>{
+    const d=(body||{}) as {referenceUrl?:string;prompt?:string;world?:string;targetMinutes?:number;voice?:string};
+    if(!d.referenceUrl?.trim()&&!d.prompt?.trim())return error('Paste a public reference URL or tell Veyr what you want to make.',400);
+    const minutes=Math.max(3,Math.min(20,d.targetMinutes||5));
+    let referenceTitle='No external reference supplied';
+    let accessibleText='';
+    if(d.referenceUrl?.trim()){
+      try{new URL(d.referenceUrl)}catch{return error('Please provide a valid public YouTube/video/website URL.',400)}
+      try{
+        const scraped=await ai.scrape({url:d.referenceUrl});
+        if(scraped.status<400&&scraped.text.trim()){
+          referenceTitle=scraped.title||d.referenceUrl;
+          accessibleText=scraped.text.slice(0,18000);
+        }else{
+          referenceTitle=d.referenceUrl;
+        }
+      }catch{
+        referenceTitle=d.referenceUrl;
+      }
+    }
+    const result=await ai.generate({
+      system:veyrSystem,
+      prompt:`SIMPLE MODE: act as the complete creative director. Create one finished ORIGINAL cinematic episode package from the user's request and, when supplied, the accessible public reference material.
+
+User request:
+${d.prompt?.trim()||'Create an original episode inspired only by the broad topic and production grammar visible in the reference.'}
+
+World / setting mode: ${d.world||'Warhammer 40K'}
+Target runtime: ${minutes} minutes
+Narrator direction: ${d.voice||'Eric'}
+
+Reference URL: ${d.referenceUrl||'none'}
+Reference page title: ${referenceTitle}
+Accessible reference text:
+${accessibleText||'(The page did not expose usable text. Do not pretend you watched or transcribed the video.)'}
+
+Your job in Simple Mode is to do the technical decisions for the user:
+1. Infer only high-level production traits that are actually observable from the accessible page: hook strategy, pacing, chapter rhythm, information density, visual grammar, use of maps/diagrams, humor density, and beginner clarity.
+2. Use the reference topic/context only when it is visible in the accessible material. Do not reproduce the source script, dialogue, jokes, shot sequence, thumbnails, artwork, music, creator identity, catchphrases, or voice.
+3. Write a complete original episode with 7-10 scenes and enough narration for approximately ${minutes} minutes.
+4. Give every scene a cinematic visualPrompt containing shot size, subject/action, environment, lighting, foreground/midground/background depth, lens/camera feel, recurring motif, and continuity from the prior shot.
+5. Give every scene a motion field with camera movement, subject movement, environmental movement, transition in/out, and cut rhythm.
+6. Give every scene a sound field with ambience, effects, music energy, and a clean narration pocket.
+7. Give every scene a dialogue field. Use it for character dialogue, quoted-on-screen dramatic lines, or 'None — narration only' when dialogue would be forced.
+8. Keep narration and dialogue distinct. Narration should be directly usable as the voice-over script.
+9. Keep claimType exactly CANON / SOURCE, INTERPRETATION, EDITORIAL or SPECULATION. Never invent citations; sourceNeed says what should be verified.
+10. visualStyle should be 'Premium cinematic story-film'. Visual prompts must describe original archetypes/compositions and avoid named copyrighted character likenesses or copied creator styles.
+11. Produce an accurate YouTube title, thumbnail text, description, and next-episode bridge.
+
+Return the complete episode object only.`,
+      schema:episodeSchema,
+      thinkingMode:'DEEP',
+      maxTokens:7600,
+      temperature:.42
+    });
+    try{
+      const episode=JSON.parse(result.text);
+      return json({
+        episode,
+        referenceInfo:{
+          url:d.referenceUrl||'',
+          title:referenceTitle,
+          accessible:Boolean(accessibleText),
+          note:accessibleText?'Veyr used only accessible public-page text plus abstract production traits.':'The reference page did not expose usable text; Veyr did not claim to have watched or transcribed it.'
+        }
+      });
+    }catch{return error('Veyr produced an invalid Simple Mode episode package. Please retry.',502);}
+  }],
+
   'POST /api/generate-episode':[async({body})=>{const d=(body||{}) as {prompt?:string;world?:string;targetMinutes?:number;voice?:string;visualStyle?:string;referenceBlend?:unknown;speechProfile?:string;dialogueMode?:string;deliveryPrompt?:string}; if(!d.prompt?.trim())return error('Tell Veyr what episode to create.'); const minutes=Math.max(4,Math.min(20,d.targetMinutes||5)); const result=await ai.generate({system:veyrSystem,prompt:`Create one complete, original GrimForge episode production plan from this request: ${d.prompt}\nWorld: ${d.world||'Warhammer 40K'}\nTarget: ${minutes} minutes\nPreferred narrator direction: ${d.voice||'Eric'}\nSpeech delivery profile: ${d.speechProfile||'Strategic Cartographer'}\nDialogue writing mode: ${d.dialogueMode||'Strategic Chronicle'}\nExtra speech direction: ${d.deliveryPrompt||'Authoritative, human and low-fatigue.'}\nUse those speech settings as abstract performance/writing cues only; do not imitate a real or fictional named voice.\nPreferred visual style: ${d.visualStyle||'2.5D Motion Art'}\nReference-channel blend (high-level traits only): ${JSON.stringify(d.referenceBlend||{})}\nReturn 8 scenes unless the structure genuinely needs 7-10. Total durations should approximately equal ${minutes*60} seconds. Narration should be a usable full draft for the target runtime, not merely scene summaries. Label every scene claimType as exactly CANON / SOURCE, INTERPRETATION, EDITORIAL or SPECULATION. sourceNeed must state what kind of verification is needed and must never invent citations. Visual prompts must ask for original archetypes and compositions, never named copyrighted character likenesses. Titles/thumbnails must be accurate, sharp and not misleading.`,schema:episodeSchema,thinkingMode:'DEEP',maxTokens:6500,temperature:.45}); try{const episode=JSON.parse(result.text); return json({episode});}catch{return error('Veyr produced an invalid episode package. Please retry.',502);}}],
   'POST /api/copilot':[async({body})=>{const d=(body||{}) as {question?:string;episode?:unknown;preferences?:unknown;workMode?:WorkMode}; if(!d.question?.trim())return error('question is required'); const result=await ai.generate({system:veyrSystem,prompt:`Current episode:\n${JSON.stringify(d.episode||{},null,2).slice(0,22000)}\nPreferences:\n${JSON.stringify(d.preferences||{},null,2).slice(0,6000)}\nUser request:\n${d.question}`,thinkingMode:thinking(d.workMode),maxTokens:d.workMode==='Deep'?2200:1300,temperature:.45}); return json({answer:result.text});}],
   'POST /api/remix-episode':[async({body})=>{const d=(body||{}) as {episode?:unknown;selectedRefs?:Record<string,number>;importedRefs?:unknown[];blend?:unknown;world?:string;targetMinutes?:number;speechProfile?:string;dialogueMode?:string;deliveryPrompt?:string}; if(!d.episode)return error('episode is required'); const active=Object.entries(d.selectedRefs||{}).filter(([,weight])=>weight>0); if(!active.length&&!(d.importedRefs||[]).length)return error('Select or import at least one reference.'); const result=await ai.generate({system:veyrSystem,prompt:`Remix the CURRENT GrimForge episode using the selected channels only as high-level production references. Preserve the core thesis and factual/canon boundaries. Do not imitate creator wording, jokes, catchphrases, artwork, identity or voice. Use the weights to influence pacing, chapter structure, humor density, map use, hook strategy, packaging and newcomer clarity. Keep the result original and coherent, not a collage.\n\nSelected built-in channel weights: ${JSON.stringify(d.selectedRefs||{})}\nImported reference profiles and weights: ${JSON.stringify(d.importedRefs||[]).slice(0,9000)}\nComputed production blend: ${JSON.stringify(d.blend||{})}\nWorld: ${d.world||'Warhammer 40K'}\nTarget minutes: ${d.targetMinutes||5}\nSpeech delivery profile: ${d.speechProfile||'Strategic Cartographer'}\nDialogue mode: ${d.dialogueMode||'Strategic Chronicle'}\nExtra speech direction: ${d.deliveryPrompt||'Authoritative and human.'}\n\nCurrent episode:\n${JSON.stringify(d.episode,null,2).slice(0,26000)}\n\nReturn a complete revised episode using the same schema. Narration should remain a usable full draft. Keep claimType values exactly CANON / SOURCE, INTERPRETATION, EDITORIAL or SPECULATION, and do not invent citations.`,schema:episodeSchema,thinkingMode:'DEEP',maxTokens:6500,temperature:.42}); try{return json({episode:JSON.parse(result.text)});}catch{return error('Veyr produced an invalid remixed episode package. Please retry.',502);}}],
