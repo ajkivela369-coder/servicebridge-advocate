@@ -917,6 +917,50 @@ export const handler = router({
             return error(err instanceof Error ? err.message : 'Submission Advocacy Brief could not finish this record.', 422);
         }
     }],
+    'POST /api/evidence/illustration': [requireAuth(), async (ctx) => {
+        const userId = ctx.user!.userId;
+        const body = ctx.body as { sourceIds?: string[]; instruction?: string };
+        const requestedIds = Array.from(new Set((Array.isArray(body.sourceIds) ? body.sourceIds : []).map((id) => String(id)).filter(Boolean))).slice(0, 8);
+        const instruction = String(body.instruction ?? '').trim().slice(0, 1600);
+        if (!requestedIds.length) return error('Select at least one supporting source before generating an illustration.', 400);
+        const docs = await getDocuments(userId) as Array<DocumentRecord & { id: string }>;
+        const selected = docs.filter((doc) => requestedIds.includes(doc.id));
+        if (!selected.length) return error('The selected supporting sources are not available in this case.', 400);
+        const sourceContext = selected.map((doc) => `SOURCE: ${doc.name}\nLOCATOR: ${vaultLocator(doc)}\n${doc.text.slice(0, 6500)}`).join('\n\n---\n\n').slice(0, 32000);
+        const briefGeneration = await resilientGenerate({
+            system: ELIAS_PLAYBOOK,
+            prompt: `Create a de-identified educational illustration brief from the selected record evidence. Remove claimant names, dates of birth, claim numbers, addresses, provider names, facility names, exact dates, and other identifiers. Do not add a diagnosis, causal conclusion, anatomy, injury, or mechanism that is not supported by the selected record. Separate documented facts from uncertainty. The requested visual purpose is: ${instruction || 'Explain the documented injury/anatomy/functional mechanism in a neutral educational diagram.'}\n\nSELECTED RECORD:\n${sourceContext}`,
+            schema: { type: 'object', properties: { title: { type: 'string' }, visualGoal: { type: 'string' }, documentedFacts: { type: 'array', items: { type: 'string' } }, anatomy: { type: 'array', items: { type: 'string' } }, mechanism: { type: 'array', items: { type: 'string' } }, uncertainties: { type: 'array', items: { type: 'string' } }, sourceCitations: { type: 'array', items: { type: 'string' } } }, required: ['title', 'visualGoal', 'documentedFacts', 'anatomy', 'mechanism', 'uncertainties', 'sourceCitations'] },
+            speed: 'Standard',
+            maxTokens: 2200,
+            temperature: 0.03,
+            label: 'Illustration Brief',
+        });
+        let brief: { title?: string; visualGoal?: string; documentedFacts?: string[]; anatomy?: string[]; mechanism?: string[]; uncertainties?: string[]; sourceCitations?: string[] } = {};
+        try { brief = JSON.parse(briefGeneration.text) as typeof brief; } catch { return error('The illustration brief could not be structured safely.', 422); }
+        const validNames = new Set(selected.map((doc) => doc.name));
+        const citedSources = Array.from(new Set((brief.sourceCitations ?? []).map((name) => String(name).replace(/^\[|\]$/g, '').trim()).filter((name) => validNames.has(name))));
+        if (!citedSources.length) return error('The illustration brief did not resolve to the selected supporting sources.', 422);
+        const facts = (brief.documentedFacts ?? []).map(String).filter(Boolean).slice(0, 10);
+        const anatomy = (brief.anatomy ?? []).map(String).filter(Boolean).slice(0, 10);
+        const mechanism = (brief.mechanism ?? []).map(String).filter(Boolean).slice(0, 10);
+        const uncertainties = (brief.uncertainties ?? []).map(String).filter(Boolean).slice(0, 8);
+        const imagePrompt = `Create a clean educational medical mechanism illustration for evidence review. This is NOT medical imaging and NOT diagnostic proof. No patient likeness. No names, dates, facilities, provider names, claim numbers, logos, or identifying text. Visual goal: ${String(brief.visualGoal ?? instruction ?? 'educational anatomy diagram')}. Documented anatomy: ${anatomy.join('; ') || 'only anatomy explicitly supported by the brief'}. Documented mechanism/facts: ${[...facts, ...mechanism].join('; ')}. Do not visualize uncertain points as established facts. Uncertainties: ${uncertainties.join('; ') || 'none listed'}. Use restrained clinical infographic styling, clear directional arrows only where supported, readable anatomical labels, and a prominent footer label: ILLUSTRATION — NOT MEDICAL IMAGING. Do not depict a specific identifiable person.`;
+        const generated = await ai.imageGen({ prompt: imagePrompt, maxOutputBytes: 900000 });
+        const root = await vaultRootFor(userId);
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const stem = safeName(String(brief.title ?? 'Evidence_Illustration')).replace(/\.[^.]+$/, '').slice(0, 72);
+        const imagePath = `${root}/07_Derived_Visuals/${stem}__${stamp}__ILLUSTRATION.png`;
+        const metadataPath = `${root}/07_Derived_Visuals/${stem}__${stamp}__ILLUSTRATION.json`;
+        const metadata = { kind: 'derived_evidence_illustration', title: String(brief.title ?? 'Evidence Illustration'), visualGoal: String(brief.visualGoal ?? instruction), documentedFacts: facts, anatomy, mechanism, uncertainties, sources: selected.filter((doc) => citedSources.includes(doc.name)).map((doc) => ({ sourceId: doc.id, name: doc.name, locator: vaultLocator(doc) })), label: 'ILLUSTRATION — NOT MEDICAL IMAGING. Derived explanatory visual; original records control.', generatedAt: new Date().toISOString() };
+        const results = await storage.write([
+            { path: imagePath, content: generated.image.data, contentType: generated.image.mimeType },
+            { path: metadataPath, content: JSON.stringify(metadata, null, 2), contentType: 'application/json' },
+        ]);
+        if (!results.every(Boolean)) return error('The illustration or its provenance metadata could not be saved.', 500);
+        const [signed] = await storage.url([imagePath]);
+        return json({ illustration: { url: signed?.url ?? '', path: imagePath, metadataPath, ...metadata } });
+    }],
     'GET /api/evidence/source/:id/url': [requireAuth(), async (ctx) => {
         const userId = ctx.user!.userId;
         const [doc] = await db.get<DocumentRecord>(tables(userId).documents, [ctx.params.id]);
