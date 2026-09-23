@@ -52,3 +52,60 @@ External research queries must be de-identified and derived from the public prog
 Requested Action / What Matters Now → Issues Presented → agency-specific chronology/framework → objective findings → favorable evidence map → record-grounded medical and legal arguments → functional reliability/RFC or work-impact analysis → governing authorities → tightly relevant literature → focused development questions when appropriate → concise cited-source appendix → Requested Disposition.
 
 The internal audit remains separate and may include weaknesses, conflicts, gaps, and adverse evidence. The claimant-facing advocacy filing may prioritize favorable supportable evidence but must not fabricate, misquote, or omit context necessary to keep a proposition accurate.
+
+
+## Unified flagship architecture — v9 direction
+
+Elias and Evidence Auditor are not separate evidence silos.
+
+- **Elias** is the master case orchestrator and user-facing assistant.
+- **Evidence Auditor** is the flagship audit workspace for support, contradictions, gaps, provenance, chronology, functional reliability, and reviewer-readiness.
+- **Evidence Cloud** is the shared patient-controlled source layer.
+- **NeuroEval** is a specialist neurologic/functional evidence reviewer.
+- **HealthQA** is a patient-friendly health-record explanation mode that must not invent diagnosis or causation.
+- **Packet Builder** assembles verified evidence into structured draft submissions.
+- **Citation Auditor** checks whether important propositions actually trace back to the record.
+- **Document Copilot** organizes and formats evidence-backed sections and pages.
+
+The user should not have to upload the same record separately to each specialist. Every specialist should operate against the same user-scoped case evidence and preserve the same evidence-type boundaries.
+
+## Patient Evidence Cloud target
+
+The Evidence Cloud is more than a file uploader. The target capability set is:
+
+1. patient-controlled upload of PDFs, images, video, audio, letters, forms, screenshots, email exports, and other supported evidence;
+2. automatic evidence grouping without changing the original source;
+3. metadata extraction for provider/facility, record date, document type, page count, issue, source, and upload time when supportable;
+4. chronology/timeline generation with source locators;
+5. statement-to-source links;
+6. persistent reference across Elias and every specialist mode;
+7. duplicate and version detection that never destroys the original record;
+8. natural-language case search;
+9. evidence bundles for VA, SSA, state disability, ADA, clinician review, attorney review, and other case-specific workflows;
+10. packet assembly using selected source pages and visuals;
+11. provenance for generated outputs;
+12. explicit uncertainty flags and human verification gates.
+
+## Copilot operating model
+
+The floating Copilot should be able to **operate on the app**, not only answer questions.
+
+Primary verbs:
+
+`Find → Compare → Explain → Organize → Link → Draft → Build → Verify → Export`
+
+Actions that change case organization, selected evidence, or packet composition should remain visible and reviewable. Consequential submission/export actions should preserve a human approval step.
+
+## Original-source protection
+
+The intended architecture treats original evidence as source-of-truth material and stores AI-created summaries, labels, relationships, diagrams, interpretations, and draft prose separately.
+
+The public repository must not claim that immutable object/version storage is fully enforced unless the deployed storage implementation is verified to do so. Until then, **original-source control is a required architecture rule, not a compliance claim**.
+
+## Automated polished-page pipeline target
+
+The target pipeline is:
+
+`Patient files → evidence graph → relevant-page selection → screenshot/crop → source label → narrative → diagram → citations → packet → visual QA → compression`
+
+Screenshot/crop selection, injury illustration generation, final visual QA, and reliable under-5-MB compression are not complete merely because ordinary packet generation exists. The UI and documentation must keep that distinction visible.
