@@ -17,6 +17,19 @@ type DocumentRecord = {
     createdAt: string;
 };
 type ChatRecord = { threadId: string; question: string; answer: string; tool: string; speed?: WorkMode; sources: string[]; createdAt: string };
+type EvidenceCategory = 'Medical Records' | 'Imaging / Tests' | 'Military / Service' | 'VA / Benefits' | 'Disability / SSA / State' | 'Functional Capacity' | 'Correspondence' | 'Legal / Administrative' | 'Research' | 'Other';
+type EvidenceInventoryItem = {
+    id: string;
+    name: string;
+    category: EvidenceCategory;
+    documentType: string;
+    locator: string;
+    candidateDates: string[];
+    fingerprint: string;
+    versionGroup: string;
+    storageStatus: 'Stored original' | 'Derived reference' | 'Indexed only';
+    classificationBasis: 'heuristic';
+};
 
 const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}` });
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'document';
@@ -295,6 +308,82 @@ function vaultLocator(doc: DocumentRecord) {
     const match = doc.name.match(/__pages_(\d+)-(\d+)/i);
     if (match) return `Indexed source pages ${match[1]}-${match[2]}`;
     return `${Math.max(1, doc.pageCount)} indexed page${doc.pageCount === 1 ? '' : 's'}`;
+}
+
+function evidenceCategory(doc: DocumentRecord): EvidenceCategory {
+    if (doc.sourceMode === 'web' || doc.sourceMode === 'search') return 'Research';
+    const sample = `${doc.name} ${doc.text.slice(0, 2200)}`.toLowerCase();
+    if (/mri|x-ray|xray|ct scan|ultrasound|emg|eeg|radiology|imaging|diagnostic test/.test(sample)) return 'Imaging / Tests';
+    if (/army|guard|military|service record|orders|dd214|ngb|duty|line of duty|acdutra|inacdutra|title 32/.test(sample)) return 'Military / Service';
+    if (/va |vba|veteran|dbq|c&p|compensation|tdiu|rating decision/.test(sample)) return 'VA / Benefits';
+    if (/ssdi|ssi|social security|aptd|dhhs|disability determination|state disability/.test(sample)) return 'Disability / SSA / State';
+    if (/fce|functional capacity|work capacity|attendance|pace|persistence|reliability|lifting|sitting|standing/.test(sample)) return 'Functional Capacity';
+    if (/email|letter|message|correspondence|memo/.test(sample) || doc.sourceMode === 'email') return 'Correspondence';
+    if (/court|legal|attorney|hearing|appeal|administrative|decision|denial|notice/.test(sample)) return 'Legal / Administrative';
+    if (/hospital|clinic|medical|physician|doctor|psychi|psycholog|rehab|therapy|treatment|diagnos|medication|patient/.test(sample)) return 'Medical Records';
+    return 'Other';
+}
+
+function evidenceDocumentType(doc: DocumentRecord) {
+    const sample = `${doc.name} ${doc.text.slice(0, 1200)}`.toLowerCase();
+    if (/functional capacity|\bfce\b/.test(sample)) return 'Functional capacity evaluation';
+    if (/\bdbq\b/.test(sample)) return 'Disability benefits questionnaire';
+    if (/rating decision|decision letter|determination/.test(sample)) return 'Agency decision';
+    if (/orders|dd214|ngb|line of duty|\blod\b/.test(sample)) return 'Service record';
+    if (/mri|x-ray|xray|ct scan|ultrasound|emg|eeg|radiology/.test(sample)) return 'Diagnostic / imaging record';
+    if (/email|message|correspondence/.test(sample) || doc.sourceMode === 'email') return 'Correspondence';
+    if (doc.sourceMode === 'web' || doc.sourceMode === 'search') return 'External reference';
+    if (doc.sourceMode === 'ocr') return 'Scanned / OCR record';
+    if (doc.contentType === 'application/pdf') return 'PDF record';
+    return 'Case record';
+}
+
+function evidenceCandidateDates(doc: DocumentRecord) {
+    const sample = `${doc.name} ${doc.text.slice(0, 5000)}`;
+    const matches = sample.match(/\b(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])\b|\b(?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])[-/.](?:19|20)?\d{2}\b/g) ?? [];
+    return Array.from(new Set(matches)).slice(0, 6);
+}
+
+function evidenceFingerprint(doc: DocumentRecord) {
+    const normalized = `${doc.contentType}|${doc.charCount}|${doc.pageCount}|${doc.text.slice(0, 50000).replace(/\s+/g, ' ').trim().toLowerCase()}`;
+    let hash = 2166136261;
+    for (let index = 0; index < normalized.length; index += 1) {
+        hash ^= normalized.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+function evidenceVersionGroup(name: string) {
+    return name.toLowerCase()
+        .replace(/__pages_\d+-\d+/g, '')
+        .replace(/\.(pdf|txt|md|eml|mbox|png|jpe?g|webp)$/g, '')
+        .replace(/\b(copy|final|revised|revision|rev|version|ver|v)\s*[-_.]?\s*\d+\b/g, '')
+        .replace(/[()\[\]{}_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 100) || 'ungrouped';
+}
+
+function evidenceStorageStatus(doc: DocumentRecord): EvidenceInventoryItem['storageStatus'] {
+    if (doc.storagePaths?.length || doc.storagePath) return 'Stored original';
+    if (doc.sourceMode === 'web' || doc.sourceMode === 'search' || doc.sourceMode === 'media') return 'Derived reference';
+    return 'Indexed only';
+}
+
+function evidenceInventoryItem(doc: DocumentRecord & { id: string }): EvidenceInventoryItem {
+    return {
+        id: doc.id,
+        name: doc.name,
+        category: evidenceCategory(doc),
+        documentType: evidenceDocumentType(doc),
+        locator: vaultLocator(doc),
+        candidateDates: evidenceCandidateDates(doc),
+        fingerprint: evidenceFingerprint(doc),
+        versionGroup: evidenceVersionGroup(doc.name),
+        storageStatus: evidenceStorageStatus(doc),
+        classificationBasis: 'heuristic',
+    };
 }
 
 const safeVaultFolder = (value: string) => safeName(value || 'Evidence_Case').replace(/\.[^.]+$/, '').slice(0, 72) || 'Evidence_Case';
@@ -823,6 +912,24 @@ export const handler = router({
             return error(err instanceof Error ? err.message : 'Submission Advocacy Brief could not finish this record.', 422);
         }
     }],
+    'GET /api/evidence/inventory': [requireAuth(), async (ctx) => {
+        const docs = await getDocuments(ctx.user!.userId) as Array<DocumentRecord & { id: string }>;
+        const items = docs.map(evidenceInventoryItem);
+        const duplicateMap = new Map<string, EvidenceInventoryItem[]>();
+        const versionMap = new Map<string, EvidenceInventoryItem[]>();
+        items.forEach((item) => {
+            duplicateMap.set(item.fingerprint, [...(duplicateMap.get(item.fingerprint) ?? []), item]);
+            versionMap.set(item.versionGroup, [...(versionMap.get(item.versionGroup) ?? []), item]);
+        });
+        const duplicateGroups = Array.from(duplicateMap.entries())
+            .filter(([, group]) => group.length > 1)
+            .map(([fingerprint, group]) => ({ fingerprint, documentIds: group.map((item) => item.id), names: group.map((item) => item.name), note: 'Likely duplicate based on a deterministic text/content fingerprint; verify before removing anything.' }));
+        const versionGroups = Array.from(versionMap.entries())
+            .filter(([key, group]) => key !== 'ungrouped' && group.length > 1)
+            .map(([versionGroup, group]) => ({ versionGroup, documentIds: group.map((item) => item.id), names: group.map((item) => item.name), note: 'Possible versions based on filename normalization; this is a review cue, not a conclusion.' }));
+        return json({ items, duplicateGroups, versionGroups, generatedAt: new Date().toISOString(), warning: 'Categories, document types, candidate dates, duplicate groups, and version groups are heuristic review aids. Original records control.' });
+    }],
+
     'POST /api/vault/organize': [requireAuth(), async (ctx) => {
         const userId = ctx.user!.userId;
         const docs = await getDocuments(userId);
