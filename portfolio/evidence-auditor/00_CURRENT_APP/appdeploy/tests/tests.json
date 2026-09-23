@@ -304,5 +304,42 @@
       "Allow PDF.js to finish rendering every page"
     ],
     "expected": "The UI reports the exact file size, UNDER 5 MB or OVER 5 MB from the actual Blob size, and all-pages-rendered only after every generated page renders successfully."
+  },
+  {
+    "name": "Derived Visual Library composes approved visuals into the exact filing PDF",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/evidence/visuals",
+      "POST /api/evidence/visuals/data",
+      "Derived Visual Library",
+      "SubmissionVisual",
+      "buildSubmissionPdf",
+      "provenance-labeled visual pages"
+    ],
+    "description": "Verifies approved source captures and illustrations are intentionally selected and composed into the same PDF users preview, download, save, and size-check.",
+    "steps": [
+      "Create one fictional derived page capture and one fictional illustration",
+      "Open Packet Studio and select both in Derived Visual Library",
+      "Create a Submission Brief",
+      "Open Simple Mode preview and inspect the visual pages"
+    ],
+    "expected": "Each selected visual appears on a dedicated polished PDF page with a derived-visual warning and provenance caption; download/save uses that same composed PDF blob."
+  },
+  {
+    "name": "Visual packet retries packet-only reduction when first PDF exceeds 5 MB",
+    "viewport": "desktop",
+    "covers": [
+      "packet-only image optimization",
+      "5 MB threshold retry",
+      "stored asset preservation",
+      "exact final Blob size"
+    ],
+    "description": "Verifies large visual packets can be reduced for submission without overwriting stored source or derived visual assets.",
+    "steps": [
+      "Select enough large fictional derived visuals to make the first combined packet exceed 5 MB",
+      "Create or refresh the submission PDF",
+      "Inspect the optimization note and final exact-size validation"
+    ],
+    "expected": "Elias retries with smaller packet-only visual copies, leaves stored assets unchanged, and reports the final exact file as UNDER 5 MB only if it actually falls below the threshold; otherwise it remains visibly OVER 5 MB."
   }
 ]
