@@ -31,12 +31,23 @@ type EvidenceInventoryItem = {
     classificationBasis: 'heuristic';
 };
 type EvidenceBundleRecord = { name: string; purpose: string; documentIds: string[]; createdAt: string; updatedAt: string };
+type EvidenceMetadataRecord = {
+    documentId: string;
+    providerCandidates: string[];
+    facilityCandidates: string[];
+    recordDateCandidates: string[];
+    documentTypeCandidate: string;
+    issueTags: string[];
+    confidence: 'low' | 'medium' | 'high';
+    verificationStatus: 'Unreviewed' | 'Reviewed';
+    generatedAt: string;
+};
 type EvidenceTimelineItem = { date: string; event: string; source: string; significance: string };
 type EvidenceTimelineRecord = { items: EvidenceTimelineItem[]; createdAt: string; warning: string };
 type EvidenceTraceItem = { sourceId: string; source: string; locator: string; evidenceType: string; relation: 'supports' | 'conflicts' | 'context'; evidence: string; quoteVerified: boolean; exactQuote?: string };
 type EvidenceTraceResult = { claim: string; assessment: 'Supported' | 'Partially supported' | 'Conflicted' | 'Unsupported'; summary: string; items: EvidenceTraceItem[]; droppedUnresolvedSources: string[]; warning: string };
 
-const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}`, bundles: `evidence_bundles_${userId}`, timeline: `evidence_timeline_${userId}` });
+const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}`, bundles: `evidence_bundles_${userId}`, timeline: `evidence_timeline_${userId}`, metadata: `evidence_metadata_${userId}` });
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'document';
 const safeUploadId = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
 const textContext = (docs: Array<DocumentRecord & { id: string }>, query = '') => {
@@ -1086,9 +1097,77 @@ export const handler = router({
         const versionGroups = Array.from(versionMap.entries())
             .filter(([key, group]) => key !== 'ungrouped' && group.length > 1)
             .map(([versionGroup, group]) => ({ versionGroup, documentIds: group.map((item) => item.id), names: group.map((item) => item.name), note: 'Possible versions based on filename normalization; this is a review cue, not a conclusion.' }));
-        return json({ items, duplicateGroups, versionGroups, generatedAt: new Date().toISOString(), warning: 'Categories, document types, candidate dates, duplicate groups, and version groups are heuristic review aids. Original records control.' });
+        const { items: metadataRecords } = await db.list<EvidenceMetadataRecord>(tables(ctx.user!.userId).metadata, { limit: 500 });
+        const metadataByDocument = new Map((metadataRecords as Array<EvidenceMetadataRecord & { id?: string }>).map((record) => [record.documentId, record]));
+        return json({
+            items: items.map((item) => ({ ...item, smartMetadata: metadataByDocument.get(item.id) ?? null })),
+            duplicateGroups,
+            versionGroups,
+            generatedAt: new Date().toISOString(),
+            warning: 'Categories, document types, candidate dates, duplicate groups, version groups, and smart metadata are review aids. Original records control. Provider/facility/date/issue candidates remain separate from source evidence until a human reviews them.',
+        });
     }],
 
+    'POST /api/evidence/metadata/enrich': [requireAuth(), async (ctx) => {
+        const userId = ctx.user!.userId;
+        const body = ctx.body as { documentIds?: string[] };
+        const requestedIds = Array.from(new Set((Array.isArray(body.documentIds) ? body.documentIds : []).map((id) => String(id)).filter(Boolean))).slice(0, 12);
+        if (!requestedIds.length) return error('Select at least one evidence source for smart metadata review.', 400);
+        const docs = await getDocuments(userId) as Array<DocumentRecord & { id: string }>;
+        const selected = docs.filter((doc) => requestedIds.includes(doc.id));
+        if (!selected.length) return error('The selected evidence sources are not available in this case.', 400);
+        const { items: existing } = await db.list<EvidenceMetadataRecord>(tables(userId).metadata, { limit: 500 });
+        const existingWithIds = existing as Array<EvidenceMetadataRecord & { id?: string }>;
+        const created: Array<EvidenceMetadataRecord & { documentId: string }> = [];
+        for (const doc of selected) {
+            const generated = await resilientGenerate({
+                system: ELIAS_PLAYBOOK,
+                prompt: `Extract candidate metadata from this single case record without changing the source. Return only names/dates/types/issues that are directly supported by visible record text. Provider means a clinician or author associated with the record; facility means an institution/clinic/hospital explicitly identified in the record. If uncertain or absent, return an empty array/string rather than guessing. issueTags should be short neutral topics such as cervical function, shoulder function, headache, duty status, functional capacity, attendance/reliability, mental health, imaging, or administrative decision; do not invent diagnoses.\n\nSOURCE NAME: ${doc.name}\nSOURCE MODE: ${doc.sourceMode ?? 'indexed'}\nPAGE COUNT: ${doc.pageCount}\nRECORD TEXT:\n${doc.text.slice(0, 18000)}`,
+                schema: { type: 'object', properties: { providerCandidates: { type: 'array', items: { type: 'string' } }, facilityCandidates: { type: 'array', items: { type: 'string' } }, recordDateCandidates: { type: 'array', items: { type: 'string' } }, documentTypeCandidate: { type: 'string' }, issueTags: { type: 'array', items: { type: 'string' } }, confidence: { type: 'string' } }, required: ['providerCandidates', 'facilityCandidates', 'recordDateCandidates', 'documentTypeCandidate', 'issueTags', 'confidence'] },
+                speed: 'Quick',
+                maxTokens: 1300,
+                temperature: 0.01,
+                label: 'Smart Evidence Metadata',
+            });
+            let parsed: { providerCandidates?: string[]; facilityCandidates?: string[]; recordDateCandidates?: string[]; documentTypeCandidate?: string; issueTags?: string[]; confidence?: string } = {};
+            try { parsed = JSON.parse(generated.text) as typeof parsed; } catch { continue; }
+            const confidenceRaw = String(parsed.confidence ?? '').toLowerCase();
+            const record: EvidenceMetadataRecord = {
+                documentId: doc.id,
+                providerCandidates: Array.from(new Set((parsed.providerCandidates ?? []).map((value) => String(value).trim()).filter(Boolean))).slice(0, 5),
+                facilityCandidates: Array.from(new Set((parsed.facilityCandidates ?? []).map((value) => String(value).trim()).filter(Boolean))).slice(0, 5),
+                recordDateCandidates: Array.from(new Set((parsed.recordDateCandidates ?? []).map((value) => String(value).trim()).filter(Boolean))).slice(0, 8),
+                documentTypeCandidate: String(parsed.documentTypeCandidate ?? '').trim().slice(0, 120),
+                issueTags: Array.from(new Set((parsed.issueTags ?? []).map((value) => String(value).trim()).filter(Boolean))).slice(0, 12),
+                confidence: confidenceRaw.includes('high') ? 'high' : confidenceRaw.includes('medium') ? 'medium' : 'low',
+                verificationStatus: 'Unreviewed',
+                generatedAt: new Date().toISOString(),
+            };
+            const priorIds = existingWithIds.filter((item) => item.documentId === doc.id).map((item) => item.id).filter((id): id is string => Boolean(id));
+            if (priorIds.length) await db.delete(tables(userId).metadata, priorIds);
+            await db.add(tables(userId).metadata, [record]);
+            created.push(record);
+        }
+        return json({ metadata: created, warning: 'Smart metadata is an AI-assisted candidate layer, not source evidence. Provider, facility, date, type, and issue suggestions must be checked against the original record before consequential use.' });
+    }],
+    'POST /api/evidence/metadata/review': [requireAuth(), async (ctx) => {
+        const userId = ctx.user!.userId;
+        const body = ctx.body as { documentId?: string; status?: string };
+        const documentId = String(body.documentId ?? '');
+        if (!documentId) return error('Document ID is required.', 400);
+        const [doc] = await db.get<DocumentRecord>(tables(userId).documents, [documentId]);
+        if (!doc) return error('Evidence source not found.', 404);
+        const { items } = await db.list<EvidenceMetadataRecord>(tables(userId).metadata, { limit: 500 });
+        const matches = (items as Array<EvidenceMetadataRecord & { id?: string }>).filter((item) => item.documentId === documentId);
+        const current = matches[0];
+        if (!current) return error('No smart metadata exists for this source yet.', 404);
+        const ids = matches.map((item) => item.id).filter((id): id is string => Boolean(id));
+        if (ids.length) await db.delete(tables(userId).metadata, ids);
+        const { id: _ignored, ...base } = current as EvidenceMetadataRecord & { id?: string };
+        const record: EvidenceMetadataRecord = { ...base, verificationStatus: String(body.status ?? '').toLowerCase() === 'reviewed' ? 'Reviewed' : 'Unreviewed' };
+        await db.add(tables(userId).metadata, [record]);
+        return json({ metadata: record });
+    }],
     'POST /api/evidence/trace': [requireAuth(), async (ctx) => {
         const body = ctx.body as { claim?: string; speed?: WorkMode };
         const claim = String(body.claim ?? '').trim().slice(0, 2000);
