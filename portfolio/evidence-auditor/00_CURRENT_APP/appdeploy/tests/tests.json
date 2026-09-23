@@ -1,0 +1,43 @@
+[
+  {
+    "name": "Simple mode gates generation and previews the exact PDF",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": ["upper-right Simple/Pro toggle", "upload/indexing generation gate", "green upload-complete banner", "POST /api/submission-brief", "submission preflight status", "PDF.js exact generated-PDF preview"],
+    "description": "Verifies backward-compatible Simple mode from evidence upload through preflighted PDF preview.",
+    "steps": ["Sign in and confirm Simple mode with the Simple/Pro switch in the upper-right and Generate Submission-Ready PDF in Step 2", "Confirm Generate is disabled before evidence is indexed, upload fictional evidence, and confirm the green Upload complete banner", "After indexing completes choose a program/issue, generate the filing, and inspect the preflight status and PDF.js preview"],
+    "expected": "Generate stays disabled during upload/indexing, unlocks afterward, and the generated filing shows Draft/Needs Review/Ready to Submit preflight information while the exact PDF pages render in the preview."
+  },
+  {
+    "name": "VA filing uses duty chronology and treats missing LOD as a development gap",
+    "viewport": "desktop",
+    "covers": ["Elias v8 VA agency architecture", "duty-status chronology", "direct/secondary/aggravation theory separation", "missing-LOD development-gap handling", "functional reliability analysis"],
+    "description": "Uses synthetic evidence to verify VA analysis does not convert an absent LOD into affirmative negative evidence.",
+    "steps": ["Upload a fictional service record with dated duty periods, a fictional medical record, and a fictional note that an LOD record is not present", "Select VA / VBA and Service connection and generate a submission", "Inspect chronology, arguments, and focused development questions"],
+    "expected": "The filing organizes relevant duty chronology before nexus/aggravation reasoning, distinguishes applicable theories, and treats the missing LOD as a development gap unless the fictional record contains an actual adverse finding."
+  },
+  {
+    "name": "SSA filing uses RFC and sustained-work reliability rather than VA framing",
+    "viewport": "desktop",
+    "covers": ["Elias v8 SSA five-step framework", "RFC by function", "symptom and medical-opinion evaluation", "past-work/other-work analysis", "attendance/pace/persistence/reliability"],
+    "description": "Verifies synthetic SSA evidence is analyzed under SSA disability architecture rather than service-connection concepts.",
+    "steps": ["Upload fictional medical and work-history evidence describing intermittent limitations and recovery time", "Select Social Security (SSDI / SSI) and RFC / sustained work capacity", "Generate the filing and inspect the functional section and arguments"],
+    "expected": "The filing uses SSA sequential/RFC concepts and sustained-work reliability, with no service-connection or military nexus framing."
+  },
+  {
+    "name": "Preflight blocks unsupported readiness and deduplicates cited sources",
+    "viewport": "desktop",
+    "covers": ["empty-authority preflight failure", "uncited proposition blocker", "duplicate source appendix dedupe", "cited-sources-only appendix", "Draft/Needs Review status"],
+    "description": "Verifies a filing cannot be labeled Ready to Submit when core authority/support requirements fail and duplicate/uncited appendix entries are not padded into the filing.",
+    "steps": ["Use fictional evidence with duplicated source material and generate a filing while official authority retrieval is unavailable or while an argument lacks record citation support", "Inspect Submission Preflight", "Inspect the Cited Source Library / Appendix"],
+    "expected": "The filing is Draft or Needs Review with visible blockers; duplicate sources are removed and the appendix normally contains only sources actually cited by the filing."
+  },
+  {
+    "name": "Quote Check protects exact quotation versus paraphrase on mobile",
+    "viewport": "mobile",
+    "covers": ["Elias v8 original-source control", "exact quote vs paraphrase", "evidence-type separation", "primary-record precedence", "Pro-mode advanced audit preservation"],
+    "description": "Verifies Elias does not turn similar wording or secondary summaries into an exact quotation.",
+    "steps": ["In Pro mode upload a fictional primary record containing one exact sentence and a fictional summary that paraphrases it", "Open Elias Copilot Quote Check and ask whether the summary wording is an exact quote", "Ask Elias to classify the support as exact quote, paraphrase, claimant report, clinician observation, objective test, medical opinion, agency finding, or AI synthesis"],
+    "expected": "Elias identifies only verbatim primary-record language as an exact quote, labels similar wording as paraphrase, preserves evidence-type distinctions, and keeps the advanced Pro audit tools available."
+  }
+]
