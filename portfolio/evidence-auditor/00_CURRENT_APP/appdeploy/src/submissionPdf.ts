@@ -7,7 +7,8 @@ export type SubmissionEvidence = { evidence: string; establishes: string; whyItM
 export type SubmissionArgument = { heading: string; proposition: string; recordSupport: string; medicalReasoning: string; legalReasoning: string; sourceCitations: string[]; authorityCitations: string[] };
 export type SubmissionSource = { sourceId?: string; name: string; locator: string; use: string };
 export type SubmissionPreflight = { status: 'Draft' | 'Needs Review' | 'Ready to Submit'; blockers: string[]; warnings: string[] };
-export type SubmissionBrief = { title: string; subtitle: string; requestedAction: string; executiveArgument: string; evidenceConvergence: SubmissionEvidence[]; arguments: SubmissionArgument[]; functionalCase: string[]; chronology?: Array<{ date: string; event: string; source: string; significance: string }>; objectiveFindings?: string[]; focusedQuestions?: string[]; medicalLiterature: SubmissionLiterature[]; requestedDisposition: string; legalAuthorities: SubmissionAuthority[]; sourceAppendix: SubmissionSource[]; preflight?: SubmissionPreflight; verificationNote: string };
+export type SubmissionVisual = { data: string; mimeType: string; title: string; label: string; kind?: string; sources?: Array<{ name: string; locator: string }> };
+export type SubmissionBrief = { title: string; subtitle: string; requestedAction: string; executiveArgument: string; evidenceConvergence: SubmissionEvidence[]; arguments: SubmissionArgument[]; functionalCase: string[]; chronology?: Array<{ date: string; event: string; source: string; significance: string }>; objectiveFindings?: string[]; focusedQuestions?: string[]; medicalLiterature: SubmissionLiterature[]; requestedDisposition: string; legalAuthorities: SubmissionAuthority[]; sourceAppendix: SubmissionSource[]; visuals?: SubmissionVisual[]; preflight?: SubmissionPreflight; verificationNote: string };
 
 type PdfWithTable = jsPDF & { lastAutoTable?: { finalY: number } };
 const clean = (value: string) => String(value ?? '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
@@ -164,6 +165,44 @@ export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence
             doc.setTextColor(...teal);
             doc.textWithLink(source.url, left, y, { url: source.url });
             y += 16;
+        });
+    }
+
+    if ((brief.visuals || []).length) {
+        section('Derived Visual Evidence');
+        paragraph('The following pages are derived review aids created from identified source records. They are not original medical imaging and do not replace the cited primary evidence.', 8.5, 10, 'bold');
+        (brief.visuals || []).slice(0, 6).forEach((visual, index) => {
+            doc.addPage();
+            y = 50;
+            doc.setFillColor(...navy);
+            doc.rect(0, 0, pageWidth, 88, 'F');
+            doc.setTextColor(128, 221, 226);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.text('DERIVED VISUAL · ORIGINAL RECORD CONTROLS', left, 28);
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('times', 'bold');
+            doc.setFontSize(18);
+            const visualTitle = clean(visual.title || `Visual ${index + 1}`);
+            doc.text(doc.splitTextToSize(visualTitle, contentWidth), left, 53);
+            y = 112;
+            try {
+                const dataUrl = `data:${visual.mimeType || 'image/png'};base64,${visual.data}`;
+                const props = doc.getImageProperties(dataUrl);
+                const maxHeight = 450;
+                const scale = Math.min(contentWidth / props.width, maxHeight / props.height, 1);
+                const width = props.width * scale;
+                const height = props.height * scale;
+                const x = left + (contentWidth - width) / 2;
+                doc.setDrawColor(203, 213, 225);
+                doc.rect(x - 1, y - 1, width + 2, height + 2);
+                doc.addImage(dataUrl, visual.mimeType.includes('jpeg') ? 'JPEG' : visual.mimeType.includes('webp') ? 'WEBP' : 'PNG', x, y, width, height, undefined, 'FAST');
+                y += height + 18;
+            } catch {
+                callout('Visual unavailable', 'The selected derived visual could not be embedded in this PDF. Review the source/provenance record before filing.');
+            }
+            callout('Derived visual status', visual.label || 'Derived explanatory visual. Original record controls.');
+            if ((visual.sources || []).length) paragraph(`Supporting sources: ${(visual.sources || []).map((source) => `${source.name} — ${source.locator}`).join(' · ')}`, 8.2, 6);
         });
     }
 
