@@ -211,3 +211,40 @@ h1, h2, h3, .brand, .visualCard strong, .commandDeck strong {
   .qualityTierRow{grid-template-columns:1fr}
   .cinemaConnection{grid-template-columns:auto 1fr}.cinemaConnection small{grid-column:1/-1}.cinemaConnection button{grid-column:1/-1}
 }
+
+/* Generated style previews */
+.stylePreviewToolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:12px 0 14px;padding:11px 12px;border:1px solid #39463d;border-radius:11px;background:#0c130f}
+.stylePreviewToolbar span{color:#908a7d;font-size:.78rem}
+.visualCard{overflow:hidden}
+.styleSelectHit{display:block;width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.styleSampleImage,.styleSampleEmpty{width:100%;aspect-ratio:16/9;display:block;object-fit:cover;border-bottom:1px solid #3a3328;background:#070a08}
+.styleSampleEmpty{display:grid;place-content:center;gap:4px;text-align:center;background:radial-gradient(circle at 50% 40%,#2b2417,#0a0e0c 72%)}
+.styleSampleEmpty strong{font:800 1rem Georgia,serif;color:#d9c28b}.styleSampleEmpty span{font-size:.7rem;color:#7f786b}
+.styleCardCopy{padding:12px;display:grid;gap:6px}.styleCardCopy strong{color:#ead9b3}.styleCardCopy p{margin:0;color:#a89e8c;line-height:1.4}.styleCardCopy small{color:#7f786c}
+.stylePreviewButton{margin:0 12px 12px;width:calc(100% - 24px);border:1px solid #5a4930;border-radius:9px;background:#17130d;color:#d7ba78;padding:8px 10px;cursor:pointer}
+.stylePreviewButton:disabled{opacity:.45;cursor:not-allowed}
+
+/* Production Bible / shot queue */
+.productionBibleTab{display:grid;gap:16px}
+.bibleSummary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.bibleSummary article{display:grid;gap:3px;padding:12px;border:1px solid #3d392d;border-radius:10px;background:#0d110e}
+.bibleSummary span{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:#8f8166}.bibleSummary strong{font-size:1.5rem;color:#e3c982}
+.bibleSection{display:grid;gap:10px}.bibleSection>h3{margin:0;color:#e7d3a3}
+.bibleCards,.voiceCastGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bibleCards article,.voiceCastGrid article{display:grid;gap:6px;padding:13px;border:1px solid #3a352a;border-radius:12px;background:#0d110f}
+.bibleCards article>span,.voiceCastGrid article>span{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:#9f7d49}
+.bibleCards p,.voiceCastGrid p{margin:0;color:#b8ad99;line-height:1.45}
+.bibleCards small,.voiceCastGrid small{display:block;color:#8f8778;line-height:1.45}
+.bibleCards details{margin-top:4px}.bibleCards summary{cursor:pointer;color:#cfb36d;font-weight:800}
+.bibleCards code,.shotCard code{display:block;white-space:pre-wrap;margin-top:6px;padding:8px;border:1px solid #2c2a23;border-radius:8px;background:#070a08;color:#a99c83;font:11px/1.45 ui-monospace,monospace}
+.shotQueue{display:grid;gap:10px}.shotCard{padding:13px;border:1px solid #3c3528;border-radius:12px;background:linear-gradient(145deg,#11130f,#0b0e0c)}
+.shotCard header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.shotCard header>div{display:grid;gap:4px}.shotCard header span{font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:#9c7a45}.shotCard header strong{color:#ead8af}
+.shotCard>p{color:#aaa08f}.shotCard>small{display:block;color:#8e8679;margin:5px 0}.shotCard blockquote{margin:9px 0;padding:9px 10px;border-left:2px solid #b68a3d;background:#17130d;color:#d8cab0}
+.shotCard details summary{cursor:pointer;color:#c9ad69;font-weight:800}
+.takeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.take{border:1px solid #3a352c;border-radius:10px;overflow:hidden;background:#080b09}.take.selected{border-color:#c49d4c;box-shadow:inset 0 0 0 1px #c49d4c55}.take video{width:100%;aspect-ratio:16/9;object-fit:cover;background:#000}.take button{width:100%;border:0;border-top:1px solid #352f25;background:#12120e;color:#ccb273;padding:8px;cursor:pointer}
+@media(max-width:800px){
+ .stylePreviewToolbar{align-items:flex-start;flex-direction:column}
+ .bibleSummary{grid-template-columns:1fr 1fr}
+ .bibleCards,.voiceCastGrid,.takeGrid{grid-template-columns:1fr}
+ .shotCard header{display:grid}
+}
