@@ -129,6 +129,27 @@ Return only the structured production plan.`,
     catch{return error('Veyr produced an invalid production plan. Please retry.',502);}
   }],
 
+  'POST /api/cinema/assemble':[async({body})=>{
+    const d=(body||{}) as {clipUrls?:string[];title?:string;width?:number;height?:number;fps?:number};
+    if(!cinemaBridgeUrl)return error('Cinema Bridge is not configured',503);
+    const clipUrls=Array.isArray(d.clipUrls)?d.clipUrls.filter(Boolean):[];
+    if(!clipUrls.length)return error('At least one rendered clip is required',400);
+    try{
+      const result=await cinemaBridge('/v1/assemble',{
+        clip_urls:clipUrls,
+        title:d.title||'grimforge-episode',
+        width:d.width||1280,
+        height:d.height||720,
+        fps:d.fps||24
+      });
+      const url=mediaUrl(result);
+      if(!url)return error('Episode assembly completed without a playable URL.',502);
+      return json({url,raw:result});
+    }catch(e){
+      return error(e instanceof Error?e.message:'Episode assembly failed',502);
+    }
+  }],
+
   'POST /api/simple-create':[async({body})=>{
     const d=(body||{}) as {referenceUrl?:string;prompt?:string;world?:string;targetMinutes?:number;voice?:string};
     if(!d.referenceUrl?.trim()&&!d.prompt?.trim())return error('Paste a public reference URL or tell Veyr what you want to make.',400);
