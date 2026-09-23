@@ -163,6 +163,9 @@ function App() {
     const [bundleName, setBundleName] = useState('');
     const [bundlePurpose, setBundlePurpose] = useState('');
     const [evidenceTimeline, setEvidenceTimeline] = useState<EvidenceTimelineSnapshot | null>(null);
+    const [sourceLab, setSourceLab] = useState<{ id: string; name: string; url: string; totalPages: number } | null>(null);
+    const [sourceLabPage, setSourceLabPage] = useState(1);
+    const [sourceLabImage, setSourceLabImage] = useState('');
     const [traceClaim, setTraceClaim] = useState('');
     const [evidenceTrace, setEvidenceTrace] = useState<EvidenceTrace | null>(null);
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
@@ -863,6 +866,93 @@ function App() {
         } finally { setBusy(''); }
     };
 
+    const renderSourcePage = async (source: { id: string; name: string; url: string; totalPages: number }, requestedPage: number) => {
+        const pageNumber = Math.max(1, Math.min(source.totalPages, Math.round(requestedPage)));
+        setBusy(`Rendering ${source.name} · page ${pageNumber}…`);
+        setNotice('');
+        try {
+            const task = getDocument({ url: source.url, isEvalSupported: false });
+            const pdf = await task.promise;
+            const page = await pdf.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: 1.45 });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.ceil(viewport.width);
+            canvas.height = Math.ceil(viewport.height);
+            const context = canvas.getContext('2d', { alpha: false });
+            if (!context) throw new Error('This browser cannot render the source page.');
+            await page.render({ canvasContext: context, viewport }).promise;
+            const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+            let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+            for (let y = 0; y < canvas.height; y += 2) {
+                for (let x = 0; x < canvas.width; x += 2) {
+                    const index = (y * canvas.width + x) * 4;
+                    const r = pixels.data[index], g = pixels.data[index + 1], b = pixels.data[index + 2];
+                    if (r < 246 || g < 246 || b < 246) { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); }
+                }
+            }
+            const hasContent = minX <= maxX && minY <= maxY;
+            const margin = 24;
+            const sx = hasContent ? Math.max(0, minX - margin) : 0;
+            const sy = hasContent ? Math.max(0, minY - margin) : 0;
+            const ex = hasContent ? Math.min(canvas.width, maxX + margin) : canvas.width;
+            const ey = hasContent ? Math.min(canvas.height, maxY + margin) : canvas.height;
+            const width = Math.max(1, ex - sx);
+            const height = Math.max(1, ey - sy);
+            const labelHeight = 54;
+            const output = document.createElement('canvas');
+            output.width = width;
+            output.height = height + labelHeight;
+            const out = output.getContext('2d', { alpha: false });
+            if (!out) throw new Error('This browser cannot create the derived page capture.');
+            out.fillStyle = '#ffffff';
+            out.fillRect(0, 0, output.width, output.height);
+            out.drawImage(canvas, sx, sy, width, height, 0, 0, width, height);
+            out.fillStyle = '#f4f7fb';
+            out.fillRect(0, height, width, labelHeight);
+            out.fillStyle = '#172033';
+            out.font = '600 14px system-ui, sans-serif';
+            out.fillText(`Source: ${source.name} · Page ${pageNumber}`, 14, height + 21, Math.max(80, width - 28));
+            out.font = '12px system-ui, sans-serif';
+            out.fillText('DERIVED CAPTURE · auto-trimmed for review · original record controls', 14, height + 41, Math.max(80, width - 28));
+            setSourceLabPage(pageNumber);
+            setSourceLabImage(output.toDataURL('image/png'));
+            page.cleanup();
+            await pdf.cleanup();
+        } catch (err) {
+            setSourceLabImage('');
+            setNotice(errorMessage(err, 'The source page could not be rendered.'));
+        } finally { setBusy(''); }
+    };
+
+    const openSourcePageLab = async (document: Doc) => {
+        setNotice('');
+        try {
+            const { data } = await api.get('/api/evidence/source/' + document.id + '/url');
+            if (data.contentType !== 'application/pdf') { setNotice('Source Page Lab currently supports retained PDF originals.'); return; }
+            const source = { id: document.id, name: data.name, url: data.url, totalPages: Math.max(1, Number(data.pageCount || document.pageCount || 1)) };
+            setSourceLab(source);
+            await renderSourcePage(source, 1);
+        } catch (err) {
+            setSourceLab(null);
+            setSourceLabImage('');
+            setNotice(errorMessage(err, 'This source is not available for page rendering.'));
+        }
+    };
+
+    const saveSourceCapture = async () => {
+        if (!sourceLab || !sourceLabImage) return;
+        setBusy('Saving derived page capture to Evidence Cloud…');
+        setNotice('');
+        try {
+            const base64 = sourceLabImage.split(',')[1] || '';
+            const { data } = await api.post('/api/evidence/capture', { sourceId: sourceLab.id, page: sourceLabPage, base64 });
+            const vault = await api.get('/api/vault/status');
+            setVaultStatus(vault.data);
+            setNotice(data.label || 'Derived page capture saved to Evidence Cloud.');
+        } catch (err) {
+            setNotice(errorMessage(err, 'Derived page capture could not be saved.'));
+        } finally { setBusy(''); }
+    };
     const runEvidenceTrace = async () => {
         const claim = traceClaim.trim();
         if (!claim) { setNotice('Enter a statement to trace to the record.'); return; }
@@ -1152,6 +1242,10 @@ function App() {
                     <div className='vault-head'><div><span className='result-kicker'>PERSISTENT CHRONOLOGY</span><h2>Evidence Timeline</h2><p>A saved, source-resolved chronology shared across the case. Elias drops generated timeline items whose cited filename cannot be resolved to an indexed source.</p></div><button className='primary' disabled={!documents.length || !!busy} onClick={() => void buildEvidenceTimeline()}><Sparkles size={15} /> {evidenceTimeline ? 'Refresh timeline' : 'Build timeline'}</button></div>
                     {evidenceTimeline ? <><div className='appendix-stack'>{evidenceTimeline.items.slice(0, 30).map((item, index) => <div key={item.date + item.source + index}><span>{index + 1}</span><div><strong>{item.date} · {item.event}</strong><small>{item.source} · {item.significance}</small></div></div>)}</div><small className='vault-note'>{evidenceTimeline.warning}</small></> : <small className='vault-note'>No persistent timeline snapshot yet. Build one after the case evidence is indexed.</small>}
                 </section>
+                <section className='vault-panel'>
+                    <div className='vault-head'><div><span className='result-kicker'>SOURCE PAGE LAB</span><h2>Page capture + source stamp</h2><p>Open a retained PDF original, render a page, automatically trim excess white margins, and save a clearly labeled derived PNG for packet design. This does not replace or alter the original source.</p></div><FileImage size={26} /></div>
+                    {sourceLab ? <><div className='vault-actions'><button className='secondary' disabled={sourceLabPage <= 1 || !!busy} onClick={() => void renderSourcePage(sourceLab, sourceLabPage - 1)}>Previous page</button><input type='number' min={1} max={sourceLab.totalPages} value={sourceLabPage} onChange={(e) => setSourceLabPage(Math.max(1, Math.min(sourceLab.totalPages, Number(e.target.value) || 1)))} /><button className='secondary' disabled={sourceLabPage >= sourceLab.totalPages || !!busy} onClick={() => void renderSourcePage(sourceLab, sourceLabPage + 1)}>Next page</button><button className='secondary' disabled={!!busy} onClick={() => void renderSourcePage(sourceLab, sourceLabPage)}>Render page</button><button className='primary' disabled={!sourceLabImage || !!busy} onClick={() => void saveSourceCapture()}><Cloud size={15} /> Save derived capture</button><button className='secondary' onClick={() => { setSourceLab(null); setSourceLabImage(''); }}>Close</button></div>{sourceLabImage && <div className='submission-preview'><img src={sourceLabImage} alt={'Derived source capture from ' + sourceLab.name + ', page ' + sourceLabPage} /></div>}<small className='vault-note'>Current source: {sourceLab.name} · page {sourceLabPage} of {sourceLab.totalPages}. Auto-trim removes outer whitespace only; it does not yet choose the most relevant region within a medical page.</small></> : <small className='vault-note'>Choose Page Lab on a retained PDF source below. Indexed-only large PDFs remain searchable but cannot be rendered unless an original binary is retained.</small>}
+                </section>
                 <div className='research-grid'>{categoryCounts.map((item) => <article key={item.category} className='research-panel'><div className='research-title'><FolderOpen size={17} /><div><strong>{item.category}</strong><span>{item.count} source{item.count === 1 ? '' : 's'}</span></div></div><button className='secondary tiny' onClick={() => setVaultQuery(item.category)} disabled={!item.count}>Filter</button></article>)}</div>
                 <div className='connector-note'><Brain size={17} /><div><strong>Evidence trace standard</strong><span>Source → page / locator → extracted evidence → evidence classification → interpretation → generated statement. Evidence Auditor and Citation Auditor should flag broken or ambiguous links.</span></div></div>
                 {evidenceInventory && <div className='review-grid'>
@@ -1159,7 +1253,7 @@ function App() {
                     <article><h3>Possible versions</h3>{evidenceInventory.versionGroups.length ? <ul>{evidenceInventory.versionGroups.map((group) => <li key={group.versionGroup}><strong>{group.names.join(' · ')}</strong><br /><small>{group.note}</small></li>)}</ul> : <p>No filename-based version groups detected.</p>}</article>
                 </div>}
                 {evidenceInventory && <div className='connector-note'><CircleAlert size={17} /><div><strong>Smart metadata is advisory</strong><span>{evidenceInventory.warning}</span></div></div>}
-                <h2 className='section-title'>Cloud source inventory</h2><div className='doc-list'>{filteredDocuments.map((document) => { const meta = inventoryById.get(document.id); return <article key={document.id} className='doc-card'><div>{document.sourceMode === 'ocr' ? <FileImage size={19} /> : document.sourceMode === 'email' ? <Mail size={19} /> : ['web', 'search'].includes(document.sourceMode || '') ? <Globe2 size={19} /> : document.sourceMode === 'media' ? <ImagePlus size={19} /> : <FolderOpen size={19} />}<div><strong>{document.name}</strong><span>{meta?.documentType || categorizeDocument(document)} · {meta?.locator || `${document.pageCount} indexed page${document.pageCount === 1 ? '' : 's'}`} · {Math.round(document.charCount / 1000)}k characters</span>{document.sourceUrl && <a className='source-link' href={document.sourceUrl} target='_blank' rel='noreferrer'>{document.sourceUrl}</a>}</div></div><p>{document.excerpt}</p><div className='chips'><span>{meta?.category || categorizeDocument(document)}</span><span>{meta?.storageStatus || document.sourceMode || 'indexed'}</span>{meta?.candidateDates?.slice(0, 2).map((date) => <span key={`${document.id}-${date}`}>{date}</span>)}{meta && <span>HEURISTIC METADATA</span>}</div><label className='save-check'><input type='checkbox' checked={bundleSelectedIds.includes(document.id)} onChange={() => toggleBundleSource(document.id)} /> Include in evidence bundle</label><button onClick={() => void removeDoc(document.id)}><Trash2 size={15} /> Delete</button></article>; })}</div>
+                <h2 className='section-title'>Cloud source inventory</h2><div className='doc-list'>{filteredDocuments.map((document) => { const meta = inventoryById.get(document.id); return <article key={document.id} className='doc-card'><div>{document.sourceMode === 'ocr' ? <FileImage size={19} /> : document.sourceMode === 'email' ? <Mail size={19} /> : ['web', 'search'].includes(document.sourceMode || '') ? <Globe2 size={19} /> : document.sourceMode === 'media' ? <ImagePlus size={19} /> : <FolderOpen size={19} />}<div><strong>{document.name}</strong><span>{meta?.documentType || categorizeDocument(document)} · {meta?.locator || `${document.pageCount} indexed page${document.pageCount === 1 ? '' : 's'}`} · {Math.round(document.charCount / 1000)}k characters</span>{document.sourceUrl && <a className='source-link' href={document.sourceUrl} target='_blank' rel='noreferrer'>{document.sourceUrl}</a>}</div></div><p>{document.excerpt}</p><div className='chips'><span>{meta?.category || categorizeDocument(document)}</span><span>{meta?.storageStatus || document.sourceMode || 'indexed'}</span>{meta?.candidateDates?.slice(0, 2).map((date) => <span key={`${document.id}-${date}`}>{date}</span>)}{meta && <span>HEURISTIC METADATA</span>}</div><label className='save-check'><input type='checkbox' checked={bundleSelectedIds.includes(document.id)} onChange={() => toggleBundleSource(document.id)} /> Include in evidence bundle</label>{document.contentType === 'application/pdf' && <button className='secondary tiny' onClick={() => void openSourcePageLab(document)}><FileImage size={14} /> Page Lab</button>}<button onClick={() => void removeDoc(document.id)}><Trash2 size={15} /> Delete</button></article>; })}</div>
                 {!filteredDocuments.length && <div className='empty-panel'>No loaded source matches this filter.</div>}
             </section>}
 
