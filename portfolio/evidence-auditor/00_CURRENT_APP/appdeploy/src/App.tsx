@@ -35,6 +35,7 @@ type Review = { summary: string; recordSignal: string; strongestEvidence: Eviden
 type Packet = { title: string; subtitle: string; executiveSummary: string; chronology: TimelineItem[]; strongestEvidence: EvidenceFinding[]; functionalImpact: string[]; adverseEvidence: EvidenceTension[]; missingEvidencePlan: EvidenceGap[]; reviewerChecklist: string[]; sourceAppendix: string[] };
 type LawLens = { program?: string; jurisdiction?: string; issue: string; summary: string; framework?: string[]; whatRaterLooksFor: string[]; evidenceMatches: string[]; gaps: string[]; conflicts: string[]; nextBestEvidence: string[]; officialSources: Array<{ label: string; url: string; kind: string; title: string }> };
 type WebResult = { title: string; url: string; answer: string; savedDocument?: Doc | null };
+type AuthorityVerification = { program: BenefitsProgram; jurisdiction: string; issue: string; checkedAt: string; allReachable: boolean; warning: string; results: Array<{ label: string; url: string; kind: string; reachable: boolean; title: string; checkedAt: string; error?: string }> };
 type View = 'chat' | 'cloud' | 'review' | 'packet';
 type CopilotRole = 'Elias' | 'Evidence Auditor' | 'NeuroEval' | 'HealthQA' | 'Packet Builder' | 'Citation Auditor' | 'Document Copilot';
 type EvidenceCategory = 'Medical Records' | 'Imaging / Tests' | 'Military / Service' | 'VA / Benefits' | 'Disability / SSA / State' | 'Functional Capacity' | 'Correspondence' | 'Legal / Administrative' | 'Research' | 'Other';
@@ -143,6 +144,7 @@ function App() {
     const [benefitsProgram, setBenefitsProgram] = useState<BenefitsProgram>('VA / VBA');
     const [lawIssue, setLawIssue] = useState('Service connection');
     const [lawLens, setLawLens] = useState<LawLens | null>(null);
+    const [authorityVerification, setAuthorityVerification] = useState<AuthorityVerification | null>(null);
     const [webUrl, setWebUrl] = useState('');
     const [webQuestion, setWebQuestion] = useState('What matters here for this case?');
     const [saveWebToCase, setSaveWebToCase] = useState(false);
@@ -1027,6 +1029,17 @@ function App() {
             setNotice(errorMessage(err, 'Evidence bundle could not be deleted.'));
         }
     };
+    const verifyAuthorities = async () => {
+        setBusy(`Verifying configured ${benefitsProgram} authority pages…`);
+        setNotice('');
+        try {
+            const { data } = await api.post('/api/authorities/verify', { program: benefitsProgram, issue: lawIssue });
+            setAuthorityVerification(data);
+        } catch (err) {
+            setAuthorityVerification(null);
+            setNotice(errorMessage(err, 'Authority verification could not run.'));
+        } finally { setBusy(''); }
+    };
     const runLawLens = async () => {
         if (!plugins['Benefits Law & Medical Lens']) {
             setNotice('Benefits Law & Medical Lens is disabled in Plugins.');
@@ -1298,8 +1311,7 @@ function App() {
                         <select aria-label='Benefits program' value={benefitsProgram} onChange={(e) => { const next = e.target.value as BenefitsProgram; setBenefitsProgram(next); setLawIssue(benefitsIssueOptions[next][0]); setLawLens(null); }}><option>VA / VBA</option><option>Social Security (SSDI / SSI)</option><option>New Hampshire</option><option>Medical & Functional Evidence</option></select>
                         <small>Issue / framework</small>
                         <select aria-label='Benefits issue' value={lawIssue} onChange={(e) => { setLawIssue(e.target.value); setLawLens(null); }}>{benefitsIssueOptions[benefitsProgram].map((issue) => <option key={issue}>{issue}</option>)}</select>
-                        <button className='primary' onClick={() => void runLawLens()}>Compare rules to evidence</button>
-                        <small>Elias keeps 38 CFR and 20 CFR regulations separate from VBA manuals, SSA POMS/Blue Book material, and state guidance. The crosswalk is evidence analysis—not an eligibility, rating, allowance, or denial prediction.</small>
+                        <div className='vault-actions'><button className='primary' onClick={() => void runLawLens()}>Compare rules to evidence</button><button className='secondary' disabled={!!busy} onClick={() => void verifyAuthorities()}><ShieldCheck size={14} /> Verify authority pages</button></div>{authorityVerification && <div className='appendix-stack'>{authorityVerification.results.map((source, index) => <div key={source.url}><span>{source.reachable ? '✓' : '!'}</span><div><strong>{source.label}</strong><small>{source.kind} · {source.reachable ? 'reachable' : source.error || 'unavailable'} · checked {new Date(source.checkedAt).toLocaleString()}</small></div></div>)}</div>}<small>{authorityVerification?.warning || 'Elias keeps 38 CFR and 20 CFR regulations separate from VBA manuals, SSA POMS/Blue Book material, and state guidance. The crosswalk is evidence analysis—not an eligibility, rating, allowance, or denial prediction.'}</small>
                     </article>
                     <article className='research-panel'>
                         <div className='research-title'><Globe2 size={18} /><div><strong>YouTube / URL Research</strong><span>Read a public page; YouTube uses public page/transcript text when exposed</span></div></div>
