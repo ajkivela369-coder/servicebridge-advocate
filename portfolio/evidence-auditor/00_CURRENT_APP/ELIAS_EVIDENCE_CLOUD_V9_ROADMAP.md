@@ -41,11 +41,11 @@ All specialists use the same user-scoped case record and the same evidence-type 
 | Submission builder | Existing Packet Studio / filing workflow |
 | Provenance | Existing rules and citations; structured provenance graph remains a next step |
 | Human verification | Established product rule and visible gate |
-| Screenshot/page selection | Needs development |
-| Screenshot cropping + source/page labels | Needs development |
-| Injury illustrations tied to records | Needs development; must distinguish illustration from source evidence |
-| CFR/state authority verification | Partially supported for configured official-reference flows; must remain date/program specific |
-| Under-5-MB final submission | Partial only; packet generation exists, but automated page selection, visual QA, and reliable final compression are not yet guaranteed |
+| Screenshot/page selection | **Partial in the GitHub development snapshot.** Source Page Lab can open retained PDF originals, render a chosen page, auto-trim outer whitespace, stamp source filename/page, and save a separately labeled derived capture. Automatic relevance-based page/region selection still needs development. |
+| Screenshot cropping + source/page labels | **Partial.** Automatic outer-whitespace trimming plus source/page stamping is implemented for retained PDF pages. Clinically relevant sub-region selection/cropping remains a next step. |
+| Injury illustrations tied to records | **Implemented in the GitHub development snapshot as Illustration Lab.** It builds a de-identified brief from selected sources, generates an educational illustration, saves provenance metadata with the source IDs/locators, and labels the result as an illustration rather than medical imaging or diagnostic proof. |
+| CFR/state authority verification | **Live verification added for configured program/issue authority pages.** Evidence Auditor records reachability, title, authority category, and check time for VA/VBA, SSA, New Hampshire, and medical-function mappings. This verifies configured source availability/category—not legal sufficiency or dispositive applicability. |
+| Under-5-MB final submission | **Validation improved:** Simple Mode measures the exact generated PDF byte size and PDF.js verifies page rendering. The app can truthfully report when the current file is under 5 MB and all pages rendered. Automated compression/reduction when a file is over the limit remains unfinished. |
 | Immutable original evidence storage | Required architecture target; do not claim verified immutability until deployed storage/versioning is confirmed |
 | Encryption/access/audit controls | Must be verified against the actual hosting/storage implementation before making security or compliance claims |
 | HIPAA compliance | Do not claim unless the deployed infrastructure, contracts/BAA, data flows, and operational controls are actually verified |
@@ -87,10 +87,10 @@ The desired direction is app-operating behavior: filter evidence, select sources
 4. Expand the now-persistent Evidence Timeline with manual correction/approval states, stable event IDs, and bundle-scoped chronology.
 5. Expand the now-implemented Evidence Bundles with rename/edit, bundle-scoped audit, and packet handoff.
 6. Expand the implemented Claim → Source Trace into a reusable claim graph with saved claim nodes, manual approval states, and packet-level Citation Auditor blockers.
-7. Add page-image extraction, crop selection, and source/page stamping.
-8. Add diagram/illustration generation with explicit "illustration, not source evidence" labeling.
+7. Expand the implemented Source Page Lab from page-level auto-trim/stamping into relevance-based page and sub-region selection.
+8. Expand the implemented Illustration Lab with reusable visual templates, manual edit/approval, and direct packet-composer handoff.
 9. Add packet compositor that preserves selected source visuals.
-10. Add automated visual QA and final under-5-MB compression verification.
+10. Build on the implemented exact-size + all-pages-rendered validation by adding automatic reduction/compression when a generated packet exceeds the configured submission limit.
 11. Verify storage/auth/security architecture before any HIPAA/compliance marketing language.
 
 ## Product language
