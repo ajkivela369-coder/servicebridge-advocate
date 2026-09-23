@@ -377,9 +377,12 @@ function App() {
       setSimpleReferenceNote(data.referenceInfo?.note||'Reference processing complete.');
       const generated:Record<string,string>={};
       const generatedVideo:Record<string,string>={};
-      const provider=qualityTier==='Cinematic Max'?'ltx2':'wan22';
+      const hasProvider=(id:string)=>Boolean(cinemaStatus.providers?.find((item)=>item.id===id&&item.configured));
+      const provider=qualityTier==='Cinematic Max'
+        ? (hasProvider('kling-o3-4k')?'kling-o3-4k':hasProvider('ltx2')?'ltx2':'kling-o3-4k')
+        : (hasProvider('kling-o3-reference')?'kling-o3-reference':hasProvider('kling-v3')?'kling-v3':hasProvider('wan22')?'wan22':'kling-v3');
       const wantsMotion=qualityTier!=='Draft';
-      const providerReady=Boolean(cinemaStatus.providers?.find((item)=>item.id===provider&&item.configured));
+      const providerReady=hasProvider(provider);
 
       for(let i=0;i<nextEpisode.scenes.length;i+=1){
         const scene=nextEpisode.scenes[i];
@@ -412,7 +415,14 @@ function App() {
               fps:qualityTier==='Cinematic Max'?30:24,
               width:qualityTier==='Cinematic Max'?1920:1280,
               height:qualityTier==='Cinematic Max'?1080:720,
-              metadata:{sceneId:scene.id,title:scene.title,qualityTier}
+              metadata:{
+                sceneId:scene.id,
+                title:scene.title,
+                qualityTier,
+                generate_audio:true,
+                aspect_ratio:'16:9',
+                shot_type:'customize'
+              }
             });
             if(rendered.data?.url){
               generatedVideo[scene.id]=rendered.data.url;
@@ -615,7 +625,7 @@ function App() {
         <p className='simpleLead'>Start with a YouTube video/channel or any public webpage you like. Veyr studies whatever public text/metadata is actually accessible, learns only the high-level production grammar, and creates a new original cinematic episode from your request.</p>
         <label className='simpleReferenceInput'><span>1 · Paste a YouTube video, channel, or website</span><input value={simpleReferenceUrl} onChange={(e)=>setSimpleReferenceUrl(e.target.value)} placeholder='https://youtube.com/watch?v=…  or  https://youtube.com/@channel'/><small>Veyr will not pretend it watched/transcribed material the public page does not expose.</small></label>
         <label className='simplePromptBox'><span>2 · What should Veyr make?</span><textarea className='masterPrompt' value={prompt} onChange={(e)=>setPrompt(e.target.value)} placeholder='Example: Make an original 5-minute episode about a doomed fortress defense. Use the reference only for broad pacing/cinematography. Give me premium narration, dramatic character dialogue, cinematic shots and scene art.'/></label>
-        <div className='qualityTierRow'><button className={qualityTier==='Draft'?'active':''} onClick={()=>setQualityTier('Draft')}><strong>Draft</strong><span>Fast storyboard + animatic</span></button><button className={qualityTier==='Cinema'?'active':''} onClick={()=>{setQualityTier('Cinema');void refreshCinemaStatus();}}><strong>Cinema</strong><span>Wan motion + expressive voices + finishing</span></button><button className={qualityTier==='Cinematic Max'?'active':''} onClick={()=>{setQualityTier('Cinematic Max');void refreshCinemaStatus();}}><strong>Cinematic Max</strong><span>LTX high-end motion/audio when connected</span></button></div>
+        <div className='qualityTierRow'><button className={qualityTier==='Draft'?'active':''} onClick={()=>setQualityTier('Draft')}><strong>Draft</strong><span>Fast storyboard + animatic</span></button><button className={qualityTier==='Cinema'?'active':''} onClick={()=>{setQualityTier('Cinema');void refreshCinemaStatus();}}><strong>Cinema</strong><span>Kling O3/V3 when connected · Wan local fallback</span></button><button className={qualityTier==='Cinematic Max'?'active':''} onClick={()=>{setQualityTier('Cinematic Max');void refreshCinemaStatus();}}><strong>Cinematic Max</strong><span>Kling O3 native 4K when connected · LTX fallback</span></button></div>
         <div className='cinemaConnection'><span className={cinemaStatus.configured?'dot on':'dot'}/><b>{cinemaStatus.configured?'Cinema Bridge detected':'Cinema Bridge not connected'}</b><small>{qualityTier==='Draft'?'Draft works without GPU video providers.':cinemaStatus.configured?'Configured providers will be used when available.':'GrimForge will create the full directed animatic and preserve every shot for later rendering.'}</small><button onClick={()=>void refreshCinemaStatus()}>Check engines</button></div>
         <div className='simpleOptions'><label>World<select value={world} onChange={(e)=>setWorld(e.target.value)}><option>Warhammer 40K</option><option>Old World / Warhammer Fantasy</option></select></label><label>Length<select value={length} onChange={(e)=>setLength(+e.target.value)}><option value={5}>5 minutes</option><option value={8}>8 minutes</option><option value={12}>12 minutes</option></select></label></div>
         <div className='simpleDeliverables'><span>✓ Full narration</span><span>✓ Character dialogue</span><span>✓ Cinematography</span><span>✓ Generated scene art</span><span>✓ Sound direction</span><span>✓ Title + thumbnail package</span></div>
