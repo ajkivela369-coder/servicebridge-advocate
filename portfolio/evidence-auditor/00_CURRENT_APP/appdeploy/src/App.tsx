@@ -18,6 +18,7 @@ type EvidenceInventoryItem = { id: string; name: string; category: EvidenceCateg
 type EvidenceDuplicateGroup = { fingerprint: string; documentIds: string[]; names: string[]; note: string };
 type EvidenceVersionGroup = { versionGroup: string; documentIds: string[]; names: string[]; note: string };
 type EvidenceInventory = { items: EvidenceInventoryItem[]; duplicateGroups: EvidenceDuplicateGroup[]; versionGroups: EvidenceVersionGroup[]; generatedAt: string; warning: string };
+type EvidenceBundle = { id: string; name: string; purpose: string; documentIds: string[]; createdAt: string; updatedAt: string; sources: Array<{ id: string; name: string; locator: string }> };
 type NeuralVoice = { voiceId: string; name: string; labels?: Record<string, string> };
 type LiveSearchResult = { answer: string; results: Array<{ title: string; url: string; content: string; publishedDate?: string }>; savedDocument?: Doc | null };
 type Chat = { id?: string; threadId: string; question: string; answer: string; tool: string; speed?: WorkMode; sources: string[]; createdAt: string };
@@ -32,7 +33,7 @@ type LawLens = { program?: string; jurisdiction?: string; issue: string; summary
 type WebResult = { title: string; url: string; answer: string; savedDocument?: Doc | null };
 type View = 'chat' | 'cloud' | 'review' | 'packet';
 type CopilotRole = 'Elias' | 'Evidence Auditor' | 'NeuroEval' | 'HealthQA' | 'Packet Builder' | 'Citation Auditor' | 'Document Copilot';
-type EvidenceCategory = 'Medical Records' | 'Imaging / Tests' | 'Military / Service' | 'VA / Benefits' | 'Disability / SSA / State' | 'Functional Capacity' | 'Correspondence' | 'Legal / Administrative' | 'Other';
+type EvidenceCategory = 'Medical Records' | 'Imaging / Tests' | 'Military / Service' | 'VA / Benefits' | 'Disability / SSA / State' | 'Functional Capacity' | 'Correspondence' | 'Legal / Administrative' | 'Research' | 'Other';
 type AppMode = 'simple' | 'pro';
 type WorkMode = 'Quick' | 'Standard' | 'Deep';
 type UploadItem = { id: string; name: string; size: number; kind: 'pdf' | 'image' | 'file'; stage: 'Queued' | 'Uploading' | 'Reading' | 'Indexing' | 'OCR' | 'Ready' | 'Error'; progress: number; detail: string; error?: string };
@@ -88,9 +89,10 @@ const copilotOperations: Array<{ label: string; prompt: string; tool: PluginName
     { label: 'Export', prompt: 'Prepare this case for export. Check completeness, citation integrity, source visuals, and explicitly flag any remaining visual-QA or under-5-MB compression work.', tool: 'Packet Assurance', view: 'packet' },
 ];
 
-const evidenceCategories: EvidenceCategory[] = ['Medical Records', 'Imaging / Tests', 'Military / Service', 'VA / Benefits', 'Disability / SSA / State', 'Functional Capacity', 'Correspondence', 'Legal / Administrative', 'Other'];
+const evidenceCategories: EvidenceCategory[] = ['Medical Records', 'Imaging / Tests', 'Military / Service', 'VA / Benefits', 'Disability / SSA / State', 'Functional Capacity', 'Correspondence', 'Legal / Administrative', 'Research', 'Other'];
 
 function categorizeDocument(document: Doc): EvidenceCategory {
+    if (document.sourceMode === 'web' || document.sourceMode === 'search') return 'Research';
     const sample = `${document.name} ${document.excerpt}`.toLowerCase();
     if (/mri|x-ray|xray|ct |ultrasound|emg|eeg|imaging|radiology|diagnostic test/.test(sample)) return 'Imaging / Tests';
     if (/army|guard|military|service|orders|ngb|dd214|duty|lod|line of duty|acdutra|inacdutra|title 32/.test(sample)) return 'Military / Service';
@@ -153,6 +155,10 @@ function App() {
     const [submissionPreviewName, setSubmissionPreviewName] = useState('');
     const [vaultStatus, setVaultStatus] = useState<VaultStatus | null>(null);
     const [evidenceInventory, setEvidenceInventory] = useState<EvidenceInventory | null>(null);
+    const [evidenceBundles, setEvidenceBundles] = useState<EvidenceBundle[]>([]);
+    const [bundleSelectedIds, setBundleSelectedIds] = useState<string[]>([]);
+    const [bundleName, setBundleName] = useState('');
+    const [bundlePurpose, setBundlePurpose] = useState('');
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
     const [neuralVoiceId, setNeuralVoiceId] = useState('');
     const [mediaFiles, setMediaFiles] = useState<File[]>([]);
@@ -199,6 +205,15 @@ function App() {
         }
     };
 
+    const loadEvidenceBundles = async () => {
+        try {
+            const { data } = await api.get('/api/evidence/bundles');
+            setEvidenceBundles(data.bundles ?? []);
+        } catch {
+            setEvidenceBundles([]);
+        }
+    };
+
     const load = async () => {
         const { data } = await api.get('/api/bootstrap');
         setMemory(data.memory ? { ...emptyMemory, ...data.memory } : emptyMemory);
@@ -206,6 +221,7 @@ function App() {
         setChats(data.chats ?? []);
         if (data.playbook) setPlaybook(data.playbook);
         await loadEvidenceInventory();
+        await loadEvidenceBundles();
     };
 
     const loadIntegrations = async () => {
