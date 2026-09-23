@@ -8,7 +8,7 @@
 
 Current AppDeploy app ID: `elias-evidence-assistant-simscb`
 
-The current product direction is one unified evidence-intelligence app: **Elias is the master case orchestrator, Evidence Auditor is the flagship audit workspace, and specialist copilots share the same case evidence rather than becoming separate data silos.**
+The current product direction is one unified evidence-intelligence app: **Elias is the single user-facing intelligence engine, Evidence Auditor is its flagship audit workspace, and specialized capabilities remain behind the interface instead of becoming separate bots.**
 
 The current build/snapshot includes:
 
@@ -17,7 +17,7 @@ The current build/snapshot includes:
 - persistent case memory and multiple chat threads
 - a persistent **Evidence Cloud** workspace for the shared case source library
 - **Evidence Auditor** as the dedicated contradiction/gap/provenance/chronology/reviewer-readiness workspace
-- a floating **Elias Copilot** that can switch among Elias, Evidence Auditor, NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot while using the same loaded record
+- a floating **Elias** assistant that stays the same identity everywhere and automatically changes its tool priorities based on the current workspace and request
 - app-aware Copilot verbs: Find, Compare, Explain, Organize, Link, Draft, Build, Verify, and Export-preflight
 - one-click Strongest Evidence, Missing Evidence, Contradiction Check, Timeline, C&P Rebuttal, and Packet QA passes
 - Copilot **Create in one click** actions for Evidence Brief, C&P Rebuttal Draft, Hearing Timeline, and Full VA Packet
@@ -34,12 +34,12 @@ The current build/snapshot includes:
 
 ## Product architecture
 
-**Elias** is the shell/orchestrator.  
-**Evidence Auditor** is the flagship evidence-audit engine.  
+**Elias** is the single intelligence engine and assistant.  
+**Evidence Auditor** is the flagship evidence-audit feature/workspace.  
 **Evidence Cloud** is the persistent case evidence layer.  
-**NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot** are specialist modes behind the same floating Copilot.
+Health-record explanation, neurologic/functional review, citation verification, packet building, and document composition are **capabilities/lenses that Elias invokes internally**, not separate user-facing bots.
 
-All specialists should use the same source-control rules and the same user-scoped evidence library. Generated summaries, tags, diagrams, interpretations, and packet prose must remain distinguishable from original source records.
+All capabilities use the same source-control rules and the same user-scoped evidence library. Generated summaries, tags, diagrams, interpretations, and packet prose must remain distinguishable from original source records.
 
 The target evidence trace is:
 
@@ -53,7 +53,7 @@ See [ELIAS_EVIDENCE_CLOUD_V9_ROADMAP.md](./ELIAS_EVIDENCE_CLOUD_V9_ROADMAP.md) f
 2. Add a searchable PDF or image and wait for **Ready**.
 3. Open **Evidence Cloud** and confirm the same loaded record is visible there.
 4. Open **Evidence Auditor** and run a contradiction/gap/provenance pass.
-5. Open **Elias Copilot**, switch specialist modes, and run **Strongest Evidence**.
+5. Open floating **Elias** from different workspaces and run **Strongest Evidence**; confirm Elias remains the same assistant while the workspace context changes.
 6. Under **Create in one click**, try **Evidence Brief** or **Full VA Packet**.
 7. Use **Media** to attach a short video. Review it in **Video + Motion Imaging**, change speed, step a frame, then run **Motion study**.
 8. Open **Voice Studio**, preview a Device voice, and test Neural if it is connected.
