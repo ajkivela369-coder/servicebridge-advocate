@@ -4,6 +4,7 @@ import { api } from '@appdeploy/client';
 
 type WorkMode = 'Quick' | 'Standard' | 'Deep';
 type StudioMode = 'Simple' | 'Pro';
+type QualityTier = 'Draft' | 'Cinema' | 'Cinematic Max';
 type ClaimType = 'CANON / SOURCE' | 'INTERPRETATION' | 'EDITORIAL' | 'SPECULATION';
 type Scene = { id: string; title: string; start: string; duration: number; narration: string; dialogue?: string; claimType: ClaimType; visualPrompt: string; motion: string; sound: string; sourceNeed: string };
 type Episode = { title: string; thesis: string; hook: string; world: string; targetMinutes: number; voice: string; visualStyle: string; youtubeTitle: string; thumbnailText: string; description: string; nextBridge: string; scenes: Scene[] };
@@ -11,6 +12,11 @@ type VoiceDirection = { name: string; role: string; tone: string; rate: number; 
 type ChannelRef = { name: string; url: string; traits: string; profile: number[]; example?: string };
 type ImportedRef = { id:string; name:string; url:string; summary:string; traits:string; profile:number[]; weight:number };
 type VisualStyle = { name: string; short: string; blurb: string; archetype: string; motion: string };
+type CharacterBibleItem = { id:string; name:string; role:string; visualIdentity:string; faceHair:string; wardrobeArmor:string; props:string; continuityRules:string; voiceDirection:string; referencePrompts:string[] };
+type SetBibleItem = { id:string; name:string; description:string; lighting:string; landmarks:string; north:string; east:string; south:string; west:string; overhead:string; continuityRules:string };
+type VoiceCastItem = { characterId:string; characterName:string; role:string; enginePreference:string; delivery:string; voiceSeedDescription:string };
+type ProductionShot = { id:string; sceneId:string; order:number; title:string; duration:number; purpose:string; shotSize:string; lens:string; cameraMove:string; blocking:string; prompt:string; characterIds:string[]; locationId:string; dialogueSpeaker:string; dialogueLine:string; narrationText:string; sound:string; continuityIn:string; continuityOut:string; takesRecommended:number; qualityPriority:string };
+type ProductionPlan = { characters:CharacterBibleItem[]; sets:SetBibleItem[]; voiceCast:VoiceCastItem[]; shots:ProductionShot[] };
 type CreatorPreset = { id: string; name: string; style: string; artSource: string; browserVoiceName: string; voiceRate: number; voicePitch: number; voicePause: number; voiceEnergy: number; selectedRefs: Record<string,number>; voiceDirection?: string; voiceLocaleFilter?: string; speechProfile?: string; dialogueMode?: string; deliveryPrompt?: string; kokoroVoice?: string };
 type KokoroVoiceMeta = { name?: string; language?: string; gender?: string; traits?: string };
 type KokoroVoiceChoice = { id: string; name: string; detail: string };
@@ -82,8 +88,8 @@ const kokoroModelId = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 const kokoroProfileVoice: Record<string,string> = {
   'Velvet Aristocrat': 'bm_george',
   'Rapid Lore Host': 'af_heart',
-  'Cathedral Warlord': 'am_adam',
-  'Strategic Cartographer': 'bm_lewis',
+  'Cathedral Warlord': 'am_michael',
+  'Strategic Cartographer': 'bm_fable',
 };
 
 const channelRefs: ChannelRef[] = [
@@ -101,7 +107,7 @@ const channelRefs: ChannelRef[] = [
 ];
 
 const visualStyles: VisualStyle[] = [
-  { name: 'Premium 3D Character', short: '3D', blurb: 'Hero-scale dimensional character, volumetric light, armor detail, restrained camera orbit.', archetype: 'armored', motion: 'slow orbit + depth + volumetric haze' },
+  { name: 'Cinematic Photoreal 3D · 4K', short: '3D / 4K', blurb: 'Photoreal fantasy film look: realistic skin, aged steel, cloth, mud, shallow depth of field, practical torch/moonlight and restrained blue-amber grading.', archetype: 'armored', motion: 'film blocking + realistic weight + subtle handheld/dolly + atmospheric depth' },
   { name: '2.5D Motion Art', short: '2.5D', blurb: 'Layered painted character art with parallax, drifting atmosphere and selective movement.', archetype: 'commander', motion: 'parallax + camera push + particles' },
   { name: 'Tactical Holo-Map', short: 'Map', blurb: 'Readable fronts, routes, worlds and threat rings with military-map motion.', archetype: 'strategist', motion: 'map travel + routes + overlays' },
   { name: 'Archive Dossier', short: 'Dossier', blurb: 'Inquisitorial-style archive mood using an original robed investigator archetype and source cards.', archetype: 'scholar', motion: 'page depth + evidence highlights' },
@@ -132,6 +138,15 @@ function App() {
   const [episode, setEpisode] = useState<Episode>(fallbackEpisode);
   const [studioMode,setStudioMode]=useState<StudioMode>('Simple');
   const [simpleReferenceUrl,setSimpleReferenceUrl]=useState('');
+  const [qualityTier,setQualityTier]=useState<QualityTier>('Cinema');
+  const [sceneVideos,setSceneVideos]=useState<Record<string,string>>({});
+  const [productionPlan,setProductionPlan]=useState<ProductionPlan|null>(null);
+  const [shotTakes,setShotTakes]=useState<Record<string,string[]>>({});
+  const [goldenTakes,setGoldenTakes]=useState<Record<string,number>>({});
+  const [allowPaidFullRender,setAllowPaidFullRender]=useState(false);
+  const [fullRenderProgress,setFullRenderProgress]=useState('');
+  const [styleSamples,setStyleSamples]=useState<Record<string,string>>({});
+  const [cinemaStatus,setCinemaStatus]=useState<{configured:boolean;providers?:Array<{id:string;configured:boolean}>;error?:string}>({configured:false});
   const [simpleReferenceNote,setSimpleReferenceNote]=useState('');
   const [simpleStep,setSimpleStep]=useState('');
   const [prompt, setPrompt] = useState('Make a 5-minute episode about why survival is not the same as victory for the Imperium.');
@@ -341,6 +356,149 @@ function App() {
 
   const previewSelectedDelivery=()=>generateKokoroWav(selectedDialogueMode.sample,'speech preview');
 
+  const refreshCinemaStatus=async()=>{
+    try{const {data}=await api.get('/api/cinema/status');setCinemaStatus(data);}
+    catch{setCinemaStatus({configured:false});}
+  };
+
+  const buildProductionPlan=async(nextEpisode:Episode)=>{
+    setSimpleStep('Building character, set, voice and shot bibles');
+    const {data}=await api.post('/api/production-plan',{
+      episode:nextEpisode,
+      qualityTier,
+      styleTarget:'cinematic photoreal dark fantasy; realistic human skin, aged steel and cloth; practical fire/torch and moonlight; shallow depth of field; grounded medieval production design; restrained blue/amber film grade; believable weight and physics'
+    });
+    const plan=data.plan as ProductionPlan;
+    setProductionPlan(plan);
+    return plan;
+  };
+
+  const currentCinemaProvider=()=>{
+    const has=(id:string)=>Boolean(cinemaStatus.providers?.find((item)=>item.id===id&&item.configured));
+    if(qualityTier==='Cinematic Max') return has('kling-o3-4k')?'kling-o3-4k':has('ltx2')?'ltx2':'kling-o3-4k';
+    return has('kling-o3-reference')?'kling-o3-reference':has('kling-v3')?'kling-v3':has('wan22')?'wan22':'kling-v3';
+  };
+
+  const renderProductionShot=async(shot:ProductionShot)=>{
+    const provider=currentCinemaProvider();
+    const providerReady=Boolean(cinemaStatus.providers?.find((item)=>item.id===provider&&item.configured));
+    if(!providerReady){
+      setNotice('No Cinema provider is connected for this shot. Connect Kling/Wan/LTX through the Cinema Bridge first.');
+      return;
+    }
+    setBusy(`Rendering take for ${shot.title} with ${provider}…`);
+    try{
+      const scene=episode.scenes.find(s=>s.id===shot.sceneId);
+      const imageUrl=scene?sceneImages[scene.id]:'';
+      const {data}=await api.post('/api/cinema/render-scene',{
+        provider,
+        prompt:`${shot.prompt}. Blocking: ${shot.blocking}. Camera: ${shot.cameraMove}. Continuity in: ${shot.continuityIn}. Continuity out: ${shot.continuityOut}. Dialogue: ${shot.dialogueLine||'none'}.`,
+        imageUrl:imageUrl||undefined,
+        seconds:Math.max(3,Math.min(10,shot.duration)),
+        fps:qualityTier==='Cinematic Max'?30:24,
+        width:qualityTier==='Cinematic Max'?1920:1280,
+        height:qualityTier==='Cinematic Max'?1080:720,
+        metadata:{
+          shotId:shot.id,
+          sceneId:shot.sceneId,
+          qualityTier,
+          generate_audio:true,
+          aspect_ratio:'16:9',
+          shot_type:'customize'
+        }
+      });
+      if(data?.url){
+        setShotTakes(current=>({...current,[shot.id]:[...(current[shot.id]||[]),data.url]}));
+        setNotice(`New take rendered for “${shot.title}”. Review it and mark a Golden Take when ready.`);
+      }
+    }catch(err){
+      const e=err as {response?:{data?:{error?:string}},message?:string};
+      setNotice(e.response?.data?.error||e.message||'Shot render failed.');
+    }finally{setBusy('');}
+  };
+
+  const renderFullShotQueue=async()=>{
+    if(!productionPlan||busy)return;
+    if(!allowPaidFullRender){
+      setNotice('Confirm paid-provider usage before rendering the full shot queue.');
+      return;
+    }
+    const provider=currentCinemaProvider();
+    const providerReady=Boolean(cinemaStatus.providers?.find((item)=>item.id===provider&&item.configured));
+    if(!providerReady){
+      setNotice('The selected Cinema provider is not connected. Check engines first.');
+      return;
+    }
+
+    setBusy(`Rendering full ${qualityTier} episode…`);
+    setNotice('');
+    const nextTakes:Record<string,string[]>={...shotTakes};
+    const nextGolden:Record<string,number>={...goldenTakes};
+    const clipUrls:string[]=[];
+
+    try{
+      for(let i=0;i<productionPlan.shots.length;i+=1){
+        const shot=productionPlan.shots[i];
+        setFullRenderProgress(`Rendering shot ${i+1}/${productionPlan.shots.length} · ${shot.title}`);
+        const existing=nextTakes[shot.id]||[];
+        let chosen=existing[nextGolden[shot.id]??0]||existing[0]||'';
+
+        if(!chosen){
+          const scene=episode.scenes.find(s=>s.id===shot.sceneId);
+          const imageUrl=scene?sceneImages[scene.id]:'';
+          const {data}=await api.post('/api/cinema/render-scene',{
+            provider,
+            prompt:`${shot.prompt}. Blocking: ${shot.blocking}. Camera: ${shot.cameraMove}. Continuity in: ${shot.continuityIn}. Continuity out: ${shot.continuityOut}. Dialogue: ${shot.dialogueLine||'none'}. Narration intent: ${shot.narrationText||'none'}. Sound: ${shot.sound}.`,
+            imageUrl:imageUrl||undefined,
+            seconds:Math.max(3,Math.min(10,shot.duration)),
+            fps:qualityTier==='Cinematic Max'?30:24,
+            width:qualityTier==='Cinematic Max'?1920:1280,
+            height:qualityTier==='Cinematic Max'?1080:720,
+            metadata:{
+              shotId:shot.id,
+              sceneId:shot.sceneId,
+              qualityTier,
+              generate_audio:true,
+              aspect_ratio:'16:9',
+              shot_type:'customize'
+            }
+          });
+          if(data?.url){
+            chosen=data.url;
+            nextTakes[shot.id]=[...(existing||[]),chosen];
+            nextGolden[shot.id]=nextTakes[shot.id].length-1;
+            setShotTakes({...nextTakes});
+            setGoldenTakes({...nextGolden});
+          }
+        }
+
+        if(chosen)clipUrls.push(chosen);
+      }
+
+      if(!clipUrls.length)throw new Error('No rendered shot clips were available for assembly.');
+
+      setFullRenderProgress(`Assembling ${clipUrls.length} Golden Takes into one MP4…`);
+      const assembled=await api.post('/api/cinema/assemble',{
+        clipUrls,
+        title:episode.title,
+        width:qualityTier==='Cinematic Max'?1920:1280,
+        height:qualityTier==='Cinematic Max'?1080:720,
+        fps:qualityTier==='Cinematic Max'?30:24
+      });
+      if(assembled.data?.url){
+        setMp4Url(assembled.data.url);
+        setFullRenderProgress('Full episode ready');
+        setNotice(`Full episode assembled from ${clipUrls.length} selected takes. Open Watch Full Episode below.`);
+        window.setTimeout(()=>document.getElementById('preview')?.scrollIntoView({behavior:'smooth'}),100);
+      }
+    }catch(err){
+      const e=err as {response?:{data?:{error?:string}},message?:string};
+      setNotice(e.response?.data?.error||e.message||'Full episode rendering stopped. Completed takes are preserved.');
+    }finally{
+      setBusy('');
+    }
+  };
+
   const createSimpleEpisode=async()=>{
     if((!simpleReferenceUrl.trim()&&!prompt.trim())||busy)return;
     setBusy('Veyr is building the complete cinematic episode…');
@@ -359,17 +517,30 @@ function App() {
       const nextEpisode=data.episode as Episode;
       setEpisode(nextEpisode);
       setVoice(nextEpisode.voice||voice);
-      setStyle('Premium 3D Character');
+      setStyle('Cinematic Photoreal 3D · 4K');
       setCinematicMode(true);
       setPreviewIndex(0);
       setPreviewPlaying(false);
       setSceneImages({});
+      setSceneVideos({});
+      setShotTakes({});
+      setGoldenTakes({});
+      const nextPlan=await buildProductionPlan(nextEpisode);
       setSimpleReferenceNote(data.referenceInfo?.note||'Reference processing complete.');
       const generated:Record<string,string>={};
+      const generatedVideo:Record<string,string>={};
+      const hasProvider=(id:string)=>Boolean(cinemaStatus.providers?.find((item)=>item.id===id&&item.configured));
+      const provider=qualityTier==='Cinematic Max'
+        ? (hasProvider('kling-o3-4k')?'kling-o3-4k':hasProvider('ltx2')?'ltx2':'kling-o3-4k')
+        : (hasProvider('kling-o3-reference')?'kling-o3-reference':hasProvider('kling-v3')?'kling-v3':hasProvider('wan22')?'wan22':'kling-v3');
+      const wantsMotion=qualityTier!=='Draft';
+      const providerReady=hasProvider(provider);
+
       for(let i=0;i<nextEpisode.scenes.length;i+=1){
         const scene=nextEpisode.scenes[i];
-        setSimpleStep(`Generating cinematic scene art ${i+1}/${nextEpisode.scenes.length}`);
+        setSimpleStep(`Creating scene ${i+1}/${nextEpisode.scenes.length} · ${qualityTier}`);
         setStoryboardProgress(`Scene ${i+1} of ${nextEpisode.scenes.length} · ${scene.title}`);
+        let imageUrl='';
         try{
           const art=await api.post('/api/style-preview',{
             style:'Premium cinematic story-film',
@@ -378,14 +549,45 @@ function App() {
             scene:scene.visualPrompt,
             archetype:'original armored cinematic chronicler'
           });
-          generated[scene.id]=`data:${art.data.mimeType};base64,${art.data.imageBase64}`;
+          imageUrl=`data:${art.data.mimeType};base64,${art.data.imageBase64}`;
+          generated[scene.id]=imageUrl;
           setSceneImages({...generated});
         }catch{
-          // Keep the complete episode even if one image fails; Pro mode can retry individual shots.
+          // Keep the written scene even if the still frame fails.
+        }
+
+        if(wantsMotion&&providerReady){
+          setSimpleStep(`Rendering motion shot ${i+1}/${nextEpisode.scenes.length} with ${provider==='ltx2'?'LTX Cinematic Max':'Wan Cinema'}`);
+          try{
+            const rendered=await api.post('/api/cinema/render-scene',{
+              provider,
+              prompt:`${scene.visualPrompt}. Motion: ${scene.motion}. Sound intent: ${scene.sound}. Preserve continuity with the approved character and set bibles. Original composition only.`,
+              imageUrl:imageUrl||undefined,
+              seconds:Math.max(4,Math.min(10,scene.duration||6)),
+              fps:qualityTier==='Cinematic Max'?30:24,
+              width:qualityTier==='Cinematic Max'?1920:1280,
+              height:qualityTier==='Cinematic Max'?1080:720,
+              metadata:{
+                sceneId:scene.id,
+                title:scene.title,
+                qualityTier,
+                generate_audio:true,
+                aspect_ratio:'16:9',
+                shot_type:'customize'
+              }
+            });
+            if(rendered.data?.url){
+              generatedVideo[scene.id]=rendered.data.url;
+              setSceneVideos({...generatedVideo});
+            }
+          }catch{
+            // Motion providers are optional. Fall back to the generated still/animatic rather than faking a clip.
+          }
         }
       }
       setSimpleStep('Episode ready');
-      setNotice(`Veyr created “${nextEpisode.title}” with ${nextEpisode.scenes.length} directed scenes, full narration/dialogue, cinematography, sound direction and ${Object.keys(generated).length} generated scene image${Object.keys(generated).length===1?'':'s'}. Open Pro only if you want to tune the technical controls.`);
+      const motionCount=Object.keys(generatedVideo).length;
+      setNotice(`Veyr created “${nextEpisode.title}” with ${nextEpisode.scenes.length} directed scenes, ${nextPlan.characters.length} character bible entries, ${nextPlan.sets.length} set bibles, ${nextPlan.shots.length} planned cinematic shots, full narration/dialogue, ${Object.keys(generated).length} generated scene image${Object.keys(generated).length===1?'':'s'} and ${motionCount} rendered scene-level motion clip${motionCount===1?'':'s'}. Pro mode now contains the shot queue and Golden Take workflow. ${wantsMotion&&!providerReady?'The Cinema Bridge is not connected for this quality tier, so GrimForge kept the honest animatic fallback.':''}`);
       window.setTimeout(()=>document.getElementById('preview')?.scrollIntoView({behavior:'smooth'}),100);
     }catch(err){
       const e=err as {response?:{data?:{error?:string}},message?:string};
@@ -413,6 +615,46 @@ function App() {
     finally{setBusy('');}
   };
 
+  const generateStyleSample=async(v:VisualStyle)=>{
+    if(busy)return;
+    setBusy(`Generating a real ${v.short} comparison frame…`);
+    try{
+      const {data}=await api.post('/api/style-preview',{
+        style:v.name,
+        world,
+        topic:episode.title,
+        scene:`${currentScene.visualPrompt}. Render the SAME composition and subject identity for a fair style comparison. For Cinematic Photoreal 3D · 4K, target grounded live-action fantasy film realism: natural skin, pores, hair, cloth, scratched steel, mud, practical torchlight/moonlight, shallow depth of field, realistic lens response, restrained blue/amber grade, no glossy game-CGI look.`,
+        archetype:selectedStyle.archetype
+      });
+      setStyleSamples(current=>({...current,[v.name]:`data:${data.mimeType};base64,${data.imageBase64}`}));
+      setNotice(`${v.name} preview generated from the same scene. Compare the actual frames rather than abstract placeholders.`);
+    }catch{
+      setNotice('Style preview generation failed. Try again or select the style and generate the current scene.');
+    }finally{setBusy('');}
+  };
+
+  const generateAllStyleSamples=async()=>{
+    if(busy)return;
+    setBusy('Generating same-shot style comparison…');
+    const next:Record<string,string>={...styleSamples};
+    try{
+      for(const v of visualStyles){
+        const {data}=await api.post('/api/style-preview',{
+          style:v.name,
+          world,
+          topic:episode.title,
+          scene:`${currentScene.visualPrompt}. Same subject, pose, composition and scene geography across all variants so the user can compare only the production style. For Cinematic Photoreal 3D · 4K, use realistic skin, eyes, hair, aged steel, cloth, mud, practical torch/moonlight, shallow depth of field and restrained cinematic color science.`,
+          archetype:selectedStyle.archetype
+        });
+        next[v.name]=`data:${data.mimeType};base64,${data.imageBase64}`;
+        setStyleSamples({...next});
+      }
+      setNotice('Same-shot style comparison is ready.');
+    }catch{
+      setNotice('Style comparison stopped early. Completed previews are still available.');
+    }finally{setBusy('');}
+  };
+
   const generateSceneArt=async(scene:Scene)=>{
     if(busy)return; setBusy(`Generating original ${style} art for “${scene.title}”…`);
     try{ const {data}=await api.post('/api/style-preview',{style,world,topic:episode.title,scene:scene.visualPrompt,archetype:selectedStyle.archetype}); setSceneImages((m)=>({...m,[scene.id]:`data:${data.mimeType};base64,${data.imageBase64}`})); }
@@ -426,7 +668,7 @@ function App() {
     try{
       const {data}=await api.post('/api/cinematic-direct',{episode,world,referenceUrl:cinematicReference,intensity:cinematicIntensity});
       setEpisode(data.episode);
-      setStyle('Premium 3D Character');
+      setStyle('Cinematic Photoreal 3D · 4K');
       setCinematicMode(true);
       setSceneImages({});
       setPreviewIndex(0);
@@ -575,6 +817,8 @@ function App() {
         <p className='simpleLead'>Start with a YouTube video/channel or any public webpage you like. Veyr studies whatever public text/metadata is actually accessible, learns only the high-level production grammar, and creates a new original cinematic episode from your request.</p>
         <label className='simpleReferenceInput'><span>1 · Paste a YouTube video, channel, or website</span><input value={simpleReferenceUrl} onChange={(e)=>setSimpleReferenceUrl(e.target.value)} placeholder='https://youtube.com/watch?v=…  or  https://youtube.com/@channel'/><small>Veyr will not pretend it watched/transcribed material the public page does not expose.</small></label>
         <label className='simplePromptBox'><span>2 · What should Veyr make?</span><textarea className='masterPrompt' value={prompt} onChange={(e)=>setPrompt(e.target.value)} placeholder='Example: Make an original 5-minute episode about a doomed fortress defense. Use the reference only for broad pacing/cinematography. Give me premium narration, dramatic character dialogue, cinematic shots and scene art.'/></label>
+        <div className='qualityTierRow'><button className={qualityTier==='Draft'?'active':''} onClick={()=>setQualityTier('Draft')}><strong>Draft</strong><span>Fast storyboard + animatic</span></button><button className={qualityTier==='Cinema'?'active':''} onClick={()=>{setQualityTier('Cinema');void refreshCinemaStatus();}}><strong>Cinema</strong><span>Kling O3/V3 when connected · Wan local fallback</span></button><button className={qualityTier==='Cinematic Max'?'active':''} onClick={()=>{setQualityTier('Cinematic Max');void refreshCinemaStatus();}}><strong>Cinematic Max</strong><span>Kling O3 native 4K when connected · LTX fallback</span></button></div>
+        <div className='cinemaConnection'><span className={cinemaStatus.configured?'dot on':'dot'}/><b>{cinemaStatus.configured?'Cinema Bridge detected':'Cinema Bridge not connected'}</b><small>{qualityTier==='Draft'?'Draft works without GPU video providers.':cinemaStatus.configured?'Configured providers will be used when available.':'GrimForge will create the full directed animatic and preserve every shot for later rendering.'}</small><button onClick={()=>void refreshCinemaStatus()}>Check engines</button></div>
         <div className='simpleOptions'><label>World<select value={world} onChange={(e)=>setWorld(e.target.value)}><option>Warhammer 40K</option><option>Old World / Warhammer Fantasy</option></select></label><label>Length<select value={length} onChange={(e)=>setLength(+e.target.value)}><option value={5}>5 minutes</option><option value={8}>8 minutes</option><option value={12}>12 minutes</option></select></label></div>
         <div className='simpleDeliverables'><span>✓ Full narration</span><span>✓ Character dialogue</span><span>✓ Cinematography</span><span>✓ Generated scene art</span><span>✓ Sound direction</span><span>✓ Title + thumbnail package</span></div>
         <button className='primary simpleCreateButton' disabled={!!busy||(!prompt.trim()&&!simpleReferenceUrl.trim())} onClick={createSimpleEpisode}>✦ Veyr — Make the Full Cinematic Episode</button>
@@ -603,12 +847,12 @@ function App() {
 
       {(studioMode==='Pro'||simpleStep==='Episode ready')&&<><section className='episodeSummary'><div><div className='kicker'>Current Episode</div><h2>{episode.title}</h2><p>{episode.thesis}</p></div><div className='summaryBadges'><span>{episode.targetMinutes} min</span><span>Kokoro Local Neural</span><span>{speechProfile}</span><span>{dialogueMode}</span><span>{style}</span></div></section>
 
-      {studioMode==='Simple'&&simpleStep==='Episode ready'&&<section className='simpleEpisodePackage'><div className='sectionHead'><div><div className='kicker'>Veyr Delivery</div><h2>Your complete episode package</h2><p>Each scene includes the generated image plus the narration, dialogue, cinematography, camera movement and sound plan that Pro mode can refine later.</p></div><button onClick={()=>setStudioMode('Pro')}>Open Pro controls</button></div><div className='simpleSceneGrid'>{episode.scenes.map((scene,index)=><article key={scene.id} className='simpleSceneCard'>{sceneImages[scene.id]?<img src={sceneImages[scene.id]} alt={`Generated art for ${scene.title}`}/>:<div className='simpleScenePlaceholder'>Scene art unavailable · retry in Pro</div>}<div className='simpleSceneCopy'><span>Scene {index+1} · {scene.start}</span><h3>{scene.title}</h3><b>Narration</b><p>{scene.narration}</p>{scene.dialogue&&scene.dialogue!=='None — narration only'&&<><b>Dialogue</b><blockquote>{scene.dialogue}</blockquote></>}<details><summary>Cinematography + sound</summary><small><strong>Shot:</strong> {scene.visualPrompt}</small><small><strong>Motion:</strong> {scene.motion}</small><small><strong>Sound:</strong> {scene.sound}</small></details></div></article>)}</div></section>}
+      {studioMode==='Simple'&&simpleStep==='Episode ready'&&<section className='simpleEpisodePackage'><div className='sectionHead'><div><div className='kicker'>Veyr Delivery</div><h2>Your complete episode package</h2><p>Each scene includes the generated image plus the narration, dialogue, cinematography, camera movement and sound plan that Pro mode can refine later.</p></div><button onClick={()=>setStudioMode('Pro')}>Open Pro controls</button></div>{productionPlan&&<div className='fullRenderPanel'><div><span>Full cinematic render</span><strong>{productionPlan.shots.length} planned shots · {Math.round(productionPlan.shots.reduce((sum,shot)=>sum+shot.duration,0))} sec of generated motion</strong><p>One take per missing shot is rendered, then the chosen/Golden Takes are assembled into one MP4. Extra takes remain a Pro-mode choice.</p></div><label className='renderConsent'><input type='checkbox' checked={allowPaidFullRender} onChange={e=>setAllowPaidFullRender(e.target.checked)}/><span>I understand this can consume paid Kling/GPU render credits.</span></label><button className='primary' onClick={renderFullShotQueue} disabled={!!busy||!allowPaidFullRender||qualityTier==='Draft'}>▶ Render + Assemble Full Episode</button>{fullRenderProgress&&<small>{fullRenderProgress}</small>}</div>}<div className='simpleSceneGrid'>{episode.scenes.map((scene,index)=><article key={scene.id} className='simpleSceneCard'>{sceneVideos[scene.id]?<video src={sceneVideos[scene.id]} poster={sceneImages[scene.id]} controls playsInline/>:sceneImages[scene.id]?<img src={sceneImages[scene.id]} alt={`Generated art for ${scene.title}`}/>:<div className='simpleScenePlaceholder'>Scene visual unavailable · retry in Pro</div>}<div className='simpleSceneCopy'><span>Scene {index+1} · {scene.start}</span><h3>{scene.title}</h3><b>Narration</b><p>{scene.narration}</p>{scene.dialogue&&scene.dialogue!=='None — narration only'&&<><b>Dialogue</b><blockquote>{scene.dialogue}</blockquote></>}<details><summary>Cinematography + sound</summary><small><strong>Shot:</strong> {scene.visualPrompt}</small><small><strong>Motion:</strong> {scene.motion}</small><small><strong>Sound:</strong> {scene.sound}</small></details></div></article>)}</div></section>}
 
       <section className='previewStudio' id='preview'>
         <div className='sectionHead'><div><div className='kicker'>Watch & Tweak</div><h2>Episode Preview Player</h2><p>Generated episodes play as an editable animatic. If you already have a rendered MP4, load it below and watch the real video inside GrimForge.</p></div><div className='playerButtons'><button className='primary' onClick={()=>setPreviewPlaying(!previewPlaying)}>{previewPlaying?'Ⅱ Pause':'▶ Play Episode'}</button><button onClick={()=>{setPreviewPlaying(false);window.speechSynthesis?.cancel();setPreviewIndex(0);}}>■ Stop</button></div></div>
         {mp4Url?<div className='mp4Box'><video src={mp4Url} controls playsInline/><div className='playerStrip'><strong>Loaded MP4</strong><a href={mp4Url} download={`${episode.title.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.mp4`}>Download MP4</a></div></div>:<div className='animatic'>
-          <div className={`animaticFrame ${selectedStyle.archetype} ${cinematicMode?'cinematicFrame':''}`}>{sceneImages[currentScene.id]?<img className={cinematicMode?'cinematicImage':''} src={sceneImages[currentScene.id]} alt='Generated scene art'/>:<div className='characterStage'><div className='characterGlow'/><div className={`figure ${selectedStyle.archetype}`}><i/><b/><em/></div><div className='stageLabel'>{style}</div></div>}<div className='caption'><small>{currentScene.start} · {currentScene.claimType}</small><strong>{currentScene.title}</strong><p>{currentScene.narration}</p>{currentScene.dialogue&&currentScene.dialogue!=='None — narration only'&&<blockquote><b>Dialogue</b>{currentScene.dialogue}</blockquote>}</div></div>
+          <div className={`animaticFrame ${selectedStyle.archetype} ${cinematicMode?'cinematicFrame':''}`}>{sceneVideos[currentScene.id]?<video className={cinematicMode?'cinematicImage':''} src={sceneVideos[currentScene.id]} poster={sceneImages[currentScene.id]} controls playsInline/>:sceneImages[currentScene.id]?<img className={cinematicMode?'cinematicImage':''} src={sceneImages[currentScene.id]} alt='Generated scene art'/>:<div className='characterStage'><div className='characterGlow'/><div className={`figure ${selectedStyle.archetype}`}><i/><b/><em/></div><div className='stageLabel'>{style}</div></div>}<div className='caption'><small>{currentScene.start} · {currentScene.claimType}</small><strong>{currentScene.title}</strong><p>{currentScene.narration}</p>{currentScene.dialogue&&currentScene.dialogue!=='None — narration only'&&<blockquote><b>Dialogue</b>{currentScene.dialogue}</blockquote>}</div></div>
           <div className='sceneRail'>{episode.scenes.map((s,i)=><button className={i===previewIndex?'active':''} key={s.id} onClick={()=>{setPreviewPlaying(false);window.speechSynthesis?.cancel();setPreviewIndex(i);}}><span>{i+1}</span><small>{s.title}</small></button>)}</div>
         </div>}
         {studioMode==='Pro'?<><div className='mediaInputs'><label>Load / replace rendered MP4<input type='file' accept='video/mp4,video/*' onChange={(e)=>mp4Input(e.target.files?.[0])}/></label><label>Use your own final narration<input type='file' accept='audio/*' onChange={(e)=>narrationInput(e.target.files?.[0])}/></label>{narrationUrl&&<audio src={narrationUrl} controls/>}</div><p className='fine'>Important: GrimForge's generated preview is an editable directed animatic, not a claim of full AI motion rendering. A true moving MP4 still requires a connected video-render engine; any real MP4 you load plays here.</p></>:<p className='simplePreviewNote'>Simple mode gives you the complete directed animatic package immediately. The generated images, narration, dialogue and shot plan are real outputs; true moving-video MP4 rendering remains a separate provider step.</p>}
@@ -616,7 +860,7 @@ function App() {
 
       {studioMode==='Pro'&&<section className='visualChooser' id='visual-style'>
         <div className='sectionHead'><div><div className='kicker'>Visual Direction</div><h2>Pick the look by grimdark character example</h2><p>Original GrimForge archetypes designed to read like dark science-fantasy / Old World characters at a glance—never copied named characters or official artwork.</p></div><div className='visualTools'><label className='assetSource'>Artwork source<select value={artSource} onChange={(e)=>setArtSource(e.target.value)}><option>AI Generated Original</option><option>Public Domain / Open License</option><option>User-Owned Upload</option><option>Licensed Asset</option><option>Mixed</option></select></label><button className='ghost' onClick={()=>setCompareStyles((value)=>!value)}>{compareStyles?'Hide Comparison':'Compare Styles'}</button></div></div>
-        <div className='visualGrid'>{visualStyles.map((v)=><button className={style===v.name?'visualCard selected':'visualCard'} key={v.name} onClick={()=>setStyle(v.name)}><div className={`archetypeThumb ${v.archetype}`}><div className='characterGlow'/><div className={`figure ${v.archetype}`}><i/><b/><em/></div><span>{v.short}</span></div><strong>{v.name}</strong><p>{v.blurb}</p><small>{v.motion}</small></button>)}</div>
+        <div className='stylePreviewToolbar'><button className='primary' onClick={generateAllStyleSamples} disabled={!!busy}>Generate Same-Shot Style Comparison</button><span>Real generated previews replace the old abstract shape cards.</span></div><div className='visualGrid'>{visualStyles.map((v)=><article className={style===v.name?'visualCard selected':'visualCard'} key={v.name}><button className='styleSelectHit' onClick={()=>setStyle(v.name)} aria-label={`Select ${v.name}`}>{styleSamples[v.name]?<img className='styleSampleImage' src={styleSamples[v.name]} alt={`${v.name} preview of current scene`}/>:<div className='styleSampleEmpty'><strong>{v.short}</strong><span>No preview yet</span></div>}<div className='styleCardCopy'><strong>{v.name}</strong><p>{v.blurb}</p><small>{v.motion}</small></div></button><button className='stylePreviewButton' onClick={()=>generateStyleSample(v)} disabled={!!busy}>{styleSamples[v.name]?'Regenerate preview':'Generate preview'}</button></article>)}</div>
         {compareStyles&&<div className='styleCompare'><div className='compareHead'><strong>Same scene · six visual treatments</strong><span>{currentScene.title}</span></div><div className='compareGrid'>{visualStyles.map((v)=><article key={`compare-${v.name}`} className={style===v.name?'compareCard selected':'compareCard'}><div className={`miniArchetype ${v.archetype}`}><div className={`figure ${v.archetype}`}><i/><b/><em/></div></div><strong>{v.short}</strong><small>{v.motion}</small><button onClick={()=>setStyle(v.name)}>Use this style</button></article>)}</div></div>}
         <div className='sourceExplainer'>{artSource==='AI Generated Original'?<><strong>AI Generated Original</strong><span>GrimForge sends Veyr's scene prompt to the image generator with an originality guardrail: no named characters, logos, copied artwork or creator visual identity.</span></>:artSource==='Public Domain / Open License'?<><strong>Public Domain / Open License</strong><span>Use repositories such as Wikimedia Commons, Library of Congress and other collections only when the individual item's license/source record permits reuse. GrimForge does not treat random web images as public domain. Automatic retrieval is not connected yet; source and license metadata must be recorded before publication.</span></>:<><strong>{artSource}</strong><span>These assets should be uploaded or linked with ownership/license information. Rights Guard remains part of the manual studio.</span></>}</div>
         <button className='primary' onClick={()=>generateSceneArt(currentScene)}>Generate Better Art for Current Scene</button>
@@ -624,9 +868,10 @@ function App() {
 
       {studioMode==='Pro'&&manualOpen&&<section className='manualStudio' id='manual-studio'>
         <div className='sectionHead'><div><div className='kicker'>War Table Controls</div><h2>Manual Studio</h2><p>YouTube Mixer, voice and art controls are first. Nothing is hidden from you here.</p></div></div>
-        <nav className='tabs'>{['YouTube Mixer','Voice & Sound','Art Style','Presets','Scenes','Research','Rights'].map((t)=><button className={activeTab===t?'active':''} key={t} onClick={()=>setActiveTab(t)}>{t}</button>)}</nav>
+        <nav className='tabs'>{['YouTube Mixer','Production Bible','Voice & Sound','Art Style','Presets','Scenes','Research','Rights'].map((t)=><button className={activeTab===t?'active':''} key={t} onClick={()=>setActiveTab(t)}>{t}</button>)}</nav>
         {activeTab==='Presets'&&<div className='presetStudio'><div className='presetComposer'><div><h3>Favorite Creator Presets</h3><p className='helper'>Save the current art style, Google voice settings, audio delivery modifiers and YouTube channel mix. Reapply the whole creative setup to the next episode in one click.</p></div><label>Preset name<input value={presetName} onChange={(e)=>setPresetName(e.target.value)} placeholder='Dark Chronicle'/></label><button className='primary' onClick={saveFavoritePreset}>★ Save Current Preset</button></div>{favoritePresets.length?<div className='presetGrid'>{favoritePresets.map((preset)=><article className='presetCard' key={preset.id}><strong>{preset.name}</strong><span>{preset.style}</span><small>{preset.browserVoiceName==='Auto'?'Auto Google voice':preset.browserVoiceName}</small><small>{Object.values(preset.selectedRefs).filter((value)=>value>0).length} channel references</small><div><button className='primary' onClick={()=>applyFavoritePreset(preset)}>Apply</button><button onClick={()=>removeFavoritePreset(preset.id)}>Remove</button></div></article>)}</div>:<div className='emptyPreset'>No saved presets yet. Tune a mix you like, then save it here.</div>}</div>}
-        {activeTab==='Art Style'&&<><div className='sectionHead'><div><h3>Grimdark Art Deck</h3><p>Pick the production treatment by recognizable original archetype: armored knight, corrupted warlord, battlefield commander, interrogator, cavalry champion, or grave sorcerer.</p></div><div className='visualTools'><label className='assetSource'>Artwork source<select value={artSource} onChange={(e)=>setArtSource(e.target.value)}><option>AI Generated Original</option><option>Public Domain / Open License</option><option>User-Owned Upload</option><option>Licensed Asset</option><option>Mixed</option></select></label><button className='ghost' onClick={()=>setCompareStyles((value)=>!value)}>{compareStyles?'Hide Comparison':'Compare Styles'}</button></div></div><div className='visualGrid fantasyCardGrid'>{visualStyles.map((v)=><button className={style===v.name?'visualCard fantasyArtCard selected':'visualCard fantasyArtCard'} key={v.name} onClick={()=>setStyle(v.name)}><div className={`archetypeThumb ${v.archetype}`}><div className='characterGlow'/><div className={`figure ${v.archetype}`}><i/><b/><em/></div><span>{v.short}</span></div><div className='cardRibbon'>GrimForge Visual School</div><strong>{v.name}</strong><p>{v.blurb}</p><small>{v.motion}</small></button>)}</div>{compareStyles&&<div className='styleCompare compact'><div className='compareGrid'>{visualStyles.map((v)=><article key={`manual-compare-${v.name}`} className={style===v.name?'compareCard selected':'compareCard'}><div className={`miniArchetype ${v.archetype}`}><div className={`figure ${v.archetype}`}><i/><b/><em/></div></div><strong>{v.short}</strong><button onClick={()=>setStyle(v.name)}>Use</button></article>)}</div></div>}<button className='primary' onClick={()=>generateSceneArt(currentScene)}>Generate Current Scene in This Style</button></>}
+        {activeTab==='Art Style'&&<><div className='sectionHead'><div><h3>Grimdark Art Deck</h3><p>Pick the production treatment by recognizable original archetype: armored knight, corrupted warlord, battlefield commander, interrogator, cavalry champion, or grave sorcerer.</p></div><div className='visualTools'><label className='assetSource'>Artwork source<select value={artSource} onChange={(e)=>setArtSource(e.target.value)}><option>AI Generated Original</option><option>Public Domain / Open License</option><option>User-Owned Upload</option><option>Licensed Asset</option><option>Mixed</option></select></label><button className='ghost' onClick={()=>setCompareStyles((value)=>!value)}>{compareStyles?'Hide Comparison':'Compare Styles'}</button></div></div><div className='stylePreviewToolbar'><button className='primary' onClick={generateAllStyleSamples} disabled={!!busy}>Generate Same-Shot Style Comparison</button><span>Judge the look from real frames, not icons.</span></div><div className='visualGrid fantasyCardGrid'>{visualStyles.map((v)=><article className={style===v.name?'visualCard fantasyArtCard selected':'visualCard fantasyArtCard'} key={v.name}><button className='styleSelectHit' onClick={()=>setStyle(v.name)}>{styleSamples[v.name]?<img className='styleSampleImage' src={styleSamples[v.name]} alt={`${v.name} preview`}/>:<div className='styleSampleEmpty'><strong>{v.short}</strong><span>Generate a real sample</span></div>}<div className='cardRibbon'>GrimForge Visual School</div><div className='styleCardCopy'><strong>{v.name}</strong><p>{v.blurb}</p><small>{v.motion}</small></div></button><button className='stylePreviewButton' onClick={()=>generateStyleSample(v)} disabled={!!busy}>{styleSamples[v.name]?'Regenerate':'Generate preview'}</button></article>)}</div>{compareStyles&&<div className='styleCompare compact'><div className='compareGrid'>{visualStyles.map((v)=><article key={`manual-compare-${v.name}`} className={style===v.name?'compareCard selected':'compareCard'}><div className={`miniArchetype ${v.archetype}`}><div className={`figure ${v.archetype}`}><i/><b/><em/></div></div><strong>{v.short}</strong><button onClick={()=>setStyle(v.name)}>Use</button></article>)}</div></div>}<button className='primary' onClick={()=>generateSceneArt(currentScene)}>Generate Current Scene in This Style</button></>}
+        {activeTab==='Production Bible'&&<div className='productionBibleTab'>{!productionPlan?<div className='emptyPreset'><strong>No production bible yet.</strong><span>Create a Simple-mode episode first, or ask Veyr to rebuild the production plan.</span><button className='primary' onClick={()=>buildProductionPlan(episode)}>Build Production Bible</button></div>:<><div className='bibleSummary'><article><span>Characters</span><strong>{productionPlan.characters.length}</strong></article><article><span>Sets</span><strong>{productionPlan.sets.length}</strong></article><article><span>Voice cast</span><strong>{productionPlan.voiceCast.length}</strong></article><article><span>Shots</span><strong>{productionPlan.shots.length}</strong></article></div><section className='bibleSection'><h3>Character Bible</h3><div className='bibleCards'>{productionPlan.characters.map(ch=><article key={ch.id}><span>{ch.role}</span><strong>{ch.name}</strong><p>{ch.visualIdentity}</p><small><b>Face / hair:</b> {ch.faceHair}</small><small><b>Wardrobe:</b> {ch.wardrobeArmor}</small><small><b>Props:</b> {ch.props}</small><small><b>Voice:</b> {ch.voiceDirection}</small><details><summary>Continuity + reference prompts</summary><p>{ch.continuityRules}</p>{ch.referencePrompts.map((p,i)=><code key={i}>{p}</code>)}</details></article>)}</div></section><section className='bibleSection'><h3>Set Bible</h3><div className='bibleCards'>{productionPlan.sets.map(set=><article key={set.id}><strong>{set.name}</strong><p>{set.description}</p><small><b>Lighting:</b> {set.lighting}</small><small><b>Landmarks:</b> {set.landmarks}</small><details><summary>360° masters</summary><code>N: {set.north}</code><code>E: {set.east}</code><code>S: {set.south}</code><code>W: {set.west}</code><code>Overhead: {set.overhead}</code><p>{set.continuityRules}</p></details></article>)}</div></section><section className='bibleSection'><h3>Voice Cast</h3><div className='voiceCastGrid'>{productionPlan.voiceCast.map(v=><article key={v.characterId}><span>{v.enginePreference}</span><strong>{v.characterName}</strong><p>{v.delivery}</p><small>{v.voiceSeedDescription}</small></article>)}</div></section><section className='bibleSection'><div className='sectionHead'><div><h3>Shot Queue + Golden Takes</h3><p>Generate individual 3–10 second takes only when you are ready to spend render credits. Important shots can have multiple takes; you choose the Golden Take.</p></div></div><div className='shotQueue'>{productionPlan.shots.map(shot=>{const takes=shotTakes[shot.id]||[];const golden=goldenTakes[shot.id];return <article className='shotCard' key={shot.id}><header><div><span>{shot.qualityPriority} · {shot.duration}s · {shot.shotSize}</span><strong>{shot.order}. {shot.title}</strong></div><button className='primary' onClick={()=>renderProductionShot(shot)} disabled={!!busy}>Generate Take</button></header><p>{shot.purpose}</p><small><b>Lens:</b> {shot.lens} · <b>Move:</b> {shot.cameraMove}</small><small><b>Blocking:</b> {shot.blocking}</small>{shot.dialogueLine&&<blockquote><b>{shot.dialogueSpeaker||'Dialogue'}:</b> {shot.dialogueLine}</blockquote>}<details><summary>Prompt + continuity</summary><code>{shot.prompt}</code><small><b>IN:</b> {shot.continuityIn}</small><small><b>OUT:</b> {shot.continuityOut}</small></details>{takes.length>0&&<div className='takeGrid'>{takes.map((url,i)=><div className={golden===i?'take selected':'take'} key={url}><video src={url} controls playsInline/><button onClick={()=>setGoldenTakes(current=>({...current,[shot.id]:i}))}>{golden===i?'★ Golden Take':'Make Golden'}</button></div>)}</div>}</article>})}</div></section></>}</div>}
         {activeTab==='Scenes'&&<div>{episode.scenes.map((s)=><article className='sceneEditor' key={s.id}><div className='sceneEditorHead'><strong>{s.start} · {s.title}</strong><span>{s.claimType}</span></div><label>Narration<textarea value={s.narration} onChange={(e)=>updateScene(s.id,{narration:e.target.value})}/></label><label>Dialogue<textarea value={s.dialogue||''} onChange={(e)=>updateScene(s.id,{dialogue:e.target.value})} placeholder='Character dialogue or None — narration only'/></label><div className='editGrid'><label>Visual prompt<textarea value={s.visualPrompt} onChange={(e)=>updateScene(s.id,{visualPrompt:e.target.value})}/></label><label>Motion<textarea value={s.motion} onChange={(e)=>updateScene(s.id,{motion:e.target.value})}/></label><label>Sound<textarea value={s.sound} onChange={(e)=>updateScene(s.id,{sound:e.target.value})}/></label><label>Source / claim note<textarea value={s.sourceNeed} onChange={(e)=>updateScene(s.id,{sourceNeed:e.target.value})}/></label></div><button onClick={()=>generateSceneArt(s)}>Generate Scene Art</button></article>)}</div>}
         {activeTab==='YouTube Mixer'&&<><div className='mixerToolbar'><div><h3>Warhammer YouTube Production Mixer</h3><p className='helper'>Choose the channels, set the weights, then click Apply Mix. Veyr will actually remix the current episode's pacing, structure, humor density, hook strength, map use and newcomer clarity. It never copies scripts, jokes, artwork, creator identity or voices.</p></div><div><button className='primary' disabled={!mixerDirty||!!busy} onClick={applyMixer}>{mixerDirty?'Apply Mix to Episode':'Mix Applied ✓'}</button><span className={mixerDirty?'mixState dirty':'mixState applied'}>{mixerDirty?'Changes not applied yet':mixerApplied?'Applied to current episode':'Ready'}</span></div></div><div className='channelGrid'>{channelRefs.map((c)=>{const w=selectedRefs[c.name]??0;return <article className={w?'channelCard selected':'channelCard'} key={c.name}><div><strong>{c.name}</strong><p>{c.traits}</p></div><button onClick={()=>{setSelectedRefs((m)=>({...m,[c.name]:w?0:30}));setMixerDirty(true);setMixerApplied(false);}}>{w?'Remove':'Add'}</button>{w>0&&<label>Weight <b>{w}%</b><input type='range' min='5' max='100' value={w} onChange={(e)=>{setSelectedRefs((m)=>({...m,[c.name]:+e.target.value}));setMixerDirty(true);setMixerApplied(false);}}/></label>}<a href={c.url} target='_blank' rel='noreferrer'>Open channel ↗</a></article>})}</div><div className='metrics'>{refBlend.map((m)=><div key={m.label}><small>{m.label}</small><strong>{m.value}</strong></div>)}</div></>}
         {activeTab==='Voice & Sound'&&<><div className='kokoroStudio'><div className='kokoroHead'><div><h3>Kokoro Free Neural · Default</h3><p>Runs on your device with no per-episode API charge. First use downloads the open model; later loads can use browser caching.</p></div><span className='kokoroStatus'>{kokoroStatus}</span></div><div className='kokoroControls'><button className='primary' onClick={loadKokoro}>{kokoroRef.current?'Engine Ready ✓':'Load Free Neural Engine'}</button><label>Neural voice<select value={kokoroVoice} onChange={(e)=>setKokoroVoice(e.target.value)} disabled={!kokoroVoices.length}>{kokoroVoices.length?kokoroVoices.map((item)=><option value={item.id} key={item.id}>{item.name}{item.detail?` · ${item.detail}`:''}</option>):<option value={kokoroVoice}>Load engine to see voices</option>}</select></label><label>Speech speed<input type='range' min='.5' max='1.6' step='.02' value={voiceRate} onChange={(e)=>setVoiceRate(+e.target.value)}/><b>{voiceRate.toFixed(2)}×</b></label></div><div className='kokoroActions'><button onClick={()=>generateKokoroWav(selectedDialogueMode.sample,'speech preview')}>▶ Generate Preview WAV</button><button onClick={()=>generateKokoroWav(currentScene.narration,'current scene WAV')}>Generate Current Scene WAV</button><button className='primary' onClick={()=>generateKokoroWav(episode.scenes.map((scene)=>scene.narration).join('\n\n'),'full episode narration',true)}>Generate Full Episode WAV</button></div>{kokoroAudioUrl&&<div className='kokoroPlayer'><div><strong>{kokoroOutputLabel}</strong><small>Generated locally with Kokoro</small></div><audio src={kokoroAudioUrl} controls/><a className='buttonLink' href={kokoroAudioUrl} download={`${episode.title.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}-kokoro.wav`}>Download WAV</a></div>}<p className='fine'>Kokoro controls speed directly. Voice timbre comes from the selected neural voice; Veyr's Speech Director controls cadence, sentence shape and delivery direction.</p></div><div className='voiceEngineBanner'><div><strong>Veyr Speech Director + Free Browser Fallback</strong><span>GrimForge detected {googleBrowserVoices.length} Google browser voice(s) across {detectedGoogleLocales.length} locale(s). The browser voice is the instrument; Veyr's speech profile controls how the narration is written and directed.</span></div><span className='engineBadge'>Kokoro default · browser fallback</span></div><div className='speechDirector'><div className='speechDirectorHead'><div><h3>Reference-derived speech profiles</h3><p>Built from the delivery qualities in your four example clips. These describe cadence and performance only — they do not clone the original voices.</p></div><button className='primary' disabled={!!busy} onClick={applySpeechStyle}>Apply Speech Style to Episode</button></div><div className='speechProfileGrid'>{speechReferenceProfiles.map((preset)=><button className={speechProfile===preset.name?'speechProfileCard selected':'speechProfileCard'} key={preset.name} onClick={()=>applySpeechReference(preset.name)}><span>{preset.source}</span><strong>{preset.name}</strong><small>{preset.note}</small><em>{preset.rate.toFixed(2)}× · pitch {preset.pitch.toFixed(2)} · {preset.pause}ms pause</em></button>)}</div><div className='dialogueDirector'><div><h3>Dialogue writing mode</h3><p>Veyr uses this when creating or rewriting narration. It changes sentence shape, rhetoric, pacing and attitude without changing canon facts.</p></div><div className='dialogueModeGrid'>{dialogueModes.map((mode)=><button className={dialogueMode===mode.name?'dialogueModeCard selected':'dialogueModeCard'} key={mode.name} onClick={()=>setDialogueMode(mode.name)}><strong>{mode.name}</strong><small>{mode.note}</small></button>)}</div><label className='speechPrompt'>Extra direction<textarea value={deliveryPrompt} onChange={(e)=>setDeliveryPrompt(e.target.value)} placeholder='Example: calm authority, dry intelligence, no trailer voice, pause before the final sentence.'/></label><div className='speechActions'><button onClick={previewSelectedDelivery}>▶ Preview Selected Delivery</button><button onClick={()=>askVeyr(`Explain how you would direct ${speechProfile} with ${dialogueMode} for this episode. Extra direction: ${deliveryPrompt}`)}>Ask Veyr About This Style</button></div></div></div><div className='voiceLocaleBar'><label>Working locale / accent<select value={voiceLocaleFilter} onChange={(e)=>{setVoiceLocaleFilter(e.target.value);setBrowserVoiceName('Auto');}}><option value='all'>All detected Google locales</option>{detectedGoogleLocales.map((locale)=><option key={locale} value={locale}>{locale}</option>)}</select></label><div className='localeHint'>Browser voices are device-dependent. Australian, Italian, French, etc. only appear here if Chrome exposes them.</div></div><div className='googleVoiceGrid'>{filteredGoogleVoices.length?filteredGoogleVoices.map((v)=><button className={browserVoiceName===v.name?'googleVoiceCard selected':'googleVoiceCard'} key={`${v.name}-${v.lang}`} onClick={()=>setBrowserVoiceName(v.name)}><strong>{v.name}</strong><span>{v.lang}</span><small>{v.localService?'local Google voice':'online Google voice'}</small></button>):<div className='emptyVoice'><strong>No Google voice detected for this locale</strong><span>Choose another detected locale or use the Cloud catalog below as the target for the premium TTS connection.</span></div>}</div><div className='directionShelf'><h3>Original character directions</h3><p>Performance directions only — not celebrity or character impersonations.</p><div className='directionGrid'>{voiceCharacterDirections.map((preset)=><button className={voiceDirection===preset.name?'directionCard selected':'directionCard'} key={preset.name} onClick={()=>applyVoiceDirection(preset.name)}><strong>{preset.name}</strong><small>{preset.note}</small></button>)}</div></div><div className='voiceModifierGrid'><label>Speed <b>{voiceRate.toFixed(2)}×</b><input type='range' min='.55' max='1.45' step='.01' value={voiceRate} onChange={(e)=>{setVoiceRate(+e.target.value);setVoiceDirection('Custom');}}/></label><label>Depth / pitch <b>{voicePitch.toFixed(2)}</b><input type='range' min='.55' max='1.45' step='.01' value={voicePitch} onChange={(e)=>{setVoicePitch(+e.target.value);setVoiceDirection('Custom');}}/></label><label>Sentence pause <b>{voicePause} ms</b><input type='range' min='0' max='1000' step='10' value={voicePause} onChange={(e)=>{setVoicePause(+e.target.value);setVoiceDirection('Custom');}}/></label><label>Delivery energy <b>{voiceEnergy}%</b><input type='range' min='0' max='100' step='1' value={voiceEnergy} onChange={(e)=>{setVoiceEnergy(+e.target.value);setVoiceDirection('Custom');}}/></label></div><div className='modifierReadout'><strong>{voiceDirection}</strong><span>{voiceRate.toFixed(2)}× speed · {voicePitch.toFixed(2)} pitch · {voicePause} ms pause · {voiceEnergy}% energy</span></div><div className='voiceQuality'><label>Google playback voice<select value={browserVoiceName} onChange={(e)=>setBrowserVoiceName(e.target.value)}><option value='Auto'>Auto · best voice in locale</option>{filteredGoogleVoices.map((v)=><option value={v.name} key={`${v.name}-${v.lang}`}>{v.name} · {v.lang}</option>)}</select></label><div className='voiceAB'><button onClick={()=>speak('The Imperium survives because it can endure losses that would destroy a smaller civilization. Survival is what keeps the war possible.',true)}>A · Raw</button><button className='primary' onClick={()=>speak('The Imperium survives because it can endure losses that would destroy a smaller civilization. Survival is what keeps the war possible.')}>B · Current Modifiers</button><button onClick={()=>speak('The Imperium survives because it can endure losses that would destroy a smaller civilization. Survival is what keeps the war possible.',false,{rate:.68,pitch:.68,pause:620,energy:88})}>C · Extreme Test</button><button onClick={stopSpeaking}>Stop</button></div><div className='mastering'><span>Dialogue target</span><b>-16 to -14 LUFS</b><span>True peak</span><b>≤ -1 dBTP</b><span>Priority</span><b>clear consonants · low fatigue · narration above music</b></div></div><div className='cloudVoiceShelf'><div><h3>Optional Premium · Google Cloud</h3><p>You do not need this to use GrimForge. Kokoro is now the free default; Chirp/Gemini remain optional if you ever want them.</p></div><div className='cloudLocaleGrid'>{cloudLocaleOptions.map(([code,label])=><article className='cloudLocaleCard' key={code}><strong>{label}</strong><span>{code}</span><em>Cloud connection required</em></article>)}</div><h4>Premium voice families</h4><div className='cloudVoiceGrid'>{googleCloudVoiceOptions.map((v)=><article className='cloudVoiceCard' key={`${v.model}-${v.name}`}><strong>{v.name}</strong><span>{v.model}</span><small>{v.note}</small><em>connection required</em></article>)}</div></div><div className='qualityWarning'>If Raw and Current Modifiers still sound identical, that specific browser voice is ignoring one or more Web Speech controls. The Extreme Test makes the difference intentionally obvious. For Italian- or French-flavored English, a non-English browser locale can be tried experimentally, but proper accent direction belongs in the future Cloud/Gemini-TTS path rather than being faked as a guaranteed browser feature.</div></>}
@@ -634,7 +879,7 @@ function App() {
         {activeTab==='Rights'&&<div className='rightsPanel'><h3>Publication rule</h3><p>Generated-original, user-owned, licensed, public-domain/open-license assets with recorded provenance can move forward. Third-party reference material can inform analysis but does not silently become a publication asset.</p><div className='status good'>Current art mode: {artSource}</div></div>}
       </section>}
 
-      {studioMode==='Pro'&&<section className='publishStudio' id='publish'><div className='sectionHead'><div><div className='kicker'>Finish</div><h2>Download or Publish</h2></div></div><div className='publishGrid'><article><h3>Watch first</h3><p>Review the animatic or loaded MP4 above, tweak scenes, then come back here.</p><button onClick={()=>document.getElementById('preview')?.scrollIntoView({behavior:'smooth'})}>Open Player</button></article><article><h3>Cloud project</h3><p>Save the editable episode, controls and reference blend.</p><button className='primary' onClick={saveCloud}>Save Project</button></article><article><h3>Download video</h3><p>{mp4Url?'A real MP4 is loaded and ready to download.':'No real MP4 exists yet. Load a rendered MP4 above or connect a render engine.'}</p>{mp4Url?<a className='buttonLink' href={mp4Url} download={`${episode.title.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.mp4`}>Download MP4</a>:<button disabled>MP4 render engine not connected</button>}</article><article><h3>YouTube</h3><p>Direct account upload requires YouTube OAuth. Until that connector is added, review your MP4 here and publish through YouTube Studio.</p><button onClick={()=>window.open('https://studio.youtube.com','_blank')}>Open YouTube Studio ↗</button><button disabled>Direct Upload · connect OAuth</button></article></div></section>
+      {studioMode==='Pro'&&<section className='publishStudio' id='publish'><div className='sectionHead'><div><div className='kicker'>Finish</div><h2>Download or Publish</h2></div></div><div className='publishGrid'><article><h3>Watch first</h3><p>Review the animatic or loaded MP4 above, tweak scenes, then come back here.</p><button onClick={()=>document.getElementById('preview')?.scrollIntoView({behavior:'smooth'})}>Open Player</button></article><article><h3>Cloud project</h3><p>Save the editable episode, controls and reference blend.</p><button className='primary' onClick={saveCloud}>Save Project</button></article><article><h3>Download video</h3><p>{mp4Url?'A real MP4 is loaded and ready to download.':'No real MP4 exists yet. Load a rendered MP4 above or connect a render engine.'}</p>{mp4Url?<a className='buttonLink' href={mp4Url} download={`${episode.title.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.mp4`}>Download MP4</a>:<button disabled>MP4 render engine not connected</button>}</article><article><h3>YouTube</h3><p>Direct account upload requires YouTube OAuth. Until that connector is added, review your MP4 here and publish through YouTube Studio.</p><button onClick={()=>window.open('https://studio.youtube.com','_blank')}>Open YouTube Studio ↗</button><button disabled>Direct Upload · connect OAuth</button></article></div></section>}
       <footer>Original creative-production tool · channel traits are references, not cloning · no unauthorized voice cloning · no uncleared publication assets.</footer>
     </main>
 

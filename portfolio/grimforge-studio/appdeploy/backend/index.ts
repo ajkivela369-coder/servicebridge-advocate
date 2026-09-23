@@ -1,14 +1,169 @@
 import { ai, error, json, router, storage } from '@appdeploy/sdk';
 
 type WorkMode = 'Quick' | 'Standard' | 'Deep';
+const cinemaBridgeUrl=(process.env.GRIMFORGE_CINEMA_BRIDGE_URL||'').replace(/\/$/,'');
+async function cinemaBridge(path:string,body?:unknown){
+  if(!cinemaBridgeUrl)throw new Error('Cinema Bridge is not configured');
+  const response=await fetch(`${cinemaBridgeUrl}${path}`,{
+    method:body?'POST':'GET',
+    headers:body?{'content-type':'application/json'}:undefined,
+    body:body?JSON.stringify(body):undefined
+  });
+  const text=await response.text();
+  if(!response.ok)throw new Error(text.slice(0,1500)||`Cinema Bridge HTTP ${response.status}`);
+  try{return JSON.parse(text)}catch{return {raw:text}}
+}
+function mediaUrl(payload:any){
+  return payload?.url||payload?.video_url||payload?.videoUrl||payload?.output_url||payload?.outputUrl||payload?.result?.url||payload?.result?.video_url||'';
+}
+
 const veyrSystem=`You are Archivist Veyr, the original AI creative director inside GrimForge Studio. You are highly capable, friendly, practical, canon-conscious and decisive. You operate the studio for users who do not want to manage every control, while respecting users who want full manual control. You are not a Games Workshop character and never impersonate a real creator.
 Rules: separate CANON/SOURCE from INTERPRETATION, EDITORIAL and SPECULATION; never invent a source; when a claim needs verification say so. Study other channels only at the level of pacing, structure, chaptering, humor density, hook strategy, maps, visual grammar, packaging and beginner clarity. Never copy scripts, jokes, catchphrases, artwork, creator identity or voice. Speech-reference profiles describe abstract performance traits only: cadence, register, pause pattern, energy, rhetorical shape and sentence length. Never imitate, clone or impersonate a real person, celebrity, actor, creator or copyrighted character voice. Favor original, user-owned, licensed, public-domain/open-license or generated-original assets. For 5-minute episodes favor a sharp hook, minimum necessary lore, evidence ladder, counterpoint, payoff and next-episode bridge. Visual direction should feel premium and cinematic without frantic motion. Voice direction prioritizes clarity, intelligibility, gravitas, low fatigue and clean consonants. Challenge weak ideas and give a concrete better choice.`;
 const referenceProfileSchema={type:'object',properties:{name:{type:'string'},url:{type:'string'},summary:{type:'string'},traits:{type:'string'},profile:{type:'array',items:{type:'number'}}},required:['name','url','summary','traits','profile']};
 const episodeSchema={type:'object',properties:{title:{type:'string'},thesis:{type:'string'},hook:{type:'string'},world:{type:'string'},targetMinutes:{type:'number'},voice:{type:'string'},visualStyle:{type:'string'},youtubeTitle:{type:'string'},thumbnailText:{type:'string'},description:{type:'string'},nextBridge:{type:'string'},scenes:{type:'array',items:{type:'object',properties:{id:{type:'string'},title:{type:'string'},start:{type:'string'},duration:{type:'number'},narration:{type:'string'},dialogue:{type:'string'},claimType:{type:'string'},visualPrompt:{type:'string'},motion:{type:'string'},sound:{type:'string'},sourceNeed:{type:'string'}},required:['id','title','start','duration','narration','claimType','visualPrompt','motion','sound','sourceNeed']}}},required:['title','thesis','hook','world','targetMinutes','voice','visualStyle','youtubeTitle','thumbnailText','description','nextBridge','scenes']};
+const productionPlanSchema={type:'object',properties:{
+  characters:{type:'array',items:{type:'object',properties:{
+    id:{type:'string'},name:{type:'string'},role:{type:'string'},visualIdentity:{type:'string'},faceHair:{type:'string'},wardrobeArmor:{type:'string'},props:{type:'string'},continuityRules:{type:'string'},voiceDirection:{type:'string'},referencePrompts:{type:'array',items:{type:'string'}}
+  },required:['id','name','role','visualIdentity','faceHair','wardrobeArmor','props','continuityRules','voiceDirection','referencePrompts']}},
+  sets:{type:'array',items:{type:'object',properties:{
+    id:{type:'string'},name:{type:'string'},description:{type:'string'},lighting:{type:'string'},landmarks:{type:'string'},north:{type:'string'},east:{type:'string'},south:{type:'string'},west:{type:'string'},overhead:{type:'string'},continuityRules:{type:'string'}
+  },required:['id','name','description','lighting','landmarks','north','east','south','west','overhead','continuityRules']}},
+  voiceCast:{type:'array',items:{type:'object',properties:{
+    characterId:{type:'string'},characterName:{type:'string'},role:{type:'string'},enginePreference:{type:'string'},delivery:{type:'string'},voiceSeedDescription:{type:'string'}
+  },required:['characterId','characterName','role','enginePreference','delivery','voiceSeedDescription']}},
+  shots:{type:'array',items:{type:'object',properties:{
+    id:{type:'string'},sceneId:{type:'string'},order:{type:'number'},title:{type:'string'},duration:{type:'number'},purpose:{type:'string'},shotSize:{type:'string'},lens:{type:'string'},cameraMove:{type:'string'},blocking:{type:'string'},prompt:{type:'string'},characterIds:{type:'array',items:{type:'string'}},locationId:{type:'string'},dialogueSpeaker:{type:'string'},dialogueLine:{type:'string'},narrationText:{type:'string'},sound:{type:'string'},continuityIn:{type:'string'},continuityOut:{type:'string'},takesRecommended:{type:'number'},qualityPriority:{type:'string'}
+  },required:['id','sceneId','order','title','duration','purpose','shotSize','lens','cameraMove','blocking','prompt','characterIds','locationId','dialogueSpeaker','dialogueLine','narrationText','sound','continuityIn','continuityOut','takesRecommended','qualityPriority']}}
+},required:['characters','sets','voiceCast','shots']};
+
 function thinking(mode?:WorkMode):'NONE'|'FAST'|'DEEP'{return mode==='Quick'?'NONE':mode==='Deep'?'DEEP':'FAST'}
 function safeSlug(v:string){return v.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60)||'grimforge-project'}
 export const handler=router({
   'GET /api/_healthcheck':[async()=>json({message:'Success'})],
+  'GET /api/cinema/status':[async()=>{
+    if(!cinemaBridgeUrl)return json({configured:false,providers:[]});
+    try{
+      const health=await cinemaBridge('/health');
+      const providers=await cinemaBridge('/v1/providers');
+      return json({configured:true,health,providers:providers.providers||[]});
+    }catch(e){
+      return json({configured:true,error:e instanceof Error?e.message:'Cinema Bridge unavailable',providers:[]});
+    }
+  }],
+
+  'POST /api/cinema/render-scene':[async({body})=>{
+    const d=(body||{}) as {provider?:string;prompt?:string;imageUrl?:string;seconds?:number;fps?:number;width?:number;height?:number;metadata?:unknown};
+    if(!d.provider||!d.prompt)return error('provider and prompt are required',400);
+    if(!cinemaBridgeUrl)return error('Cinema Bridge is not configured',503);
+    try{
+      let hostedImageUrl=d.imageUrl||'';
+      if(hostedImageUrl.startsWith('data:image/')){
+        const match=hostedImageUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+        if(match){
+          const contentType=match[1];
+          const extension=contentType.includes('png')?'png':contentType.includes('webp')?'webp':'jpg';
+          const path=`cinema-refs/${Date.now()}-${Math.random().toString(36).slice(2,10)}.${extension}`;
+          const [ok]=await storage.write([{path,content:match[2],contentType}]);
+          if(ok){
+            const [signed]=await storage.url([path]);
+            hostedImageUrl=signed.url;
+          }
+        }
+      }
+      const result=await cinemaBridge('/v1/video/generate',{
+        provider:d.provider,
+        prompt:d.prompt,
+        image_url:hostedImageUrl||undefined,
+        seconds:d.seconds||6,
+        fps:d.fps||24,
+        width:d.width||1280,
+        height:d.height||720,
+        metadata:d.metadata||{}
+      });
+      const url=mediaUrl(result);
+      if(!url)return error('The configured video provider returned no playable media URL.',502);
+      return json({url,provider:d.provider,raw:result});
+    }catch(e){
+      return error(e instanceof Error?e.message:'Cinema render failed',502);
+    }
+  }],
+
+  'POST /api/production-plan':[async({body})=>{
+    const d=(body||{}) as {episode?:unknown;qualityTier?:string;styleTarget?:string};
+    if(!d.episode)return error('episode is required',400);
+    const result=await ai.generate({
+      system:veyrSystem,
+      prompt:`Build a FILM PRODUCTION BIBLE and SHOT QUEUE for the GrimForge episode below.
+
+QUALITY TIER: ${d.qualityTier||'Cinema'}
+VISUAL TARGET: ${d.styleTarget||'cinematic photoreal dark fantasy, realistic skin and metal, shallow depth of field, practical blue/amber lighting, grounded medieval environments, restrained cinematic grade'}
+
+EPISODE:
+${JSON.stringify(d.episode,null,2).slice(0,30000)}
+
+Requirements:
+
+CHARACTER BIBLE
+- Include only recurring speaking or visually important original characters.
+- Each character gets a stable visual identity: approximate age, build, face/hair, armor/clothing, materials, distinguishing marks, props and continuity rules.
+- referencePrompts must include 4 original image prompts: hero portrait, full-body neutral, three-quarter/profile, and action reference.
+- Do not recreate named copyrighted characters or real people.
+- voiceDirection describes an original performance, not an imitation.
+
+SET BIBLE
+- Create stable recurring locations.
+- Give each set north/east/south/west and overhead/master reference prompts so later camera angles preserve geography.
+- Include lighting, landmarks, architecture/materials, weather and continuity rules.
+
+VOICE CAST
+- Narrator plus recurring speaking characters get distinct voice directions.
+- enginePreference should be 'Chatterbox', 'Kling voice', or 'Narrator fallback'.
+- voiceSeedDescription must describe a new voice using age/register/grain/cadence/accent intensity/emotional range without naming an actor or existing character.
+
+SHOT QUEUE
+- Break every episode scene into cinematic shots of roughly 3-10 seconds. Do NOT make one video generation represent an entire 30-60 second scene.
+- Important dialogue exchanges should use coverage: master/two-shot, over-shoulder or medium singles, reaction/cutaway when useful.
+- Action should be broken into readable beats rather than one impossible continuous generation.
+- Each shot must reference the relevant character IDs and location ID.
+- prompt must include subject ACTION, shot size, lens feel, camera height/move, blocking, foreground-midground-background depth, motivated lighting, atmosphere, material realism and continuity anchor.
+- Cinematic photoreal target: realistic skin, eyes, hair, cloth, mud, aged steel, scratches, wet stone, smoke/fog, natural motion, believable weight and physics. Avoid glossy videogame CGI.
+- Dialogue must remain separate from narration.
+- takesRecommended: 1 for low-risk B-roll, 2 for dialogue/hero shots, 3 for high-risk action/close facial performance in Cinematic Max.
+- qualityPriority must be LOW, MEDIUM, HIGH or HERO.
+- continuityIn/out should record costume dirt/blood/props/weather/position/emotional state and screen direction.
+- Total shot durations should approximately cover the episode runtime, but use editorial cutaways/B-roll when narration is longer than visible dialogue.
+
+Return only the structured production plan.`,
+      schema:productionPlanSchema,
+      thinkingMode:'DEEP',
+      maxTokens:9500,
+      temperature:.32
+    });
+    try{return json({plan:JSON.parse(result.text)});}
+    catch{return error('Veyr produced an invalid production plan. Please retry.',502);}
+  }],
+
+  'POST /api/cinema/assemble':[async({body})=>{
+    const d=(body||{}) as {clipUrls?:string[];title?:string;width?:number;height?:number;fps?:number};
+    if(!cinemaBridgeUrl)return error('Cinema Bridge is not configured',503);
+    const clipUrls=Array.isArray(d.clipUrls)?d.clipUrls.filter(Boolean):[];
+    if(!clipUrls.length)return error('At least one rendered clip is required',400);
+    try{
+      const result=await cinemaBridge('/v1/assemble',{
+        clip_urls:clipUrls,
+        title:d.title||'grimforge-episode',
+        width:d.width||1280,
+        height:d.height||720,
+        fps:d.fps||24
+      });
+      const url=mediaUrl(result);
+      if(!url)return error('Episode assembly completed without a playable URL.',502);
+      return json({url,raw:result});
+    }catch(e){
+      return error(e instanceof Error?e.message:'Episode assembly failed',502);
+    }
+  }],
+
   'POST /api/simple-create':[async({body})=>{
     const d=(body||{}) as {referenceUrl?:string;prompt?:string;world?:string;targetMinutes?:number;voice?:string};
     if(!d.referenceUrl?.trim()&&!d.prompt?.trim())return error('Paste a public reference URL or tell Veyr what you want to make.',400);
@@ -99,6 +254,6 @@ Return JSON with:
 If this is a YouTube channel or video page and transcripts/catalog detail are not exposed, do not pretend they are. Infer only from accessible text. Never reproduce scripts, jokes, catchphrases, artwork, creator identity, voice, thumbnails, or distinctive protected expression. This is an abstract production profile for generating original work.`,schema:referenceProfileSchema,thinkingMode:'FAST',maxTokens:1800,temperature:.22}); try{const profile=JSON.parse(result.text); profile.profile=(Array.isArray(profile.profile)?profile.profile:[]).slice(0,6).map((n:unknown)=>Math.max(0,Math.min(100,Number(n)||50))); while(profile.profile.length<6)profile.profile.push(50); return json({profile});}catch{return error('Veyr produced an invalid reference profile. Please retry.',502);}}],
   'POST /api/research-url':[async({body})=>{const d=(body||{}) as {url?:string;question?:string}; if(!d.url?.trim())return error('url is required'); try{new URL(d.url)}catch{return error('Please provide a valid public URL.')} const scraped=await ai.scrape({url:d.url}); if(scraped.status>=400)return error('That public page could not be read.',502); const result=await ai.generate({system:veyrSystem,prompt:`Analyze this public page for GrimForge. ${d.question||'Extract useful high-level production lessons.'}\nIf it is a YouTube page and transcript text is not exposed, state that. Do not reproduce long passages or imitate the creator.\nTitle: ${scraped.title||d.url}\nText:\n${scraped.text.slice(0,18000)}`,thinkingMode:'FAST',maxTokens:1500,temperature:.3}); return json({answer:result.text,url:d.url,title:scraped.title||d.url});}],
   'POST /api/cinematic-direct':[async({body})=>{const d=(body||{}) as {episode?:unknown;world?:string;referenceUrl?:string;intensity?:string}; if(!d.episode)return error('episode is required'); const result=await ai.generate({system:veyrSystem,prompt:`Turn this existing GrimForge episode into a premium cinematic story-film production plan. Use the supplied reference only as high-level production inspiration: dramatic visual storytelling, strong silhouettes, environmental scale, motivated camera movement, scene-to-scene continuity, atmospheric sound design and a clear visual arc. Never copy shots, dialogue, music, characters, artwork, creator identity or a copyrighted visual design.\n\nWorld: ${d.world||'Warhammer 40K'}\nReference URL for production context only: ${d.referenceUrl||'none'}\nCinematic intensity: ${d.intensity||'Epic but readable'}\n\nFor EVERY scene, preserve factual meaning, claimType, sourceNeed, scene ID, order and approximate duration. Rewrite visualPrompt so it contains: shot size, subject/action, environment, lighting, depth layers, recurring visual motif, continuity notes from the previous scene, and an original-franchise-safe design. Rewrite motion so it contains a specific camera move, subject motion, foreground/background motion, transition in, transition out, and approximate cut rhythm. Rewrite sound with ambience, effects, music energy and a clean narration pocket. Keep narration usable and do not add unsupported facts. Build a coherent visual bible across the full episode: consistent architecture/materials, weather, lens language, palette description and recurring army/character silhouettes. Return the complete episode in the same schema.`,schema:episodeSchema,thinkingMode:'DEEP',maxTokens:7000,temperature:.38}); try{return json({episode:JSON.parse(result.text)});}catch{return error('Veyr produced an invalid cinematic pass. Please retry.',502);}}],
-  'POST /api/style-preview':[async({body})=>{const d=(body||{}) as {style?:string;world?:string;topic?:string;scene?:string;archetype?:string}; if(!d.style)return error('style is required'); const result=await ai.imageGen({prompt:`Create an ORIGINAL 2.39:1 widescreen premium dark-fantasy cinematic story-film frame. Treat the scene prompt as part of one continuous film: preserve recurring architecture, weather, materials, silhouette language and lighting logic whenever the prompt describes them. Setting mode: ${d.world||'dark science fantasy'}. Episode: ${d.topic||'grimdark history'}. Scene: ${d.scene||'hero establishing shot'}. Production style: ${d.style}. Character archetype: ${d.archetype||'armored chronicler'}, but do not depict any named franchise character, logo, heraldry, copied armor design, copyrighted likeness, creator art style or text. Make the archetype visually readable at thumbnail size. Sophisticated cinematic lighting, detailed materials, strong silhouette, grounded composition, restrained color, no watermark.`,maxOutputBytes:950000}); return json({imageBase64:result.image.data,mimeType:result.image.mimeType});}],
+  'POST /api/style-preview':[async({body})=>{const d=(body||{}) as {style?:string;world?:string;topic?:string;scene?:string;archetype?:string}; if(!d.style)return error('style is required'); const photoreal=d.style.includes('Cinematic Photoreal 3D'); const styleDirection=photoreal?`LIVE-ACTION PHOTOREAL FANTASY FILM FRAME. The image should read as a photographed prestige fantasy feature, not videogame CGI or plastic concept art. Natural human skin with pores and subtle imperfections; believable eyes, hair and facial hair; physically plausible aged steel, leather, wool and mud; scratches, soot and moisture; grounded medieval architecture; practical torch/firelight mixed with cool window/moon ambience; shallow depth of field; realistic lens falloff and bokeh; cinematic 35mm/50mm lens feel; motivated rim light; restrained desaturated blue/amber color grade; natural contrast; atmospheric smoke/fog; credible body weight and posture. No oversharpened AI texture, waxy skin, glossy armor, neon fantasy glow or exaggerated HDR.`:`Production treatment: ${d.style}. Preserve the defining visual grammar of that treatment while keeping the shot original and readable.`; const result=await ai.imageGen({prompt:`Create an ORIGINAL 2.39:1 widescreen premium dark-fantasy cinematic story-film frame. ${styleDirection} Treat the scene prompt as part of one continuous film: preserve recurring architecture, weather, materials, silhouette language, character identity and lighting logic whenever the prompt describes them. Setting mode: ${d.world||'dark science fantasy'}. Episode: ${d.topic||'grimdark history'}. Scene: ${d.scene||'hero establishing shot'}. Character archetype: ${d.archetype||'armored chronicler'}, but do not depict any named franchise character, logo, heraldry, copied armor design, copyrighted likeness, creator art style or text. Strong composition, no watermark.`,maxOutputBytes:1200000}); return json({imageBase64:result.image.data,mimeType:result.image.mimeType});}],
   'POST /api/save-project':[async({body})=>{const d=(body||{}) as {project?:{episode?:{title?:string}}}; if(!d.project)return error('project is required'); const title=d.project.episode?.title||'grimforge-project'; const path=`projects/${safeSlug(title)}-${Date.now()}.json`; const [ok]=await storage.write([{path,content:JSON.stringify(d.project,null,2),contentType:'application/json'}]); if(!ok)return error('Cloud save failed.',500); const [signed]=await storage.url([path]); return json({path,url:signed.url});}],
 });
