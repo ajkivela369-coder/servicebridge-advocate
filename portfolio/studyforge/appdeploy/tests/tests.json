@@ -1,0 +1,77 @@
+[
+  {
+    "name": "Reference preset shapes a source-grounded study pack",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "Reference Lab",
+      "curated YouTube teaching presets",
+      "source-grounded generation",
+      "originality boundary"
+    ],
+    "steps": [
+      "Select Chemistry",
+      "Choose Ninja Nerd in Reference Lab",
+      "Generate master study pack"
+    ],
+    "expected": "The selected teaching profile is visible and factual content still comes from official/source material."
+  },
+  {
+    "name": "Import a public website or YouTube reference",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/analyze-reference",
+      "public URL analysis",
+      "reference profile"
+    ],
+    "steps": [
+      "Paste a readable public education URL",
+      "Click Study reference",
+      "Review Active reference"
+    ],
+    "expected": "A high-level teaching profile is shown without copied scripts or proprietary questions."
+  },
+  {
+    "name": "Forge Tutor uses current study context",
+    "viewport": "desktop",
+    "covers": [
+      "floating copilot",
+      "POST /api/copilot",
+      "weak-area context"
+    ],
+    "steps": [
+      "Open Forge Tutor",
+      "Choose What should I study next?"
+    ],
+    "expected": "Forge Tutor returns an exam-oriented answer using available guide/QBank/weak-topic context."
+  },
+  {
+    "name": "Exam Coach still grades attempts",
+    "viewport": "desktop",
+    "covers": [
+      "QBank scoring",
+      "weak-area remediation"
+    ],
+    "steps": [
+      "Generate study pack",
+      "Build QBank",
+      "Answer questions",
+      "Grade attempt"
+    ],
+    "expected": "Score and missed subtopics are visible."
+  },
+  {
+    "name": "Reference Lab and copilot fit mobile",
+    "viewport": "mobile",
+    "covers": [
+      "responsive Reference Lab",
+      "floating copilot"
+    ],
+    "steps": [
+      "Open Reference Lab",
+      "Choose a preset",
+      "Open Forge Tutor"
+    ],
+    "expected": "No horizontal overflow and the copilot is usable as an overlay."
+  }
+]
