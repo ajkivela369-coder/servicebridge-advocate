@@ -1,4 +1,4 @@
-# Elias Evidence Auditor Pro — CURRENT APP
+# Elias + Evidence Auditor — Unified Flagship App
 
 > **Start here.** This folder points to the current production build. The older Streamlit implementation lives under `../legacy-streamlit/` so it no longer obscures the current app.
 
@@ -8,12 +8,18 @@
 
 Current AppDeploy app ID: `elias-evidence-assistant-simscb`
 
-The current build is a signed-in, source-grounded evidence workspace with:
+The current product direction is one unified evidence-intelligence app: **Elias is the master case orchestrator, Evidence Auditor is the flagship audit workspace, and specialist copilots share the same case evidence rather than becoming separate data silos.**
+
+The current build/snapshot includes:
 
 - large searchable PDF indexing with visible progress
 - OCR image intake and multimodal image/audio/video-frame analysis
 - persistent case memory and multiple chat threads
-- floating **Elias Copilot** with one-click Strongest Evidence, Missing Evidence, Contradiction Check, Timeline, C&P Rebuttal, and Packet QA passes
+- a persistent **Evidence Cloud** workspace for the shared case source library
+- **Evidence Auditor** as the dedicated contradiction/gap/provenance/chronology/reviewer-readiness workspace
+- a floating **Elias Copilot** that can switch among Elias, Evidence Auditor, NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot while using the same loaded record
+- app-aware Copilot verbs: Find, Compare, Explain, Organize, Link, Draft, Build, Verify, and Export-preflight
+- one-click Strongest Evidence, Missing Evidence, Contradiction Check, Timeline, C&P Rebuttal, and Packet QA passes
 - Copilot **Create in one click** actions for Evidence Brief, C&P Rebuttal Draft, Hearing Timeline, and Full VA Packet
 - Copilot result auto-scroll so the newest response remains visible and is marked **LATEST**
 - a real local **Video + Motion Imaging** review player with scrub/playback, one-frame stepping, 0.25×–2× playback speed, and a one-click Motion Study
@@ -26,16 +32,32 @@ The current build is a signed-in, source-grounded evidence workspace with:
 - Packet Studio with one-click preflight, **One-click Create**, and full manual packet generation
 - visible working/loading states that lock duplicate submissions while analysis is running
 
+## Product architecture
+
+**Elias** is the shell/orchestrator.  
+**Evidence Auditor** is the flagship evidence-audit engine.  
+**Evidence Cloud** is the persistent case evidence layer.  
+**NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot** are specialist modes behind the same floating Copilot.
+
+All specialists should use the same source-control rules and the same user-scoped evidence library. Generated summaries, tags, diagrams, interpretations, and packet prose must remain distinguishable from original source records.
+
+The target evidence trace is:
+
+`Source → page/locator → extracted evidence → evidence type → interpretation → generated statement`
+
+See [ELIAS_EVIDENCE_CLOUD_V9_ROADMAP.md](./ELIAS_EVIDENCE_CLOUD_V9_ROADMAP.md) for the implementation/status boundary.
+
 ## Fast test path
 
 1. Open the live app and sign in.
 2. Add a searchable PDF or image and wait for **Ready**.
-3. Open **Elias Copilot** and run **Strongest Evidence**.
-4. Under **Create in one click**, try **Evidence Brief** or **Full VA Packet**.
-5. Use **Media** to attach a short video. Review it in **Video + Motion Imaging**, change speed, step a frame, then run **Motion study**.
-6. Open **Voice Studio**, preview a Device voice, and test Neural if it is connected.
-7. Open **Case Review** for structured evidence, law, gap, and source-inventory tools.
-8. Open **Packet Studio** and compare **One-click Create** with the full manual generation controls.
+3. Open **Evidence Cloud** and confirm the same loaded record is visible there.
+4. Open **Evidence Auditor** and run a contradiction/gap/provenance pass.
+5. Open **Elias Copilot**, switch specialist modes, and run **Strongest Evidence**.
+6. Under **Create in one click**, try **Evidence Brief** or **Full VA Packet**.
+7. Use **Media** to attach a short video. Review it in **Video + Motion Imaging**, change speed, step a frame, then run **Motion study**.
+8. Open **Voice Studio**, preview a Device voice, and test Neural if it is connected.
+9. Open **Packet Studio** and compare **One-click Create** with the full manual generation controls.
 
 ## Deployment note
 
