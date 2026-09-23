@@ -41,7 +41,7 @@ function sizeLabel(bytes: number) {
     return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-function PdfCanvasPreview({ blob }: { blob: Blob }) {
+function PdfCanvasPreview({ blob, onValidation }: { blob: Blob; onValidation?: (result: { renderedPages: number; totalPages: number; complete: boolean; error?: string }) => void }) {
     const [pages, setPages] = useState<string[]>([]);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
@@ -59,6 +59,7 @@ function PdfCanvasPreview({ blob }: { blob: Blob }) {
                 loadingTask = getDocument({ data: bytes, isEvalSupported: false });
                 const pdf = await loadingTask.promise;
                 if (!pdf.numPages) throw new Error('The generated PDF contains no pages.');
+                onValidation?.({ renderedPages: 0, totalPages: pdf.numPages, complete: false });
                 const rendered: string[] = [];
 
                 for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -73,15 +74,17 @@ function PdfCanvasPreview({ blob }: { blob: Blob }) {
                     await page.render({ canvasContext: context, viewport }).promise;
                     rendered.push(canvas.toDataURL('image/png'));
                     page.cleanup();
-                    if (!cancelled) setPages([...rendered]);
+                    if (!cancelled) { setPages([...rendered]); onValidation?.({ renderedPages: rendered.length, totalPages: pdf.numPages, complete: false }); }
                 }
 
                 await pdf.cleanup();
-                if (!cancelled) setLoading(false);
+                if (!cancelled) { setLoading(false); onValidation?.({ renderedPages: rendered.length, totalPages: pdf.numPages, complete: rendered.length === pdf.numPages }); }
             } catch (err) {
                 if (!cancelled) {
-                    setError(err instanceof Error ? err.message : 'The PDF preview could not be rendered.');
+                    const message = err instanceof Error ? err.message : 'The PDF preview could not be rendered.';
+                    setError(message);
                     setLoading(false);
+                    onValidation?.({ renderedPages: 0, totalPages: 0, complete: false, error: message });
                 }
             }
         };
@@ -91,7 +94,7 @@ function PdfCanvasPreview({ blob }: { blob: Blob }) {
             cancelled = true;
             if (loadingTask) void loadingTask.destroy().catch(() => undefined);
         };
-    }, [blob]);
+    }, [blob, onValidation]);
 
     if (error) return <div className='simple-pdf-render-error'><CircleAlert size={24} /><strong>Preview could not render</strong><span>{error}</span><small>The generated PDF can still be downloaded with the Download PDF button above.</small></div>;
     if (!pages.length && loading) return <div className='simple-pdf-render-loading'><LoaderCircle className='spin' size={24} /><strong>Rendering PDF preview…</strong><span>Preparing the exact generated pages for review.</span></div>;
@@ -105,12 +108,14 @@ export default function SimpleMode(props: Props) {
     const fileInput = useRef<HTMLInputElement>(null);
     const previewRef = useRef<HTMLElement>(null);
     const [dragging, setDragging] = useState(false);
+    const [pdfValidation, setPdfValidation] = useState<{ renderedPages: number; totalPages: number; complete: boolean; error?: string }>({ renderedPages: 0, totalPages: 0, complete: false });
     const indexedPages = props.documents.reduce((sum, document) => sum + (document.pageCount || 1), 0);
     const uploadPending = props.uploadItems.some((item) => !['Ready', 'Error'].includes(item.stage));
     const canGenerate = props.documents.length > 0 && !uploadPending && !props.busy;
     const generateHint = !props.documents.length ? 'Upload at least one evidence file to unlock submission generation.' : uploadPending ? 'Wait for all uploads to finish indexing before generating the submission.' : 'Generate the filing from the evidence currently indexed in this case.';
 
     useEffect(() => {
+        setPdfValidation({ renderedPages: 0, totalPages: 0, complete: false });
         if (!props.submissionReady || !props.submissionPreviewBlob) return;
         const frame = window.requestAnimationFrame(() => previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
         return () => window.cancelAnimationFrame(frame);
@@ -170,7 +175,7 @@ export default function SimpleMode(props: Props) {
 
             <section className='simple-preview-section' ref={previewRef}>
                 <div className='simple-preview-head'><div><span className='simple-kicker'>STEP 3 · PDF PREVIEW</span><h2>Review exactly what you will download</h2><p>PDF.js renders the same generated PDF bytes used by the download button, so the preview does not depend on the browser PDF plug-in.</p></div>{props.submissionReady && <div className='simple-preview-actions'><button onClick={props.onDownload}><Download size={15} /> Download PDF</button><button onClick={props.onSaveVault}><Cloud size={15} /> Save to Evidence Cloud</button>{props.submissionPreviewUrl && <a href={props.submissionPreviewUrl} target='_blank' rel='noreferrer'><FolderOpen size={15} /> Open PDF in browser</a>}</div>}</div>
-                {props.submissionReady && props.submissionPreviewBlob ? <div className='simple-pdf-frame'><div className='simple-pdf-meta'><FileText size={15} /><span>{props.submissionPreviewName || 'Submission_Advocacy_Brief.pdf'}</span><b>LIVE PREVIEW</b></div><PdfCanvasPreview blob={props.submissionPreviewBlob} /></div> : <div className='simple-preview-empty'><div><FileText size={34} /><h3>Your PDF preview will appear here</h3><p>Upload evidence and click Generate Submission-Ready PDF. You can inspect every page before downloading or saving it to the private Evidence Cloud.</p></div></div>}
+                {props.submissionReady && props.submissionPreviewBlob ? <div className='simple-pdf-frame'><div className='simple-pdf-meta'><FileText size={15} /><span>{props.submissionPreviewName || 'Submission_Advocacy_Brief.pdf'} · {sizeLabel(props.submissionPreviewBlob.size)}</span><b>{props.submissionPreviewBlob.size < 5 * 1024 * 1024 ? 'UNDER 5 MB' : 'OVER 5 MB'}</b></div><div className='simple-explainer'><CheckCircle2 size={17} /><p><strong>Submission-file validation:</strong> exact generated file size is {sizeLabel(props.submissionPreviewBlob.size)}. {props.submissionPreviewBlob.size < 5 * 1024 * 1024 ? 'The current PDF meets the 5 MB size target.' : 'The current PDF exceeds 5 MB and needs reduction before a 5 MB-limited submission.'} Visual render check: {pdfValidation.complete ? `all ${pdfValidation.totalPages} page${pdfValidation.totalPages === 1 ? '' : 's'} rendered successfully` : pdfValidation.error ? 'preview render failed' : `${pdfValidation.renderedPages}/${pdfValidation.totalPages || '?'} pages rendered`}.</p></div><PdfCanvasPreview blob={props.submissionPreviewBlob} onValidation={setPdfValidation} /></div> : <div className='simple-preview-empty'><div><FileText size={34} /><h3>Your PDF preview will appear here</h3><p>Upload evidence and click Generate Submission-Ready PDF. You can inspect every page before downloading or saving it to the private Evidence Cloud.</p></div></div>}
                 <small className='simple-drive-note'>{props.driveNote}</small>
             </section>
         </main>
