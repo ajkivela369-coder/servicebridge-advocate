@@ -33,6 +33,8 @@ type EvidenceInventoryItem = {
 type EvidenceBundleRecord = { name: string; purpose: string; documentIds: string[]; createdAt: string; updatedAt: string };
 type EvidenceTimelineItem = { date: string; event: string; source: string; significance: string };
 type EvidenceTimelineRecord = { items: EvidenceTimelineItem[]; createdAt: string; warning: string };
+type EvidenceTraceItem = { sourceId: string; source: string; locator: string; evidenceType: string; relation: 'supports' | 'conflicts' | 'context'; evidence: string; quoteVerified: boolean; exactQuote?: string };
+type EvidenceTraceResult = { claim: string; assessment: 'Supported' | 'Partially supported' | 'Conflicted' | 'Unsupported'; summary: string; items: EvidenceTraceItem[]; droppedUnresolvedSources: string[]; warning: string };
 
 const tables = (userId: string) => ({ memory: `memory_${userId}`, documents: `documents_${userId}`, chats: `chats_${userId}`, bundles: `evidence_bundles_${userId}`, timeline: `evidence_timeline_${userId}` });
 const safeName = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'document';
@@ -933,6 +935,49 @@ export const handler = router({
         return json({ items, duplicateGroups, versionGroups, generatedAt: new Date().toISOString(), warning: 'Categories, document types, candidate dates, duplicate groups, and version groups are heuristic review aids. Original records control.' });
     }],
 
+    'POST /api/evidence/trace': [requireAuth(), async (ctx) => {
+        const body = ctx.body as { claim?: string; speed?: WorkMode };
+        const claim = String(body.claim ?? '').trim().slice(0, 2000);
+        const speed: WorkMode = body.speed === 'Quick' || body.speed === 'Deep' ? body.speed : 'Standard';
+        if (!claim) return error('Enter a statement to trace to the evidence.', 400);
+        const docs = await getDocuments(ctx.user!.userId) as Array<DocumentRecord & { id: string }>;
+        if (!docs.length) return error('Upload evidence before running a claim trace.', 400);
+        const context = textContext(docs, claim);
+        const generated = await resilientGenerate({
+            system: ELIAS_PLAYBOOK,
+            prompt: `Audit this proposed statement against the supplied record. CLAIM: ${claim}\n\nReturn only record-grounded support, conflict, or necessary context. For every evidence item, use the exact source filename from the record. evidenceType must be one of: exact quote, paraphrase, claimant-reported history, clinician observation, objective test, medical opinion, agency finding, AI synthesis. If exactQuote is provided, it must be short and verbatim from the cited source. Do not invent page numbers; the server will attach the source locator.\n\nRECORD:\n${context}`,
+            schema: { type: 'object', properties: { assessment: { type: 'string' }, summary: { type: 'string' }, items: { type: 'array', items: { type: 'object', properties: { source: { type: 'string' }, evidenceType: { type: 'string' }, relation: { type: 'string' }, evidence: { type: 'string' }, exactQuote: { type: 'string' } }, required: ['source', 'evidenceType', 'relation', 'evidence'] } } }, required: ['assessment', 'summary', 'items'] },
+            speed,
+            maxTokens: outputTokens(speed, 2600),
+            temperature: 0.02,
+            label: 'Evidence Trace',
+        });
+        let parsed: { assessment?: string; summary?: string; items?: Array<{ source?: string; evidenceType?: string; relation?: string; evidence?: string; exactQuote?: string }> } = {};
+        try { parsed = JSON.parse(generated.text) as typeof parsed; } catch { return error('Evidence Trace could not be structured safely.', 422); }
+        const byName = new Map(docs.map((doc) => [doc.name, doc]));
+        const evidenceTypes = new Set(['exact quote', 'paraphrase', 'claimant-reported history', 'clinician observation', 'objective test', 'medical opinion', 'agency finding', 'AI synthesis']);
+        const droppedUnresolvedSources: string[] = [];
+        const items: EvidenceTraceItem[] = [];
+        for (const raw of Array.isArray(parsed.items) ? parsed.items.slice(0, 30) : []) {
+            const source = String(raw.source ?? '').replace(/^\[|\]$/g, '').trim();
+            const doc = byName.get(source);
+            if (!doc) { if (source) droppedUnresolvedSources.push(source); continue; }
+            const relationRaw = String(raw.relation ?? '').toLowerCase();
+            const relation: EvidenceTraceItem['relation'] = relationRaw.includes('conflict') ? 'conflicts' : relationRaw.includes('support') ? 'supports' : 'context';
+            let evidenceType = String(raw.evidenceType ?? 'paraphrase').trim().toLowerCase();
+            if (!evidenceTypes.has(evidenceType)) evidenceType = 'paraphrase';
+            const requestedQuote = String(raw.exactQuote ?? '').trim();
+            const quoteVerified = Boolean(requestedQuote && requestedQuote.length <= 700 && doc.text.includes(requestedQuote));
+            if (evidenceType === 'exact quote' && !quoteVerified) evidenceType = 'paraphrase';
+            items.push({ sourceId: doc.id, source: doc.name, locator: vaultLocator(doc), evidenceType, relation, evidence: quoteVerified ? requestedQuote : String(raw.evidence ?? '').trim(), quoteVerified, ...(quoteVerified ? { exactQuote: requestedQuote } : {}) });
+        }
+        const hasSupport = items.some((item) => item.relation === 'supports');
+        const hasConflict = items.some((item) => item.relation === 'conflicts');
+        const requestedAssessment = String(parsed.assessment ?? '').toLowerCase();
+        const assessment: EvidenceTraceResult['assessment'] = !items.length || !hasSupport ? 'Unsupported' : hasConflict ? 'Conflicted' : requestedAssessment.includes('partial') ? 'Partially supported' : 'Supported';
+        const result: EvidenceTraceResult = { claim, assessment, summary: String(parsed.summary ?? '').trim(), items, droppedUnresolvedSources: Array.from(new Set(droppedUnresolvedSources)), warning: 'AI-assisted claim-to-source trace. Source filenames are resolved against the indexed record, exact quotes are verified by literal source-text match, and locators come from stored source metadata. Human review remains required.' };
+        return json({ trace: result });
+    }],
     'GET /api/evidence/timeline': [requireAuth(), async (ctx) => {
         const { items } = await db.list<EvidenceTimelineRecord>(tables(ctx.user!.userId).timeline, { limit: 10 });
         const snapshots = (items as Array<EvidenceTimelineRecord & { id?: string }>).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
