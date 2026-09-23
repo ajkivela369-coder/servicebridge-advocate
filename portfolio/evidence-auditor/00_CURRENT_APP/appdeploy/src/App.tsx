@@ -19,6 +19,7 @@ type EvidenceDuplicateGroup = { fingerprint: string; documentIds: string[]; name
 type EvidenceVersionGroup = { versionGroup: string; documentIds: string[]; names: string[]; note: string };
 type EvidenceInventory = { items: EvidenceInventoryItem[]; duplicateGroups: EvidenceDuplicateGroup[]; versionGroups: EvidenceVersionGroup[]; generatedAt: string; warning: string };
 type EvidenceBundle = { id: string; name: string; purpose: string; documentIds: string[]; createdAt: string; updatedAt: string; sources: Array<{ id: string; name: string; locator: string }> };
+type EvidenceTimelineSnapshot = { id?: string; items: TimelineItem[]; createdAt: string; warning: string };
 type NeuralVoice = { voiceId: string; name: string; labels?: Record<string, string> };
 type LiveSearchResult = { answer: string; results: Array<{ title: string; url: string; content: string; publishedDate?: string }>; savedDocument?: Doc | null };
 type Chat = { id?: string; threadId: string; question: string; answer: string; tool: string; speed?: WorkMode; sources: string[]; createdAt: string };
@@ -159,6 +160,7 @@ function App() {
     const [bundleSelectedIds, setBundleSelectedIds] = useState<string[]>([]);
     const [bundleName, setBundleName] = useState('');
     const [bundlePurpose, setBundlePurpose] = useState('');
+    const [evidenceTimeline, setEvidenceTimeline] = useState<EvidenceTimelineSnapshot | null>(null);
     const [neuralVoices, setNeuralVoices] = useState<NeuralVoice[]>([]);
     const [neuralVoiceId, setNeuralVoiceId] = useState('');
     const [mediaFiles, setMediaFiles] = useState<File[]>([]);
@@ -214,6 +216,15 @@ function App() {
         }
     };
 
+    const loadEvidenceTimeline = async () => {
+        try {
+            const { data } = await api.get('/api/evidence/timeline');
+            setEvidenceTimeline(data.timeline ?? null);
+        } catch {
+            setEvidenceTimeline(null);
+        }
+    };
+
     const load = async () => {
         const { data } = await api.get('/api/bootstrap');
         setMemory(data.memory ? { ...emptyMemory, ...data.memory } : emptyMemory);
@@ -222,6 +233,7 @@ function App() {
         if (data.playbook) setPlaybook(data.playbook);
         await loadEvidenceInventory();
         await loadEvidenceBundles();
+        await loadEvidenceTimeline();
     };
 
     const loadIntegrations = async () => {
@@ -847,6 +859,18 @@ function App() {
         } finally { setBusy(''); }
     };
 
+    const buildEvidenceTimeline = async () => {
+        if (!documents.length) { setNotice('Upload evidence before building the persistent timeline.'); return; }
+        setBusy('Building a source-grounded Evidence Timeline…');
+        setNotice('');
+        try {
+            const { data } = await api.post('/api/evidence/timeline', {});
+            setEvidenceTimeline(data.timeline ?? null);
+            setNotice('Evidence Timeline saved. Verify dates and source context against the original records before using it consequentially.');
+        } catch (err) {
+            setNotice(errorMessage(err, 'Evidence Timeline could not be built.'));
+        } finally { setBusy(''); }
+    };
     const toggleBundleSource = (id: string) => {
         setBundleSelectedIds((current) => current.includes(id) ? current.filter((sourceId) => sourceId !== id) : [...current, id]);
     };
@@ -1106,6 +1130,10 @@ function App() {
                     <div className='vault-head'><div><span className='result-kicker'>SAVED CASE VIEWS</span><h2>Evidence Bundles</h2><p>Create focused source collections for VA, SSDI, APTD, clinician review, attorney review, or another issue. Bundles reference source IDs; they do not copy or rewrite the record.</p></div><FolderOpen size={26} /></div>
                     <div className='vault-actions'><input value={bundleName} onChange={(e) => setBundleName(e.target.value)} placeholder='Bundle name — e.g. APTD functional reliability' /><input value={bundlePurpose} onChange={(e) => setBundlePurpose(e.target.value)} placeholder='Purpose / reviewer / issue' /><button className='primary' disabled={!bundleSelectedIds.length || !!busy} onClick={() => void saveEvidenceBundle()}><FolderOpen size={15} /> Save selected ({bundleSelectedIds.length})</button>{bundleSelectedIds.length > 0 && <button className='secondary' onClick={() => setBundleSelectedIds([])}>Clear selection</button>}</div>
                     {evidenceBundles.length ? <div className='vault-folders'>{evidenceBundles.map((bundle) => <div key={bundle.id}><FolderOpen size={14} /><span><strong>{bundle.name}</strong><small>{bundle.sources.length} source{bundle.sources.length === 1 ? '' : 's'}{bundle.purpose ? ' · ' + bundle.purpose : ''}</small></span><button className='secondary tiny' onClick={() => setBundleSelectedIds(bundle.documentIds)}>Select</button><button className='secondary tiny' aria-label={'Delete ' + bundle.name} onClick={() => void deleteEvidenceBundle(bundle.id)}><Trash2 size={12} /></button></div>)}</div> : <small className='vault-note'>No saved bundles yet. Select sources below and save the first focused evidence set.</small>}
+                </section>
+                <section className='vault-panel'>
+                    <div className='vault-head'><div><span className='result-kicker'>PERSISTENT CHRONOLOGY</span><h2>Evidence Timeline</h2><p>A saved, source-resolved chronology shared across the case. Elias drops generated timeline items whose cited filename cannot be resolved to an indexed source.</p></div><button className='primary' disabled={!documents.length || !!busy} onClick={() => void buildEvidenceTimeline()}><Sparkles size={15} /> {evidenceTimeline ? 'Refresh timeline' : 'Build timeline'}</button></div>
+                    {evidenceTimeline ? <><div className='appendix-stack'>{evidenceTimeline.items.slice(0, 30).map((item, index) => <div key={item.date + item.source + index}><span>{index + 1}</span><div><strong>{item.date} · {item.event}</strong><small>{item.source} · {item.significance}</small></div></div>)}</div><small className='vault-note'>{evidenceTimeline.warning}</small></> : <small className='vault-note'>No persistent timeline snapshot yet. Build one after the case evidence is indexed.</small>}
                 </section>
                 <div className='research-grid'>{categoryCounts.map((item) => <article key={item.category} className='research-panel'><div className='research-title'><FolderOpen size={17} /><div><strong>{item.category}</strong><span>{item.count} source{item.count === 1 ? '' : 's'}</span></div></div><button className='secondary tiny' onClick={() => setVaultQuery(item.category)} disabled={!item.count}>Filter</button></article>)}</div>
                 <div className='connector-note'><Brain size={17} /><div><strong>Evidence trace standard</strong><span>Source → page / locator → extracted evidence → evidence classification → interpretation → generated statement. Evidence Auditor and Citation Auditor should flag broken or ambiguous links.</span></div></div>
