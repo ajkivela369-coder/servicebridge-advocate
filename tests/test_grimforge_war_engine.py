@@ -23,6 +23,26 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         self.assertEqual(len(ep.scenes), 9)
         self.assertEqual(sum(scene.duration for scene in ep.scenes), ep.runtime_seconds)
 
+    def test_episode_round_trip_from_dict(self):
+        ep = engine.make_episode("Round Trip", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
+        restored = engine.episode_from_dict(ep.to_dict())
+        self.assertEqual(restored.to_dict(), ep.to_dict())
+
+    def test_render_manifest_is_planned_and_portable(self):
+        ep = engine.make_episode("Manifest", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
+        manifest = engine.build_render_manifest(
+            ep,
+            video_engine="CogVideoX-2B",
+            gpu_backend="Kaggle T4x2",
+            tts_engine="Browser Speech",
+            narrator_voice="Grim Chronicle",
+            reference_url="https://example.com/reference",
+        )
+        self.assertEqual(manifest["stage"], "planned")
+        self.assertEqual(manifest["route_guidance"]["rating"], "preferred")
+        self.assertEqual(len(manifest["scenes"]), len(ep.scenes))
+        self.assertTrue(all(scene["status"] == "planned" for scene in manifest["scenes"]))
+
     def test_episode_is_deterministic_for_same_inputs(self):
         a = engine.make_episode("A", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
         b = engine.make_episode("A", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
