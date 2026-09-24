@@ -17,7 +17,10 @@ from war_engine import (
     VIDEO_ENGINES,
     GPU_BACKENDS,
     PROJECT_SCHEMA_VERSION,
+    FULL_EPISODE_PROFILES,
     build_render_manifest,
+    build_full_episode_manifest,
+    benchmark_scorecard,
     episode_from_dict,
     render_route_advice,
     make_episode,
@@ -108,6 +111,8 @@ if "reference_url" not in st.session_state:
     st.session_state.reference_url = REFERENCE_URL
 if "project_notice" not in st.session_state:
     st.session_state.project_notice = ""
+if "full_episode_profile" not in st.session_state:
+    st.session_state.full_episode_profile = "Cinematic"
 
 def current_project_payload():
     episode_payload = st.session_state.episode.to_dict() if st.session_state.episode else None
@@ -130,6 +135,7 @@ def current_project_payload():
         "video_engine": st.session_state.video_engine,
         "gpu_backend": st.session_state.gpu_backend,
         "reference_url": st.session_state.reference_url,
+        "full_episode_profile": st.session_state.full_episode_profile,
         "episode": episode_payload,
     }
 
@@ -140,7 +146,7 @@ def load_project_payload(payload):
     for key in [
         "title", "enemy", "commander", "objective", "mode", "presets", "faction",
         "lens_name", "custom_minutes", "scene_count", "narrator_voice",
-        "narrator_enabled", "tts_engine", "video_engine", "gpu_backend", "reference_url",
+        "narrator_enabled", "tts_engine", "video_engine", "gpu_backend", "reference_url", "full_episode_profile",
     ]:
         if key in payload:
             st.session_state[key] = payload[key]
@@ -276,6 +282,28 @@ st.warning(
     "Reference material is used only for broad production mechanics such as pacing, scale, camera grammar, narration density, lighting, sound, and story rhythm. "
     "Do not copy the source video's characters, lore, dialogue, scripts, music, branding, or visual assets."
 )
+
+st.subheader("Full Episode Benchmark")
+bench_left, bench_right = st.columns([0.34, 0.66])
+with bench_left:
+    profile_names = list(FULL_EPISODE_PROFILES.keys())
+    st.session_state.full_episode_profile = st.selectbox(
+        "Coverage profile",
+        profile_names,
+        index=profile_names.index(st.session_state.full_episode_profile),
+    )
+    full_profile = FULL_EPISODE_PROFILES[st.session_state.full_episode_profile]
+    st.caption(full_profile["description"])
+with bench_right:
+    score = benchmark_scorecard(st.session_state.episode, st.session_state.full_episode_profile)
+    b1,b2,b3,b4,b5 = st.columns(5)
+    b1.metric("Plan score", f'{score["overall"]}/100')
+    b2.metric("Narrative", score["narrative_coverage"])
+    b3.metric("Continuity", score["continuity_planning"])
+    b4.metric("Geography", score["geography_planning"])
+    b5.metric("Shot variety", score["shot_variety"])
+    for note in score["notes"]:
+        st.caption(note)
 
 st.subheader("Production Readiness")
 route = render_route_advice(st.session_state.video_engine, st.session_state.gpu_backend)
@@ -497,6 +525,31 @@ else:
         f'<span class="gf-badge">GPU: {html.escape(st.session_state.gpu_backend)}</span>'
         f'<span class="gf-badge">FINAL FULL-MOTION RENDER · provider not connected</span></div>',
         unsafe_allow_html=True,
+    )
+
+    full_episode_manifest = build_full_episode_manifest(
+        episode,
+        profile_name=st.session_state.full_episode_profile,
+        video_engine=st.session_state.video_engine,
+        gpu_backend=st.session_state.gpu_backend,
+        tts_engine=st.session_state.tts_engine,
+        narrator_voice=st.session_state.narrator_voice,
+        reference_url=st.session_state.reference_url,
+    )
+    st.markdown(
+        f'<div class="gf-summary"><strong>Whole-video plan</strong> · '
+        f'<span class="gf-badge">{html.escape(st.session_state.full_episode_profile)}</span>'
+        f'<span class="gf-badge">{full_episode_manifest["shot_count"]} planned shots</span>'
+        f'<span class="gf-badge">{round(full_episode_manifest["planned_generated_footage_seconds"]/60,1)} min raw generated footage</span>'
+        f'<span class="gf-badge">stage: planned</span></div>',
+        unsafe_allow_html=True,
+    )
+    st.download_button(
+        "⬇ Download FULL EPISODE render manifest",
+        data=json.dumps(full_episode_manifest, indent=2),
+        file_name="grimforge-full-episode-render-manifest.json",
+        mime="application/json",
+        use_container_width=True,
     )
 
     render_manifest = build_render_manifest(
