@@ -28,6 +28,28 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         restored = engine.episode_from_dict(ep.to_dict())
         self.assertEqual(restored.to_dict(), ep.to_dict())
 
+    def test_full_episode_manifest_has_multiple_shots(self):
+        ep = engine.make_episode("Full Episode", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
+        manifest = engine.build_full_episode_manifest(
+            ep,
+            profile_name="Cinematic",
+            video_engine="Wan 2.2",
+            gpu_backend="Hugging Face ZeroGPU",
+            tts_engine="Browser Speech",
+            narrator_voice="Grim Chronicle",
+        )
+        self.assertEqual(manifest["production_mode"], "full_episode")
+        self.assertEqual(manifest["shot_count"], len(ep.scenes) * 3)
+        self.assertTrue(all(shot["status"] == "planned" for shot in manifest["shots"]))
+        self.assertGreater(manifest["planned_generated_footage_seconds"], 0)
+
+    def test_benchmark_scorecard_is_transparent_planning_score(self):
+        ep = engine.make_episode("Score", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
+        score = engine.benchmark_scorecard(ep, "Cinematic")
+        self.assertGreater(score["overall"], 0)
+        self.assertLessEqual(score["overall"], 100)
+        self.assertTrue(any("not whether generated footage" in note for note in score["notes"]))
+
     def test_render_manifest_is_planned_and_portable(self):
         ep = engine.make_episode("Manifest", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
         manifest = engine.build_render_manifest(
