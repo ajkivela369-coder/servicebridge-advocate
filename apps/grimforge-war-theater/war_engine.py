@@ -174,6 +174,41 @@ RUNTIME_SECONDS = {
 
 # Original performance profiles only. These describe broad narration qualities
 # and are not intended to clone or impersonate any identifiable narrator.
+VIDEO_ENGINES = {
+    "LTX-2": {
+        "status": "planned",
+        "role": "Flagship cinematic / audio-video",
+        "modes": "Text-to-video, image-to-video, multi-keyframe, extension, audio+video",
+        "runtime": "GPU worker / ComfyUI",
+        "license": "LTX Community License",
+        "notes": "Primary high-end option; strongest fit for cinematic sequence work and synchronized audio/video experiments.",
+    },
+    "Wan 2.2": {
+        "status": "planned",
+        "role": "Reference-driven battle shots",
+        "modes": "T2V, I2V, TI2V, speech-to-video, animation",
+        "runtime": "GPU worker / ComfyUI / Diffusers",
+        "license": "Apache-2.0",
+        "notes": "Strong choice for image-conditioned shots, character animation, and 720p battle generation.",
+    },
+    "Mochi 1": {
+        "status": "planned",
+        "role": "Open cinematic fallback",
+        "modes": "Text-to-video",
+        "runtime": "GPU worker / ComfyUI",
+        "license": "Apache-2.0",
+        "notes": "Permissive open option with strong motion and prompt adherence; useful as a dependable alternate renderer.",
+    },
+    "CogVideoX-2B": {
+        "status": "planned",
+        "role": "Lighter open fallback",
+        "modes": "Text-to-video",
+        "runtime": "GPU worker / Diffusers",
+        "license": "Apache-2.0",
+        "notes": "Smaller fallback model for lower-cost experimentation and simpler deployment than the largest generators.",
+    },
+}
+
 TTS_ENGINES = {
     "Kokoro": {
         "status": "planned",
