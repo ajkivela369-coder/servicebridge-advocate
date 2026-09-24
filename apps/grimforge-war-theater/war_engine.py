@@ -163,6 +163,8 @@ REFERENCE_LENSES = {
     },
 }
 
+PROJECT_SCHEMA_VERSION = 1
+
 RUNTIME_SECONDS = {
     "60–90 sec teaser": 80,
     "3 min short": 180,
@@ -555,3 +557,115 @@ def veyr_advice(action: str, episode: Episode | None, pro: bool = False) -> str:
             "A true full-motion MP4 still needs connected video/TTS/audio/render providers or a local render worker."
         )
     return "I can help with pacing, scale, geography, continuity, commander arc, sound, tactical reversals, weak-scene diagnosis, or final QC."
+
+
+def episode_from_dict(data: dict) -> Episode:
+    """Rehydrate an Episode exported by GrimForge."""
+    scenes = [Scene(**scene) for scene in data.get("scenes", [])]
+    return Episode(
+        title=data["title"],
+        logline=data.get("logline", ""),
+        synopsis=data.get("synopsis", ""),
+        runtime_seconds=int(data.get("runtime_seconds", sum(s.duration for s in scenes))),
+        presets=dict(data.get("presets", {})),
+        faction=data.get("faction", "Ashen Crown"),
+        enemy=data.get("enemy", ""),
+        commander=data.get("commander", ""),
+        objective=data.get("objective", ""),
+        scenes=scenes,
+    )
+
+
+def render_route_advice(video_engine: str, gpu_backend: str) -> dict:
+    """Heuristic routing guidance only; this is not live hardware detection."""
+    matrix = {
+        "LTX-2": {
+            "Hugging Face ZeroGPU": ("preferred", "High-VRAM burst compute is the cleanest free-app integration target."),
+            "Lightning AI Free": ("good", "Flexible GPU workers are a strong fit when credits are available."),
+            "Google Colab Free": ("experimental", "Can work for optimized notebook runs, but GPU type and session lifetime vary."),
+            "Kaggle T4x2": ("experimental", "Useful for experiments, but dual T4 memory is less convenient for heavier LTX workflows."),
+        },
+        "Wan 2.2": {
+            "Hugging Face ZeroGPU": ("preferred", "Good target for short API-style test renders with dynamic high-VRAM allocation."),
+            "Lightning AI Free": ("good", "Flexible worker hardware makes this a practical cloud route."),
+            "Kaggle T4x2": ("experimental", "Good for optimized notebook tests; treat as batch compute rather than a permanent API."),
+            "Google Colab Free": ("experimental", "Useful for one-off optimized runs when a suitable GPU is assigned."),
+        },
+        "Mochi 1": {
+            "Hugging Face ZeroGPU": ("preferred", "The high-VRAM pool is the safest free target for this heavier model."),
+            "Lightning AI Free": ("good", "A larger temporary GPU can work when credits and hardware are available."),
+            "Kaggle T4x2": ("not_recommended", "Native Mochi workloads are heavy for this backend; use only with aggressive optimization."),
+            "Google Colab Free": ("not_recommended", "Free Colab hardware is too variable for a dependable Mochi route."),
+        },
+        "CogVideoX-2B": {
+            "Kaggle T4x2": ("preferred", "The lighter model is a strong match for free T4-class experimentation."),
+            "Google Colab Free": ("good", "A useful economy route when a GPU is available."),
+            "Hugging Face ZeroGPU": ("good", "Works as a burst API-style option, though the GPU is more capable than this model needs."),
+            "Lightning AI Free": ("good", "Straightforward worker target when starter credits are available."),
+        },
+    }
+    rating, reason = matrix.get(video_engine, {}).get(
+        gpu_backend, ("experimental", "No GrimForge routing rule exists for this combination yet.")
+    )
+    labels = {
+        "preferred": "Preferred route",
+        "good": "Good route",
+        "experimental": "Experimental route",
+        "not_recommended": "Not recommended",
+    }
+    return {"rating": rating, "label": labels[rating], "reason": reason}
+
+
+def build_render_manifest(
+    episode: Episode,
+    *,
+    video_engine: str,
+    gpu_backend: str,
+    tts_engine: str,
+    narrator_voice: str,
+    reference_url: str = "",
+) -> dict:
+    """Create a portable planned render job without claiming that rendering occurred."""
+    route = render_route_advice(video_engine, gpu_backend)
+    scenes = []
+    for scene in episode.scenes:
+        target_clip_seconds = 8 if scene.intensity >= 80 else 6
+        prompt = (
+            f"{scene.visual} Camera: {scene.camera}. "
+            f"Sound intent: {scene.sound}. Continuity: {scene.continuity}"
+        )
+        scenes.append({
+            "scene_id": scene.id,
+            "act": scene.act,
+            "title": scene.title,
+            "story_duration_seconds": scene.duration,
+            "target_clip_seconds": target_clip_seconds,
+            "intensity": scene.intensity,
+            "prompt": prompt,
+            "narration": scene.narration,
+            "dialogue": scene.dialogue,
+            "status": "planned",
+            "take_status": "unrendered",
+        })
+
+    digest = sha256(
+        f"{episode.title}|{video_engine}|{gpu_backend}|{tts_engine}|{narrator_voice}".encode("utf-8")
+    ).hexdigest()[:12]
+    return {
+        "schema_version": PROJECT_SCHEMA_VERSION,
+        "job_id": f"gf-{digest}",
+        "app": "GrimForge War Theater",
+        "title": episode.title,
+        "stage": "planned",
+        "honesty": "This manifest is a render plan. It does not mean video, audio, or a final MP4 has been rendered.",
+        "providers": {
+            "video_engine": video_engine,
+            "gpu_backend": gpu_backend,
+            "tts_engine": tts_engine,
+            "narrator_voice": narrator_voice,
+        },
+        "route_guidance": route,
+        "reference_url": reference_url,
+        "episode": episode.to_dict(),
+        "scenes": scenes,
+    }
