@@ -12,6 +12,7 @@ from war_engine import (
     REFERENCE_EMBED,
     REFERENCE_LENSES,
     REFERENCE_URL,
+    NARRATOR_VOICE_PROFILES,
     make_episode,
     random_presets,
     veyr_advice,
@@ -86,6 +87,10 @@ if "custom_minutes" not in st.session_state:
     st.session_state.custom_minutes = 12
 if "scene_count" not in st.session_state:
     st.session_state.scene_count = 8
+if "narrator_voice" not in st.session_state:
+    st.session_state.narrator_voice = "Grim Chronicle"
+if "narrator_enabled" not in st.session_state:
+    st.session_state.narrator_enabled = True
 
 with st.sidebar:
     st.markdown('<div class="gf-eyebrow">GRIMFORGE</div><div class="gf-title">War Theater</div>', unsafe_allow_html=True)
@@ -97,7 +102,24 @@ with st.sidebar:
     st.caption("Reference analyzer: not connected")
     st.caption("Video renderer: not connected")
     st.caption("Premium TTS: not connected")
+    st.caption("Browser narration: available locally")
     st.caption("Final MP4 worker: not connected")
+    st.divider()
+    st.markdown("**Narrator voice**")
+    voice_names = list(NARRATOR_VOICE_PROFILES.keys())
+    st.session_state.narrator_voice = st.selectbox(
+        "Performance preset",
+        voice_names,
+        index=voice_names.index(st.session_state.narrator_voice),
+        label_visibility="collapsed",
+    )
+    st.session_state.narrator_enabled = st.toggle(
+        "Speak animatic narration",
+        value=st.session_state.narrator_enabled,
+    )
+    voice_profile = NARRATOR_VOICE_PROFILES[st.session_state.narrator_voice]
+    st.caption(voice_profile["description"])
+    st.caption("Original performance profile — not a clone or impersonation of any reference narrator.")
     st.divider()
     with st.popover("◉ Director Veyr", use_container_width=True):
         st.caption("Local copilot · persistent project-aware advice")
@@ -134,6 +156,17 @@ with top_right:
 st.warning(
     "Reference material is used only for broad production mechanics such as pacing, scale, camera grammar, narration density, lighting, sound, and story rhythm. "
     "Do not copy the source video's characters, lore, dialogue, scripts, music, branding, or visual assets."
+)
+
+st.subheader("Narration Direction")
+voice_profile = NARRATOR_VOICE_PROFILES[st.session_state.narrator_voice]
+st.markdown(
+    f'<div class="gf-summary"><strong>{html.escape(st.session_state.narrator_voice)}</strong> · '
+    f'<span class="gf-muted">{html.escape(voice_profile["description"])}</span><br>'
+    f'<span class="gf-badge">Browser TTS preview</span>'
+    f'<span class="gf-badge">Premium voice provider not connected</span>'
+    f'<span class="gf-badge">Original voice direction — no narrator cloning</span></div>',
+    unsafe_allow_html=True,
 )
 
 st.subheader("Reference Theater")
@@ -331,6 +364,8 @@ else:
             "continuity": s.continuity, "palette": s.palette, "intensity": s.intensity,
         } for s in episode.scenes
     ])
+    voice_profile_json = json.dumps(NARRATOR_VOICE_PROFILES[st.session_state.narrator_voice])
+    narrator_enabled_json = json.dumps(bool(st.session_state.narrator_enabled))
     player_html = f"""
     <html><head><style>
     body{{margin:0;background:#080909;color:#eee8dc;font-family:Arial,sans-serif}}
@@ -347,6 +382,8 @@ else:
     .notes{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}}
     .note{{border:1px solid #302d27;background:#10110f;border-radius:10px;padding:9px;color:#aaa39a;font-size:12px}}
     .controls{{display:flex;gap:7px;justify-content:center;margin:11px 0;flex-wrap:wrap}}
+    .voice-meta{{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap;margin:8px 0;color:#a9a194;font-size:11px}}
+    .voice-meta span{{border:1px solid #3a3429;background:#11120f;padding:5px 8px;border-radius:999px}}
     button{{background:#171713;color:#eee;border:1px solid #51452f;padding:9px 12px;border-radius:10px;cursor:pointer}}
     #play{{background:linear-gradient(135deg,#b88935,#7b2f20);font-weight:bold}}
     .bar{{height:6px;background:#29251e;border-radius:999px;overflow:hidden}} #prog{{height:100%;width:0;background:linear-gradient(90deg,#c59b49,#9b3a22)}}
@@ -355,12 +392,48 @@ else:
     </style></head><body>
     <div id="frame"><div class="fog"></div><div class="top"><span id="act" class="pill"></span><span id="count" class="pill"></span></div>
       <div class="center"><h2 id="title"></h2><p id="visual"></p><p id="narration"></p><div id="dialogue" class="quote"></div></div></div>
-    <div class="controls"><button onclick="prev()">◀ Prev</button><button id="play" onclick="toggle()">▶ Play episode</button><button onclick="next()">Next ▶</button></div>
+    <div class="controls"><button onclick="prev()">◀ Prev</button><button id="play" onclick="toggle()">▶ Play episode</button><button onclick="next()">Next ▶</button><button id="voice" onclick="toggleVoice()">🔊 Narration on</button></div>
+    <div class="voice-meta"><span id="voiceProfile"></span><span id="voiceStatus">Browser voice preview</span></div>
     <div class="bar"><div id="prog"></div></div>
     <div class="timeline" id="timeline"></div>
     <div class="notes"><div class="note" id="camera"></div><div class="note" id="sound"></div><div class="note" id="continuity"></div><div class="note" id="status">Playable animatic · not final MP4</div></div>
     <script>
-    const scenes={scenes_json}; let i=0, playing=false, elapsed=0, timer=null;
+    const scenes={scenes_json};
+    const voiceProfile={voice_profile_json};
+    let voiceEnabled={narrator_enabled_json};
+    let i=0, playing=false, elapsed=0, timer=null, lastSpoken=-1;
+    function getPreferredVoice(){{
+      if(!('speechSynthesis' in window)) return null;
+      const voices=window.speechSynthesis.getVoices();
+      if(!voices.length) return null;
+      const names=(voiceProfile.preferred_names||[]).map(x=>String(x).toLowerCase());
+      const langs=(voiceProfile.preferred_langs||[]).map(x=>String(x).toLowerCase());
+      const scored=voices.map(v=>{{
+        let score=0; const n=v.name.toLowerCase(); const l=v.lang.toLowerCase();
+        names.forEach((x,idx)=>{{ if(n.includes(x)) score+=20-idx; }});
+        langs.forEach((x,idx)=>{{ if(l===x) score+=12-idx; else if(l.startsWith(x.slice(0,2))) score+=5; }});
+        if(/male|daniel|brian|george|bill|david|james|arthur|mark/.test(n)) score+=4;
+        return {{v,score}};
+      }}).sort((a,b)=>b.score-a.score);
+      return scored[0]?.v||voices[0];
+    }}
+    function speakScene(){{
+      if(!voiceEnabled || !playing || !('speechSynthesis' in window) || lastSpoken===i) return;
+      const s=scenes[i]; const text=[s.narration,s.dialogue].filter(Boolean).join(' ');
+      if(!text) return;
+      window.speechSynthesis.cancel();
+      const u=new SpeechSynthesisUtterance(text);
+      const v=getPreferredVoice(); if(v) u.voice=v;
+      u.rate=Number(voiceProfile.rate||0.9); u.pitch=Number(voiceProfile.pitch||0.8); u.volume=Number(voiceProfile.volume||1);
+      window.speechSynthesis.speak(u); lastSpoken=i;
+      document.getElementById('voiceStatus').textContent=v?('Using '+v.name):'Using browser default voice';
+    }}
+    function toggleVoice(){{
+      voiceEnabled=!voiceEnabled; lastSpoken=-1;
+      if(!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+      document.getElementById('voice').textContent=voiceEnabled?'🔊 Narration on':'🔇 Narration off';
+      if(voiceEnabled && playing) speakScene();
+    }}
     function render(){{
       const s=scenes[i]; document.getElementById('act').textContent=s.act; document.getElementById('count').textContent=(i+1)+' / '+scenes.length;
       document.getElementById('title').textContent=s.title; document.getElementById('visual').textContent=s.visual;
@@ -368,10 +441,13 @@ else:
       document.getElementById('camera').textContent='CAMERA · '+s.camera; document.getElementById('sound').textContent='SOUND · '+s.sound;
       document.getElementById('continuity').textContent='CONTINUITY · '+s.continuity; elapsed=0; document.getElementById('prog').style.width='0%';
       [...document.querySelectorAll('.timeline button')].forEach((b,n)=>b.classList.toggle('active',n===i));
+      document.getElementById('voiceProfile').textContent='Narrator · {st.session_state.narrator_voice}';
+      document.getElementById('voice').textContent=voiceEnabled?'🔊 Narration on':'🔇 Narration off';
+      if(playing) speakScene();
     }}
     function tick(){{ if(!playing)return; const s=scenes[i]; elapsed++; document.getElementById('prog').style.width=Math.min(100,elapsed/s.duration*100)+'%';
       if(elapsed>=s.duration){{ if(i<scenes.length-1){{i++;render();}}else{{playing=false;document.getElementById('play').textContent='▶ Replay episode';clearInterval(timer);}} }} }}
-    function toggle(){{ playing=!playing; document.getElementById('play').textContent=playing?'⏸ Pause episode':'▶ Play episode'; if(playing){{clearInterval(timer);timer=setInterval(tick,1000);}}else clearInterval(timer); }}
+    function toggle(){{ playing=!playing; document.getElementById('play').textContent=playing?'⏸ Pause episode':'▶ Play episode'; if(playing){{lastSpoken=-1;clearInterval(timer);timer=setInterval(tick,1000);speakScene();}}else{{clearInterval(timer);if('speechSynthesis' in window)window.speechSynthesis.cancel();}} }}
     function prev(){{i=Math.max(0,i-1);render();}} function next(){{i=Math.min(scenes.length-1,i+1);render();}}
     const tl=document.getElementById('timeline'); scenes.forEach((s,n)=>{{const b=document.createElement('button');b.textContent=s.id+' · '+s.title;b.onclick=()=>{{i=n;render();}};tl.appendChild(b);}});
     render();
