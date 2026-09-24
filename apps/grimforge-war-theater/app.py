@@ -13,6 +13,7 @@ from war_engine import (
     REFERENCE_LENSES,
     REFERENCE_URL,
     NARRATOR_VOICE_PROFILES,
+    TTS_ENGINES,
     make_episode,
     random_presets,
     veyr_advice,
@@ -91,6 +92,8 @@ if "narrator_voice" not in st.session_state:
     st.session_state.narrator_voice = "Grim Chronicle"
 if "narrator_enabled" not in st.session_state:
     st.session_state.narrator_enabled = True
+if "tts_engine" not in st.session_state:
+    st.session_state.tts_engine = "Browser Speech"
 
 with st.sidebar:
     st.markdown('<div class="gf-eyebrow">GRIMFORGE</div><div class="gf-title">War Theater</div>', unsafe_allow_html=True)
@@ -101,8 +104,8 @@ with st.sidebar:
     st.caption("Episode generator: local/deterministic")
     st.caption("Reference analyzer: not connected")
     st.caption("Video renderer: not connected")
-    st.caption("Premium TTS: not connected")
-    st.caption("Browser narration: available locally")
+    st.caption("Open-source TTS: Kokoro / KittenTTS / MeloTTS / Piper planned")
+    st.caption("Browser narration: connected preview fallback")
     st.caption("Final MP4 worker: not connected")
     st.divider()
     st.markdown("**Narrator voice**")
@@ -120,6 +123,21 @@ with st.sidebar:
     voice_profile = NARRATOR_VOICE_PROFILES[st.session_state.narrator_voice]
     st.caption(voice_profile["description"])
     st.caption("Original performance profile — not a clone or impersonation of any reference narrator.")
+    st.markdown("**TTS engine**")
+    tts_names = list(TTS_ENGINES.keys())
+    st.session_state.tts_engine = st.selectbox(
+        "Narration engine",
+        tts_names,
+        index=tts_names.index(st.session_state.tts_engine),
+        label_visibility="collapsed",
+    )
+    tts_meta = TTS_ENGINES[st.session_state.tts_engine]
+    tts_status = "CONNECTED" if tts_meta["status"] == "connected" else "PLANNED · not connected yet"
+    st.caption(f'{tts_meta["role"]} · {tts_status}')
+    st.caption(f'{tts_meta["runtime"]} · {tts_meta["license"]}')
+    st.caption(tts_meta["notes"])
+    if tts_meta["status"] != "connected":
+        st.info("This engine is listed in the production plan but is not executing audio yet; Browser Speech remains the active preview fallback.")
     st.divider()
     with st.popover("◉ Director Veyr", use_container_width=True):
         st.caption("Local copilot · persistent project-aware advice")
@@ -163,7 +181,7 @@ voice_profile = NARRATOR_VOICE_PROFILES[st.session_state.narrator_voice]
 st.markdown(
     f'<div class="gf-summary"><strong>{html.escape(st.session_state.narrator_voice)}</strong> · '
     f'<span class="gf-muted">{html.escape(voice_profile["description"])}</span><br>'
-    f'<span class="gf-badge">Browser TTS preview</span>'
+    f'<span class="gf-badge">TTS engine: {html.escape(st.session_state.tts_engine)}</span>'
     f'<span class="gf-badge">Premium voice provider not connected</span>'
     f'<span class="gf-badge">Original voice direction — no narrator cloning</span></div>',
     unsafe_allow_html=True,
