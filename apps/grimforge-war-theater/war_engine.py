@@ -172,6 +172,51 @@ RUNTIME_SECONDS = {
     "15 min episode": 900,
 }
 
+# Original performance profiles only. These describe broad narration qualities
+# and are not intended to clone or impersonate any identifiable narrator.
+NARRATOR_VOICE_PROFILES = {
+    "Grim Chronicle": {
+        "description": "Deep, mature, resonant war-story narration with deliberate pacing, restrained intensity, and weighty pauses.",
+        "rate": 0.86,
+        "pitch": 0.76,
+        "volume": 1.0,
+        "preferred_names": ["Daniel", "Brian", "George", "Bill", "David", "James", "Arthur", "Mark"],
+        "preferred_langs": ["en-GB", "en-US", "en-AU"],
+    },
+    "Battlefield Historian": {
+        "description": "Steady, authoritative chronicle delivery: clear geography, measured cadence, controlled emotion.",
+        "rate": 0.91,
+        "pitch": 0.84,
+        "volume": 1.0,
+        "preferred_names": ["Daniel", "George", "Brian", "Arthur", "David"],
+        "preferred_langs": ["en-GB", "en-US"],
+    },
+    "War-Weary Commander": {
+        "description": "Low, tired authority with shorter phrases, heavier pauses, and restrained urgency.",
+        "rate": 0.82,
+        "pitch": 0.70,
+        "volume": 1.0,
+        "preferred_names": ["Brian", "Bill", "David", "Mark", "Daniel"],
+        "preferred_langs": ["en-US", "en-GB", "en-AU"],
+    },
+    "Ancient Chronicler": {
+        "description": "Slow, grave storyteller delivery for mythic battles, omens, sacrifice, and aftermath.",
+        "rate": 0.78,
+        "pitch": 0.68,
+        "volume": 0.98,
+        "preferred_names": ["George", "Bill", "Arthur", "Daniel", "David"],
+        "preferred_langs": ["en-GB", "en-US"],
+    },
+    "Neutral Storyteller": {
+        "description": "Natural, warm narrative delivery for longer episodes with less theatrical weight.",
+        "rate": 0.96,
+        "pitch": 0.90,
+        "volume": 1.0,
+        "preferred_names": ["George", "Brian", "Daniel", "Alex", "David"],
+        "preferred_langs": ["en-US", "en-GB", "en-AU"],
+    },
+}
+
 
 @dataclass
 class Scene:
