@@ -75,3 +75,17 @@ The earlier AppDeploy version remains useful as an experimental backend branch:
 https://grimforge-war-theater-0s8pee.v2.appdeploy.ai/
 
 The unfinished Lovable remix is no longer the authoritative build while workspace credits are unavailable.
+
+
+## Railway deployment
+
+Production service:
+- Root directory: `apps/grimforge-war-theater`
+- Start command: `streamlit run app.py --server.address 0.0.0.0 --server.port $PORT --server.headless true`
+- Live deployment: https://grimforge-war-theater-production.up.railway.app
+
+## Portable projects and render manifests
+
+GrimForge project state can be exported as JSON and imported again later. A forged episode can also export a provider-neutral render manifest. The manifest intentionally uses the stage `planned` until a real video worker returns generated media; a plan or animatic must never be labeled as a final render.
+
+The app also shows heuristic routing guidance for the selected open video model and free GPU backend. That guidance is not live VRAM detection and does not imply a provider is connected.
