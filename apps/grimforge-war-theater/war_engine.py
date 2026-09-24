@@ -165,6 +165,24 @@ REFERENCE_LENSES = {
 
 PROJECT_SCHEMA_VERSION = 1
 
+FULL_EPISODE_PROFILES = {
+    "Economy": {
+        "shots_per_scene": 2,
+        "clip_seconds": 5,
+        "description": "Lean full-episode pass for free/limited GPU quotas. One geography/master shot plus one story/character shot per scene.",
+    },
+    "Cinematic": {
+        "shots_per_scene": 3,
+        "clip_seconds": 6,
+        "description": "Balanced default: master geography, action/coverage, and character/detail coverage for every scene.",
+    },
+    "Epic": {
+        "shots_per_scene": 4,
+        "clip_seconds": 7,
+        "description": "Dense coverage for larger battles: geography, action, character, and detail/reaction shots per scene.",
+    },
+}
+
 RUNTIME_SECONDS = {
     "60–90 sec teaser": 80,
     "3 min short": 180,
@@ -668,4 +686,135 @@ def build_render_manifest(
         "reference_url": reference_url,
         "episode": episode.to_dict(),
         "scenes": scenes,
+    }
+
+
+def build_full_episode_manifest(
+    episode: Episode,
+    *,
+    profile_name: str,
+    video_engine: str,
+    gpu_backend: str,
+    tts_engine: str,
+    narrator_voice: str,
+    reference_url: str = "",
+) -> dict:
+    """Create a multi-shot whole-episode production manifest."""
+    profile = FULL_EPISODE_PROFILES.get(profile_name, FULL_EPISODE_PROFILES["Cinematic"])
+    shot_roles = [
+        ("MASTER", "establish readable geography and faction positions"),
+        ("ACTION", "show the scene's tactical action with clear screen direction"),
+        ("CHARACTER", "show commander/hero reaction or decision with identity continuity"),
+        ("DETAIL", "show a prop, damage state, weapon, terrain consequence, or atmospheric insert"),
+    ]
+    scenes = []
+    all_shots = []
+    for scene in episode.scenes:
+        scene_shots = []
+        for idx in range(profile["shots_per_scene"]):
+            code, purpose = shot_roles[idx]
+            seconds = profile["clip_seconds"]
+            if code == "MASTER":
+                camera = "extreme wide or wide master; readable geography; stable axis"
+            elif code == "ACTION":
+                camera = "medium/wide kinetic coverage; preserve screen direction and battlefield logic"
+            elif code == "CHARACTER":
+                camera = "medium close-up or close-up; preserve face, wardrobe, heraldry, injury state"
+            else:
+                camera = "detail insert; continuity-bearing object or environmental consequence"
+            prompt = (
+                f"{scene.visual} Shot role: {code}. Purpose: {purpose}. "
+                f"Camera: {camera}. Scene camera intent: {scene.camera}. "
+                f"Continuity locks: {scene.continuity}. Palette: {scene.palette}. "
+                "Create an original war-fantasy shot; do not reproduce characters, logos, dialogue, or protected visual assets from a reference."
+            )
+            shot = {
+                "shot_id": f"{scene.id}-{code}-{idx+1:02d}",
+                "scene_id": scene.id,
+                "role": code,
+                "purpose": purpose,
+                "target_seconds": seconds,
+                "prompt": prompt,
+                "continuity": scene.continuity,
+                "status": "planned",
+                "take_status": "unrendered",
+            }
+            scene_shots.append(shot)
+            all_shots.append(shot)
+        scenes.append({
+            "scene_id": scene.id,
+            "title": scene.title,
+            "act": scene.act,
+            "story_duration_seconds": scene.duration,
+            "narration": scene.narration,
+            "dialogue": scene.dialogue,
+            "sound": scene.sound,
+            "shots": scene_shots,
+        })
+
+    base = build_render_manifest(
+        episode,
+        video_engine=video_engine,
+        gpu_backend=gpu_backend,
+        tts_engine=tts_engine,
+        narrator_voice=narrator_voice,
+        reference_url=reference_url,
+    )
+    base["production_mode"] = "full_episode"
+    base["profile"] = profile_name
+    base["profile_description"] = profile["description"]
+    base["scene_manifests"] = scenes
+    base["shots"] = all_shots
+    base["shot_count"] = len(all_shots)
+    base["planned_generated_footage_seconds"] = sum(s["target_seconds"] for s in all_shots)
+    base["assembly"] = {
+        "video": "Select/trim best takes; preserve scene order and continuity; assemble with FFmpeg or equivalent.",
+        "narration": "Generate narration per scene, align to picture, and duck music beneath speech.",
+        "sound": "Layer dialogue/narration, Foley, impacts, ambience, room tone, and music.",
+        "captions": "Generate after picture lock; validate fit and safe margins.",
+        "qc": [
+            "rights basis known",
+            "no missing/black shots",
+            "identity and wardrobe continuity",
+            "battlefield geography readable",
+            "screen direction intentional",
+            "audio not clipped",
+            "target loudness met",
+            "caption overflow clear",
+        ],
+    }
+    return base
+
+
+def benchmark_scorecard(episode: Episode | None, profile_name: str = "Cinematic") -> dict:
+    """Transparent planning scorecard, not an aesthetic quality judgment."""
+    if not episode:
+        return {
+            "overall": 0,
+            "narrative_coverage": 0,
+            "continuity_planning": 0,
+            "geography_planning": 0,
+            "audio_planning": 0,
+            "shot_variety": 0,
+            "notes": ["Forge or load an episode first."],
+        }
+    profile = FULL_EPISODE_PROFILES.get(profile_name, FULL_EPISODE_PROFILES["Cinematic"])
+    narrative = min(100, 55 + len(episode.scenes) * 4)
+    continuity = 95 if all(s.continuity for s in episode.scenes) else 60
+    geography = 92 if all("direction" in s.camera or "geography" in s.camera for s in episode.scenes) else 75
+    audio = 90 if all(s.sound for s in episode.scenes) else 65
+    variety = {2: 72, 3: 90, 4: 96}.get(profile["shots_per_scene"], 80)
+    overall = round((narrative + continuity + geography + audio + variety) / 5)
+    notes = [
+        "This score measures production-plan completeness, not whether generated footage will look better than a reference.",
+        "Actual visual quality still depends on the connected video model, reference conditioning, take selection, and final edit.",
+    ]
+    return {
+        "overall": overall,
+        "narrative_coverage": narrative,
+        "continuity_planning": continuity,
+        "geography_planning": geography,
+        "audio_planning": audio,
+        "shot_variety": variety,
+        "notes": notes,
     }
