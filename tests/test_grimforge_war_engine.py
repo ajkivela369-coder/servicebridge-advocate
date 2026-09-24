@@ -32,6 +32,11 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         p = engine.random_presets("seed")
         self.assertTrue(all(value != "Custom" for value in p.values()))
 
+    def test_video_engine_registry(self):
+        expected = ("LTX-2", "Wan 2.2", "Mochi 1", "CogVideoX-2B")
+        self.assertEqual(tuple(engine.VIDEO_ENGINES.keys()), expected)
+        self.assertTrue(all(engine.VIDEO_ENGINES[name]["status"] == "planned" for name in expected))
+
     def test_tts_engine_registry(self):
         for name in ("Kokoro", "KittenTTS", "MeloTTS", "Piper", "Browser Speech"):
             self.assertIn(name, engine.TTS_ENGINES)
