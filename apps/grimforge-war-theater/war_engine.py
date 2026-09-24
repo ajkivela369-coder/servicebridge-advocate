@@ -174,6 +174,44 @@ RUNTIME_SECONDS = {
 
 # Original performance profiles only. These describe broad narration qualities
 # and are not intended to clone or impersonate any identifiable narrator.
+TTS_ENGINES = {
+    "Kokoro": {
+        "status": "planned",
+        "role": "HQ local/default",
+        "runtime": "Browser-local or local Python worker",
+        "license": "Apache-2.0",
+        "notes": "Preferred high-quality local narrator engine; no voice cloning required.",
+    },
+    "KittenTTS": {
+        "status": "planned",
+        "role": "Lightweight CPU fallback",
+        "runtime": "Local Python worker",
+        "license": "Apache-2.0",
+        "notes": "Small CPU-friendly fallback for low-resource machines.",
+    },
+    "MeloTTS": {
+        "status": "planned",
+        "role": "Multilingual narrator",
+        "runtime": "Local Python worker",
+        "license": "MIT",
+        "notes": "Useful for multilingual narration and accent coverage.",
+    },
+    "Piper": {
+        "status": "planned",
+        "role": "Offline reliability fallback",
+        "runtime": "Local Python/ONNX worker",
+        "license": "GPL-3.0-or-later engine; voice licenses vary",
+        "notes": "Fast offline fallback; each selected voice model needs its own license check.",
+    },
+    "Browser Speech": {
+        "status": "connected",
+        "role": "Instant preview fallback",
+        "runtime": "Browser SpeechSynthesis",
+        "license": "Browser/platform provided",
+        "notes": "Current working preview path; voice availability varies by device.",
+    },
+}
+
 NARRATOR_VOICE_PROFILES = {
     "Grim Chronicle": {
         "description": "Deep, mature, resonant war-story narration with deliberate pacing, restrained intensity, and weighty pauses.",
