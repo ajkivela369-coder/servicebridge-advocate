@@ -14,6 +14,7 @@ from war_engine import (
     REFERENCE_URL,
     NARRATOR_VOICE_PROFILES,
     TTS_ENGINES,
+    VIDEO_ENGINES,
     make_episode,
     random_presets,
     veyr_advice,
@@ -94,6 +95,8 @@ if "narrator_enabled" not in st.session_state:
     st.session_state.narrator_enabled = True
 if "tts_engine" not in st.session_state:
     st.session_state.tts_engine = "Browser Speech"
+if "video_engine" not in st.session_state:
+    st.session_state.video_engine = "LTX-2"
 
 with st.sidebar:
     st.markdown('<div class="gf-eyebrow">GRIMFORGE</div><div class="gf-title">War Theater</div>', unsafe_allow_html=True)
@@ -103,7 +106,7 @@ with st.sidebar:
     st.markdown("**Provider status**")
     st.caption("Episode generator: local/deterministic")
     st.caption("Reference analyzer: not connected")
-    st.caption("Video renderer: not connected")
+    st.caption("Video renderer: provider selectable · execution not connected")
     st.caption("Open-source TTS: Kokoro / KittenTTS / MeloTTS / Piper planned")
     st.caption("Browser narration: connected preview fallback")
     st.caption("Final MP4 worker: not connected")
@@ -138,6 +141,21 @@ with st.sidebar:
     st.caption(tts_meta["notes"])
     if tts_meta["status"] != "connected":
         st.info("This engine is listed in the production plan but is not executing audio yet; Browser Speech remains the active preview fallback.")
+    st.divider()
+    st.markdown("**Video generator**")
+    video_names = list(VIDEO_ENGINES.keys())
+    st.session_state.video_engine = st.selectbox(
+        "Video engine",
+        video_names,
+        index=video_names.index(st.session_state.video_engine),
+        label_visibility="collapsed",
+    )
+    video_meta = VIDEO_ENGINES[st.session_state.video_engine]
+    st.caption(f'{video_meta["role"]} · PLANNED · not connected yet')
+    st.caption(video_meta["modes"])
+    st.caption(f'{video_meta["runtime"]} · {video_meta["license"]}')
+    st.caption(video_meta["notes"])
+    st.caption("Workflow: ComfyUI orchestration → selected generator → FFmpeg assembly/QC.")
     st.divider()
     with st.popover("◉ Director Veyr", use_container_width=True):
         st.caption("Local copilot · persistent project-aware advice")
@@ -369,6 +387,7 @@ else:
         f'<span class="gf-muted">{html.escape(episode.logline)}</span><br>'
         f'<span class="gf-badge">PLAYABLE ANIMATIC</span>'
         f'<span class="gf-badge">Story target {round(episode.runtime_seconds/60,1)} min</span>'
+        f'<span class="gf-badge">VIDEO: {html.escape(st.session_state.video_engine)} · planned</span>'
         f'<span class="gf-badge">FINAL FULL-MOTION RENDER · provider not connected</span></div>',
         unsafe_allow_html=True,
     )
