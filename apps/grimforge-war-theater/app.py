@@ -15,6 +15,7 @@ from war_engine import (
     NARRATOR_VOICE_PROFILES,
     TTS_ENGINES,
     VIDEO_ENGINES,
+    GPU_BACKENDS,
     make_episode,
     random_presets,
     veyr_advice,
@@ -97,6 +98,8 @@ if "tts_engine" not in st.session_state:
     st.session_state.tts_engine = "Browser Speech"
 if "video_engine" not in st.session_state:
     st.session_state.video_engine = "LTX-2"
+if "gpu_backend" not in st.session_state:
+    st.session_state.gpu_backend = "Hugging Face ZeroGPU"
 
 with st.sidebar:
     st.markdown('<div class="gf-eyebrow">GRIMFORGE</div><div class="gf-title">War Theater</div>', unsafe_allow_html=True)
@@ -156,6 +159,21 @@ with st.sidebar:
     st.caption(f'{video_meta["runtime"]} · {video_meta["license"]}')
     st.caption(video_meta["notes"])
     st.caption("Workflow: ComfyUI orchestration → selected generator → FFmpeg assembly/QC.")
+    st.divider()
+    st.markdown("**GPU backend**")
+    gpu_names = list(GPU_BACKENDS.keys())
+    st.session_state.gpu_backend = st.selectbox(
+        "GPU backend",
+        gpu_names,
+        index=gpu_names.index(st.session_state.gpu_backend),
+        label_visibility="collapsed",
+    )
+    gpu_meta = GPU_BACKENDS[st.session_state.gpu_backend]
+    st.caption(f'{gpu_meta["cost"]} · {gpu_meta["hardware"]}')
+    st.caption(f'Connection: {gpu_meta["connection"]}')
+    st.caption(f'Best for: {gpu_meta["best_for"]}')
+    st.caption(gpu_meta["notes"])
+    st.info("GPU backend is selectable in GrimForge, but credentials/session launch still happens in the provider account. No backend is treated as an always-on connected renderer until a real worker endpoint is configured.")
     st.divider()
     with st.popover("◉ Director Veyr", use_container_width=True):
         st.caption("Local copilot · persistent project-aware advice")
@@ -388,6 +406,7 @@ else:
         f'<span class="gf-badge">PLAYABLE ANIMATIC</span>'
         f'<span class="gf-badge">Story target {round(episode.runtime_seconds/60,1)} min</span>'
         f'<span class="gf-badge">VIDEO: {html.escape(st.session_state.video_engine)} · planned</span>'
+        f'<span class="gf-badge">GPU: {html.escape(st.session_state.gpu_backend)}</span>'
         f'<span class="gf-badge">FINAL FULL-MOTION RENDER · provider not connected</span></div>',
         unsafe_allow_html=True,
     )
