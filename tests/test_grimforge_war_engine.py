@@ -32,6 +32,13 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         p = engine.random_presets("seed")
         self.assertTrue(all(value != "Custom" for value in p.values()))
 
+    def test_grim_chronicle_voice_profile(self):
+        profile = engine.NARRATOR_VOICE_PROFILES["Grim Chronicle"]
+        self.assertLess(profile["rate"], 1.0)
+        self.assertLess(profile["pitch"], 1.0)
+        self.assertIn("resonant", profile["description"].lower())
+        self.assertTrue(profile["preferred_names"])
+
     def test_veyr_reports_missing_provider_for_final_episode(self):
         ep = engine.make_episode("A", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
         msg = engine.veyr_advice("What is missing for final episode", ep)
