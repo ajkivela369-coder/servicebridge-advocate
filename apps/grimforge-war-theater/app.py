@@ -109,6 +109,12 @@ if "gpu_backend" not in st.session_state:
     st.session_state.gpu_backend = "Hugging Face ZeroGPU"
 if "reference_url" not in st.session_state:
     st.session_state.reference_url = REFERENCE_URL
+if "reference_library" not in st.session_state:
+    st.session_state.reference_library = [
+        REFERENCE_URL,
+        "https://youtu.be/Aj1NJLmb-Kg",
+        "https://youtu.be/zBno2nP7dgU",
+    ]
 if "project_notice" not in st.session_state:
     st.session_state.project_notice = ""
 if "full_episode_profile" not in st.session_state:
@@ -135,6 +141,7 @@ def current_project_payload():
         "video_engine": st.session_state.video_engine,
         "gpu_backend": st.session_state.gpu_backend,
         "reference_url": st.session_state.reference_url,
+        "reference_library": list(st.session_state.reference_library),
         "full_episode_profile": st.session_state.full_episode_profile,
         "episode": episode_payload,
     }
@@ -146,7 +153,7 @@ def load_project_payload(payload):
     for key in [
         "title", "enemy", "commander", "objective", "mode", "presets", "faction",
         "lens_name", "custom_minutes", "scene_count", "narrator_voice",
-        "narrator_enabled", "tts_engine", "video_engine", "gpu_backend", "reference_url", "full_episode_profile",
+        "narrator_enabled", "tts_engine", "video_engine", "gpu_backend", "reference_url", "reference_library", "full_episode_profile",
     ]:
         if key in payload:
             st.session_state[key] = payload[key]
@@ -335,16 +342,27 @@ st.markdown(
 st.subheader("Reference Theater")
 ref_col, lens_col = st.columns([1.2, 0.8], gap="large")
 with ref_col:
-    st.session_state.reference_url = st.text_input(
-        "Reference video URL",
-        st.session_state.reference_url,
-        help="Use references for broad pacing/camera/sound mechanics only; do not copy protected creative expression.",
+    st.markdown("**Reference Library**")
+    library_text = st.text_area(
+        "One URL per line",
+        value="\n".join(st.session_state.reference_library),
+        height=110,
+        help="Keep multiple references for broad production mechanics only. GrimForge should not copy protected characters, dialogue, music, logos, or distinctive visual assets.",
     )
-    if st.session_state.reference_url.strip().startswith(("http://", "https://")):
-        st.video(st.session_state.reference_url)
-        st.link_button("Open reference externally", st.session_state.reference_url)
-    else:
-        st.warning("Enter a valid http(s) video URL to preview a reference.")
+    parsed_refs = [line.strip() for line in library_text.splitlines() if line.strip().startswith(("http://", "https://"))]
+    if parsed_refs:
+        st.session_state.reference_library = list(dict.fromkeys(parsed_refs))
+    active_refs = st.session_state.reference_library or [REFERENCE_URL]
+    if st.session_state.reference_url not in active_refs:
+        st.session_state.reference_url = active_refs[0]
+    st.session_state.reference_url = st.selectbox(
+        "Active benchmark reference",
+        active_refs,
+        index=active_refs.index(st.session_state.reference_url),
+    )
+    st.video(st.session_state.reference_url)
+    st.link_button("Open active reference externally", st.session_state.reference_url)
+    st.caption(f"{len(active_refs)} benchmark reference(s) saved in this project.")
 with lens_col:
     lens_name = st.selectbox("Reference Lens preset", list(REFERENCE_LENSES.keys()), index=list(REFERENCE_LENSES.keys()).index(st.session_state.lens_name))
     st.session_state.lens_name = lens_name
