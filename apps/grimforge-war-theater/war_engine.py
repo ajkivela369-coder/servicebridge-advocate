@@ -174,6 +174,41 @@ RUNTIME_SECONDS = {
 
 # Original performance profiles only. These describe broad narration qualities
 # and are not intended to clone or impersonate any identifiable narrator.
+GPU_BACKENDS = {
+    "Hugging Face ZeroGPU": {
+        "status": "available_external",
+        "connection": "Gradio API / Space endpoint",
+        "cost": "Free daily quota",
+        "hardware": "Dynamic RTX Pro 6000 Blackwell, 48 GB or 96 GB VRAM",
+        "best_for": "Short test renders, API-callable GrimForge worker, demos",
+        "notes": "Best free backend for direct app integration. Free account quota is limited and resets daily.",
+    },
+    "Kaggle T4x2": {
+        "status": "available_external",
+        "connection": "Notebook worker / exported render job",
+        "cost": "Free weekly GPU quota",
+        "hardware": "2× NVIDIA T4, 16 GB VRAM each",
+        "best_for": "CogVideoX, optimized Wan/LTX tests, longer free batch jobs",
+        "notes": "Useful free compute, but not reliable as a permanent web API. Treat it as a manual or semi-automated render worker.",
+    },
+    "Google Colab Free": {
+        "status": "available_external",
+        "connection": "Notebook worker / exported render job",
+        "cost": "Free, dynamically limited",
+        "hardware": "GPU type varies by availability",
+        "best_for": "Testing notebooks and one-off renders",
+        "notes": "Free GPU access is not guaranteed and limits vary. Do not treat this as an always-on production backend.",
+    },
+    "Lightning AI Free": {
+        "status": "available_external",
+        "connection": "Studio/job worker",
+        "cost": "Free starter credits; then paid",
+        "hardware": "T4/L4/L40S/A100 and others depending credits",
+        "best_for": "More stable GPU experiments and temporary workers",
+        "notes": "Free plan can include promotional GPU credits. Treat free GPU time as finite starter capacity, not unlimited hosting.",
+    },
+}
+
 VIDEO_ENGINES = {
     "LTX-2": {
         "status": "planned",
