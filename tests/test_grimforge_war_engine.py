@@ -43,6 +43,21 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         self.assertTrue(all(shot["status"] == "planned" for shot in manifest["shots"]))
         self.assertGreater(manifest["planned_generated_footage_seconds"], 0)
 
+    def test_reference_library_note(self):
+        # Reference URLs are project metadata only; render prompts must remain original.
+        ep = engine.make_episode("Reference", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
+        manifest = engine.build_full_episode_manifest(
+            ep,
+            profile_name="Cinematic",
+            video_engine="Wan 2.2",
+            gpu_backend="Hugging Face ZeroGPU",
+            tts_engine="Browser Speech",
+            narrator_voice="Grim Chronicle",
+            reference_url="https://youtu.be/example",
+        )
+        self.assertEqual(manifest["reference_url"], "https://youtu.be/example")
+        self.assertTrue(all("do not reproduce" in shot["prompt"] for shot in manifest["shots"]))
+
     def test_benchmark_scorecard_is_transparent_planning_score(self):
         ep = engine.make_episode("Score", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
         score = engine.benchmark_scorecard(ep, "Cinematic")
