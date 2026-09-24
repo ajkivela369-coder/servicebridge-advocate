@@ -32,6 +32,12 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         p = engine.random_presets("seed")
         self.assertTrue(all(value != "Custom" for value in p.values()))
 
+    def test_gpu_backend_registry(self):
+        expected = ("Hugging Face ZeroGPU", "Kaggle T4x2", "Google Colab Free", "Lightning AI Free")
+        self.assertEqual(tuple(engine.GPU_BACKENDS.keys()), expected)
+        self.assertIn("48 GB or 96 GB", engine.GPU_BACKENDS["Hugging Face ZeroGPU"]["hardware"])
+        self.assertIn("T4", engine.GPU_BACKENDS["Kaggle T4x2"]["hardware"])
+
     def test_video_engine_registry(self):
         expected = ("LTX-2", "Wan 2.2", "Mochi 1", "CogVideoX-2B")
         self.assertEqual(tuple(engine.VIDEO_ENGINES.keys()), expected)
