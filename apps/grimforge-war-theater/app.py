@@ -16,6 +16,10 @@ from war_engine import (
     TTS_ENGINES,
     VIDEO_ENGINES,
     GPU_BACKENDS,
+    PROJECT_SCHEMA_VERSION,
+    build_render_manifest,
+    episode_from_dict,
+    render_route_advice,
     make_episode,
     random_presets,
     veyr_advice,
@@ -100,11 +104,72 @@ if "video_engine" not in st.session_state:
     st.session_state.video_engine = "LTX-2"
 if "gpu_backend" not in st.session_state:
     st.session_state.gpu_backend = "Hugging Face ZeroGPU"
+if "reference_url" not in st.session_state:
+    st.session_state.reference_url = REFERENCE_URL
+if "project_notice" not in st.session_state:
+    st.session_state.project_notice = ""
+
+def current_project_payload():
+    episode_payload = st.session_state.episode.to_dict() if st.session_state.episode else None
+    return {
+        "schema_version": PROJECT_SCHEMA_VERSION,
+        "app": "GrimForge War Theater",
+        "title": st.session_state.title,
+        "enemy": st.session_state.enemy,
+        "commander": st.session_state.commander,
+        "objective": st.session_state.objective,
+        "mode": st.session_state.mode,
+        "presets": dict(st.session_state.presets),
+        "faction": st.session_state.faction,
+        "lens_name": st.session_state.lens_name,
+        "custom_minutes": st.session_state.custom_minutes,
+        "scene_count": st.session_state.scene_count,
+        "narrator_voice": st.session_state.narrator_voice,
+        "narrator_enabled": st.session_state.narrator_enabled,
+        "tts_engine": st.session_state.tts_engine,
+        "video_engine": st.session_state.video_engine,
+        "gpu_backend": st.session_state.gpu_backend,
+        "reference_url": st.session_state.reference_url,
+        "episode": episode_payload,
+    }
+
+
+def load_project_payload(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("Project file must contain a JSON object.")
+    for key in [
+        "title", "enemy", "commander", "objective", "mode", "presets", "faction",
+        "lens_name", "custom_minutes", "scene_count", "narrator_voice",
+        "narrator_enabled", "tts_engine", "video_engine", "gpu_backend", "reference_url",
+    ]:
+        if key in payload:
+            st.session_state[key] = payload[key]
+    st.session_state.episode = episode_from_dict(payload["episode"]) if payload.get("episode") else None
+
 
 with st.sidebar:
     st.markdown('<div class="gf-eyebrow">GRIMFORGE</div><div class="gf-title">War Theater</div>', unsafe_allow_html=True)
     st.caption("GitHub-first · Streamlit build")
     st.session_state.mode = st.radio("Workspace", ["Simple", "Pro"], horizontal=True, index=0 if st.session_state.mode == "Simple" else 1)
+    st.markdown("**Project file**")
+    project_json = json.dumps(current_project_payload(), indent=2)
+    st.download_button(
+        "⬇ Export project JSON",
+        data=project_json,
+        file_name="grimforge-project.json",
+        mime="application/json",
+        use_container_width=True,
+    )
+    uploaded_project = st.file_uploader("Import project JSON", type=["json"], label_visibility="collapsed")
+    if uploaded_project is not None and st.button("Load project", use_container_width=True):
+        try:
+            load_project_payload(json.load(uploaded_project))
+            st.session_state.project_notice = "Project loaded."
+            st.rerun()
+        except Exception as exc:
+            st.error(f"Could not load project: {exc}")
+    if st.session_state.project_notice:
+        st.caption(st.session_state.project_notice)
     st.divider()
     st.markdown("**Provider status**")
     st.caption("Episode generator: local/deterministic")
@@ -212,6 +277,22 @@ st.warning(
     "Do not copy the source video's characters, lore, dialogue, scripts, music, branding, or visual assets."
 )
 
+st.subheader("Production Readiness")
+route = render_route_advice(st.session_state.video_engine, st.session_state.gpu_backend)
+r1, r2, r3, r4 = st.columns(4)
+r1.metric("Episode engine", "Ready")
+r2.metric("Narration preview", "Ready" if st.session_state.narrator_enabled else "Muted")
+r3.metric("Video render", "Planned")
+r4.metric("Final MP4", "Blocked")
+st.markdown(
+    f'<div class="gf-summary"><strong>{html.escape(route["label"])}</strong> · '
+    f'<span class="gf-muted">{html.escape(route["reason"])}</span><br>'
+    f'<span class="gf-badge">{html.escape(st.session_state.video_engine)}</span>'
+    f'<span class="gf-badge">{html.escape(st.session_state.gpu_backend)}</span>'
+    f'<span class="gf-badge">routing guidance only — not live hardware detection</span></div>',
+    unsafe_allow_html=True,
+)
+
 st.subheader("Narration Direction")
 voice_profile = NARRATOR_VOICE_PROFILES[st.session_state.narrator_voice]
 st.markdown(
@@ -226,9 +307,16 @@ st.markdown(
 st.subheader("Reference Theater")
 ref_col, lens_col = st.columns([1.2, 0.8], gap="large")
 with ref_col:
-    st.video(REFERENCE_URL)
-    st.caption("Current test reference: YouTube video XQ1jlW7hQrA. Use the external player if embedding is restricted.")
-    st.link_button("Open reference on YouTube", REFERENCE_URL)
+    st.session_state.reference_url = st.text_input(
+        "Reference video URL",
+        st.session_state.reference_url,
+        help="Use references for broad pacing/camera/sound mechanics only; do not copy protected creative expression.",
+    )
+    if st.session_state.reference_url.strip().startswith(("http://", "https://")):
+        st.video(st.session_state.reference_url)
+        st.link_button("Open reference externally", st.session_state.reference_url)
+    else:
+        st.warning("Enter a valid http(s) video URL to preview a reference.")
 with lens_col:
     lens_name = st.selectbox("Reference Lens preset", list(REFERENCE_LENSES.keys()), index=list(REFERENCE_LENSES.keys()).index(st.session_state.lens_name))
     st.session_state.lens_name = lens_name
@@ -410,6 +498,41 @@ else:
         f'<span class="gf-badge">FINAL FULL-MOTION RENDER · provider not connected</span></div>',
         unsafe_allow_html=True,
     )
+
+    render_manifest = build_render_manifest(
+        episode,
+        video_engine=st.session_state.video_engine,
+        gpu_backend=st.session_state.gpu_backend,
+        tts_engine=st.session_state.tts_engine,
+        narrator_voice=st.session_state.narrator_voice,
+        reference_url=st.session_state.reference_url,
+    )
+    file_col1, file_col2 = st.columns(2)
+    with file_col1:
+        st.download_button(
+            "⬇ Download render manifest",
+            data=json.dumps(render_manifest, indent=2),
+            file_name="grimforge-render-manifest.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+    with file_col2:
+        st.download_button(
+            "⬇ Download episode JSON",
+            data=json.dumps(episode.to_dict(), indent=2),
+            file_name="grimforge-episode.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+    with st.expander("Render plan details"):
+        st.caption(render_manifest["honesty"])
+        st.json({
+            "job_id": render_manifest["job_id"],
+            "stage": render_manifest["stage"],
+            "providers": render_manifest["providers"],
+            "route_guidance": render_manifest["route_guidance"],
+            "scene_count": len(render_manifest["scenes"]),
+        })
 
     scenes_json = json.dumps([
         {
