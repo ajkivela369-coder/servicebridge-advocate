@@ -32,6 +32,12 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         p = engine.random_presets("seed")
         self.assertTrue(all(value != "Custom" for value in p.values()))
 
+    def test_tts_engine_registry(self):
+        for name in ("Kokoro", "KittenTTS", "MeloTTS", "Piper", "Browser Speech"):
+            self.assertIn(name, engine.TTS_ENGINES)
+        self.assertEqual(engine.TTS_ENGINES["Browser Speech"]["status"], "connected")
+        self.assertEqual(engine.TTS_ENGINES["Kokoro"]["status"], "planned")
+
     def test_grim_chronicle_voice_profile(self):
         profile = engine.NARRATOR_VOICE_PROFILES["Grim Chronicle"]
         self.assertLess(profile["rate"], 1.0)
