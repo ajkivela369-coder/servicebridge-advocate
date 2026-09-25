@@ -53,3 +53,21 @@ Portfolio and research demonstration only. This is not a diagnostic or clinical 
 https://neuroeval-t6k31i.v2.appdeploy.ai/
 
 This is the current public portfolio deployment for **NeuroEval**.
+
+
+## AI/ML learning track
+
+NeuroEval is also being used as a transparent AI/ML learning project. The first ML layer adds a
+classical NLP baseline using TF-IDF text features, logistic-regression classification,
+stratified cross-validation, precision/recall/F1, confusion matrices, and TF-IDF retrieval.
+
+Run the experiment:
+
+```bash
+pip install -e .
+python ml_experiment.py
+```
+
+See [AI_ML_LEARNING_TRACK.md](AI_ML_LEARNING_TRACK.md) for the concepts, limitations, and planned
+embedding/deep-learning stages. The current benchmark is small, so its metrics are demonstration
+results rather than production-performance claims.
