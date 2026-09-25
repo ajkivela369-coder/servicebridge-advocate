@@ -1,0 +1,4 @@
+{"record_id":"SYN-001","source_type":"Clinical Record","title":"Fictional OT Evaluation","date":"09/01/2026","text":"  Patient tolerated a 20 minute simulated task.   Breaks were required. ","source_locator":"page 2"}
+{"record_id":"SYN-002","source_type":"Official Record","title":"Fictional Duty Record","date":"September 2, 2026","text":"Synthetic record used only for pipeline testing.","source_locator":"page 1"}
+{"record_id":"SYN-003","source_type":"Clinical Record","title":"Fictional OT Evaluation","date":"2026-09-01","text":"Patient tolerated a 20 minute simulated task. Breaks were required.","source_locator":"duplicate source"}
+{"record_id":"SYN-004","source_type":"Clinical Record","title":"Broken Example","date":"not-a-date","text":"This row should be quarantined.","source_locator":"page 9"}
