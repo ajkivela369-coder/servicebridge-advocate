@@ -1,5 +1,8 @@
 # ServiceBridge Advocate
 
+**AJ Kivela — Applied AI, Health Data & Evidence Systems**  
+**Employer-facing portfolio:** https://aj-kivela-portfolio.lovable.app
+
 [![CI](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml)
 
 ## Featured app — Elias Evidence Auditor Pro
