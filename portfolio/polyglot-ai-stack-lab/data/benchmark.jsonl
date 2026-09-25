@@ -1,0 +1,3 @@
+{"id":"P001","answer":"Evidence suggests sodium and potassium channels contribute to action potential propagation.","expected":"PASS"}
+{"id":"R001","answer":"Dopamine is involved in reward.","expected":"REVIEW"}
+{"id":"F001","answer":"Microglia always destroy every neuron.","expected":"FAIL"}
