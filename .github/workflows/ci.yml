@@ -17,8 +17,10 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e .
+      - run: python -m pip install -e portfolio/handshake-neuroeval
       - run: python -m pip install -r portfolio/evidence-auditor/legacy-streamlit/requirements.txt
       - run: python -m pip install -r portfolio/grimforge-studio/requirements.txt
       - run: python scripts/check_public_repo.py
       - run: python -m unittest discover -s tests -v
+      - run: python -m unittest discover -s portfolio/handshake-neuroeval/tests -v
       - run: python -m compileall -q src portfolio/evidence-auditor/legacy-streamlit portfolio/evidence-auditor/00_CURRENT_APP/reference portfolio/grimforge-studio
