@@ -444,6 +444,29 @@ const inboxSchema = {
   required: ['sender', 'company', 'role', 'subject', 'type', 'actionNeeded', 'deadline', 'summary'],
 };
 
+
+async function generateApplicationPackage(existing: JobRecord) {
+  const result = await ai.generate({
+    system:
+      'You are an exacting ATS application writer. Never fabricate employment, dates, metrics, degrees, licenses, certifications, clearances, or clinical credentials. When a needed fact is missing, write [ADD VERIFIED DETAIL] instead of guessing.',
+    prompt:
+      `Create a tailored application package for this role. VERIFIED AJ PROFILE: ${verifiedProfile}\n\n` +
+      `ROLE: ${existing.company} — ${existing.title}\nLOCATION: ${existing.location}\nCOMPENSATION: ${existing.compensation || 'Not listed'}\nSUMMARY: ${existing.summary || existing.notes}\nREQUIRED CREDENTIALS: ${(existing.requiredCredentials || []).join(', ') || 'Not extracted'}\nPREFERRED CREDENTIALS: ${(existing.preferredCredentials || []).join(', ') || 'Not extracted'}\nATS KEYWORDS: ${(existing.atsKeywords || []).join(', ') || 'Not extracted'}\nCONCERNS: ${existing.concerns || 'None recorded'}\n\n` +
+      'Output clean Markdown with these sections: Targeted Professional Summary; Core Skills; Verified Experience/Project Bullets; ATS Keyword Map; One-Page Resume Draft; Concise Cover Letter; Screening Answer Guidance; Gaps / Do Not Claim. Keep the resume ATS-safe and use only verified facts above. Do not mention disability or medical conditions.',
+    maxTokens: 3600,
+    temperature: 0.25,
+    thinkingMode: 'FAST',
+  });
+  const now = new Date().toISOString();
+  return {
+    ...existing,
+    applicationPackage: result.text.slice(0, 42000),
+    packageGeneratedAt: now,
+    resumeVersion: `Job Fisher auto-package ${now.slice(0, 10)}`,
+    lastVerified: now,
+  };
+}
+
 export const handler = router({
   'GET /api/_healthcheck': [async () => json({ message: 'Success' })],
   'GET /api/dashboard': [
@@ -560,6 +583,17 @@ export const handler = router({
           return error('This opportunity is already in the ledger.', 409);
         const [id] = await db.add(tableFor('jobs', ctx.user!.userId), [record]);
         if (!id) return error('Could not save the analyzed opportunity.', 500);
+        let savedRecord = record;
+        // Every qualified lead lands with a tailored resume/application package already prepared.
+        // 75–84: one-click package. 85+: package is prepared immediately for the application queue.
+        if (record.score >= 75 && record.remoteEligible && record.requiredCredentialsVerified && record.payFloorStatus !== 'no') {
+          try {
+            savedRecord = await generateApplicationPackage(record);
+            await db.update(tableFor('jobs', ctx.user!.userId), [{ id, record: savedRecord }]);
+          } catch {
+            // Discovery must never fail merely because package generation is temporarily unavailable.
+          }
+        }
         const scan: ScanRecord = {
           createdAt: new Date().toISOString(),
           source,
@@ -572,7 +606,7 @@ export const handler = router({
           label: `${company} — ${title}`.slice(0, 220),
         };
         const [scanId] = await db.add(tableFor('scans', ctx.user!.userId), [scan]);
-        return json({ job: { id, ...record }, scan: scanId ? { id: scanId, ...scan } : null });
+        return json({ job: { id, ...savedRecord }, scan: scanId ? { id: scanId, ...scan } : null });
       } catch (err) {
         const rpcError = err as { statusCode?: number; responseText?: string };
         if (rpcError?.statusCode && rpcError.responseText)
@@ -588,26 +622,7 @@ export const handler = router({
       const [existing] = await db.get<JobRecord>(table, [ctx.params.id]);
       if (!existing) return error('Candidate not found.', 404);
       try {
-        const result = await ai.generate({
-          system:
-            'You are an exacting ATS application writer. Never fabricate employment, dates, metrics, degrees, licenses, certifications, clearances, or clinical credentials. When a needed fact is missing, write [ADD VERIFIED DETAIL] instead of guessing.',
-          prompt:
-            `Create a tailored application package for this role. VERIFIED AJ PROFILE: ${verifiedProfile}\n\n` +
-            `ROLE: ${existing.company} — ${existing.title}\nLOCATION: ${existing.location}\nCOMPENSATION: ${existing.compensation || 'Not listed'}\nSUMMARY: ${existing.summary || existing.notes}\nREQUIRED CREDENTIALS: ${(existing.requiredCredentials || []).join(', ') || 'Not extracted'}\nPREFERRED CREDENTIALS: ${(existing.preferredCredentials || []).join(', ') || 'Not extracted'}\nATS KEYWORDS: ${(existing.atsKeywords || []).join(', ') || 'Not extracted'}\nCONCERNS: ${existing.concerns || 'None recorded'}\n\n` +
-            'Output clean Markdown with these sections: Targeted Professional Summary; Core Skills; Verified Experience/Project Bullets; ATS Keyword Map; One-Page Resume Draft; Concise Cover Letter; Screening Answer Guidance; Gaps / Do Not Claim. ' +
-            'Keep the resume ATS-safe and use only verified facts above. Do not mention disability or medical conditions.',
-          maxTokens: 3600,
-          temperature: 0.25,
-          thinkingMode: 'FAST',
-        });
-        const now = new Date().toISOString();
-        const updated: JobRecord = {
-          ...existing,
-          applicationPackage: result.text.slice(0, 42000),
-          packageGeneratedAt: now,
-          resumeVersion: `Job Fisher package ${now.slice(0, 10)}`,
-          lastVerified: now,
-        };
+        const updated = await generateApplicationPackage(existing);
         const [ok] = await db.update(table, [{ id: ctx.params.id, record: updated }]);
         if (!ok) return error('Could not save the generated package.', 500);
         return json({ job: { id: ctx.params.id, ...updated } });
