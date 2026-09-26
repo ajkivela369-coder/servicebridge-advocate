@@ -200,3 +200,28 @@ Important presentation rules include:
   and variability remain prominent;
 - derived diagrams/reconstructions are visibly labeled;
 - descriptive versioned filenames and an exact-size-validated UNDER5MB variant when required.
+
+
+## Private reference corpus
+
+The user has authorized prior packets, prior chats, relevant connected-drive materials, and current
+uploads to inform Elias development. Build Lab treats these sources as a **private reference
+corpus**, not as raw public training data.
+
+Private reference material may inform:
+- packet structure and visual hierarchy;
+- source-control and provenance patterns;
+- issue matrices and rebuttal structure;
+- planner benchmark cases;
+- retrieval edge cases;
+- failure analysis and reviewer-navigation patterns.
+
+Public GitHub fixtures remain synthetic or de-identified. Raw medical, military, benefit, identity,
+or case records and connected-drive IDs are not committed to the public repository.
+
+The preferred derivation path is:
+
+`private source → reusable pattern → remove identifiers/private facts → human review → synthetic/de-identified case → benchmark expectation → public regression test`
+
+A live production case remains separate from both public fixtures and the reviewed-gold benchmark
+unless a de-identified derivative is intentionally created and reviewed.
