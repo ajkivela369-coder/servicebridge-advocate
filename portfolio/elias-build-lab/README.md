@@ -169,3 +169,34 @@ rebutted when the record supports doing so.
 “Help the veteran win” therefore means: produce the strongest truthful, well-organized,
 source-traceable packet supported by the available evidence and verified authority. It is not an
 outcome guarantee.
+
+
+## AJ-style packet output standard
+
+Veteran Advocacy Mode now has two explicit output templates modeled on the established AJ packet
+architecture:
+
+1. **AJ Visual Defense Packet** — the full reviewer-facing format with cover/read-first page,
+   evidence roadmap, executive advocacy summary, contested-issue matrix, core contradiction,
+   chronology, point-by-point rebuttal, strongest-evidence cards, adverse-evidence reconciliation,
+   functional-capacity/reliability analysis, visual evidence/mechanism walkthrough, reviewer
+   questions, requested action, source index/filing notes, and selected primary-source exhibits.
+2. **AJ Concise Filing Packet** — a shorter portal-friendly version that preserves the same logic
+   while minimizing duplicated exhibits.
+
+The standard point-by-point block is:
+
+`agency finding → what was omitted → contrary/qualifying evidence → source trace → why it matters → reviewer question → requested resolution`
+
+Important presentation rules include:
+- polished reviewer-facing PDF rather than raw AI prose;
+- source filename/provider/date/page/locator visible on important evidence cards;
+- exact quotes only after literal source verification;
+- clear separation of record facts, claimant/witness reports, interpretations, and unknown/missing items;
+- selective source screenshots and visual exhibits;
+- complete originals remain controlling in the evidence repository;
+- adverse evidence is addressed rather than hidden;
+- functional reliability, duration, recovery, off-task time, attendance, pace, safety, endurance,
+  and variability remain prominent;
+- derived diagrams/reconstructions are visibly labeled;
+- descriptive versioned filenames and an exact-size-validated UNDER5MB variant when required.
