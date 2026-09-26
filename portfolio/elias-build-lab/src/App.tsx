@@ -7,6 +7,7 @@ import { CLASSIFIER_DATASET, type ClassLabel, type DataSplit } from "./classifie
 import { analyzeClassifierDataset, classifierDatasetAssertions } from "./classifierQuality";
 import { TOOL_REGISTRY, chooseModelForTask, modelLabel, planEvidenceTask, type ModelTier } from "./orchestration";
 import { runPlannerBenchmark, summarizePlannerBenchmark, type PlannerBenchmarkCategory } from "./plannerBenchmark";
+import { AJ_PACKET_PRESENTATION_RULES, AJ_PACKET_STYLES, AJ_REBUTTAL_BLOCK_TEMPLATE } from "./veteranPacketTemplate";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
@@ -940,6 +941,8 @@ function VeteranAdvocacyLab({ technical }: { technical: boolean }) {
   const exampleTask =
     "For this veteran's VBA rating decision, build the strongest truthful defense packet, audit the decision against the record, address unfavorable evidence, and stop before final export.";
   const plan = useMemo(() => planEvidenceTask(exampleTask), []);
+  const [packetStyleId, setPacketStyleId] = useState<"aj_visual_defense" | "aj_concise_filing">("aj_visual_defense");
+  const packetStyle = AJ_PACKET_STYLES.find((style) => style.id === packetStyleId) ?? AJ_PACKET_STYLES[0];
 
   return (
     <>
@@ -952,6 +955,64 @@ function VeteranAdvocacyLab({ technical }: { technical: boolean }) {
           missing support, develop source-backed rebuttals, and iterate the packet until QA passes.
           The factual record still controls what Elias may say.
         </p>
+      </div>
+
+      <div className="packet-style-panel">
+        <div className="packet-style-head">
+          <div>
+            <span className="eyebrow">PACKET OUTPUT STANDARD</span>
+            <h2>Make the finished packet look and read like our established evidence packets.</h2>
+            <p>
+              Elias should not output a generic AI memo. It should produce a reviewer-ready visual
+              packet with the same source-first architecture, point-by-point rebuttal logic,
+              selected-source exhibits, and filing-ready presentation we already use.
+            </p>
+          </div>
+          <label>Packet style
+            <select value={packetStyleId} onChange={(e) => setPacketStyleId(e.target.value as "aj_visual_defense" | "aj_concise_filing")}>
+              {AJ_PACKET_STYLES.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div className="packet-style-description">{packetStyle.description}</div>
+
+        <div className="packet-section-grid">
+          {packetStyle.sections.map((section, index) => (
+            <div key={section.id}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <strong>{section.title}</strong>
+                <p>{section.purpose}</p>
+                <small>{section.required ? "CORE SECTION" : "WHEN USEFUL"}{section.pageTarget ? " · target " + section.pageTarget + " page(s)" : ""}</small>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="two-col packet-patterns">
+        <div className="visual-panel">
+          <div className="panel-kicker">POINT-BY-POINT REBUTTAL BLOCK</div>
+          <div className="rebuttal-stack">
+            {AJ_REBUTTAL_BLOCK_TEMPLATE.order.map((item, index) => (
+              <div key={item}><span>{index + 1}</span><strong>{item}</strong></div>
+            ))}
+          </div>
+          <p className="caption">
+            This is the same basic logic our strongest rebuttal packets use: start with the adverse
+            finding, show what was omitted, prove the contrary or qualifying evidence, and end with
+            a concrete reviewer question or requested resolution.
+          </p>
+        </div>
+        <div className="visual-panel">
+          <div className="panel-kicker">PRESENTATION RULES</div>
+          <div className="packet-rules">
+            {AJ_PACKET_PRESENTATION_RULES.slice(0, 9).map((rule) => (
+              <div key={rule}><span>✓</span><p>{rule}</p></div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="advocacy-principle">
