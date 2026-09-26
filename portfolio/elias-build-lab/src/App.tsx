@@ -5,6 +5,7 @@ import { RETRIEVAL_BENCHMARK, RETRIEVAL_DOCS, type Difficulty, type QueryType, t
 import { analyzeDataset, buildCandidateExpansion } from "./datasetQuality";
 import { CLASSIFIER_DATASET, type ClassLabel, type DataSplit } from "./classifierDataset";
 import { analyzeClassifierDataset, classifierDatasetAssertions } from "./classifierQuality";
+import { TOOL_REGISTRY, chooseModelForTask, modelLabel, planEvidenceTask, type ModelTier } from "./orchestration";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
@@ -13,6 +14,7 @@ type ViewId =
   | "data"
   | "dataset"
   | "classifier_dataset"
+  | "orchestration"
   | "nlp"
   | "ml"
   | "evaluation"
@@ -35,6 +37,7 @@ const LESSONS: Lesson[] = [
   { id: "data", label: "Evidence Cloud", short: "Data engineering + provenance" },
   { id: "dataset", label: "Dataset Lab", short: "Retrieval coverage + quality" },
   { id: "classifier_dataset", label: "Classifier Dataset", short: "300 labeled examples + splits" },
+  { id: "orchestration", label: "Agent Orchestration", short: "Model router + tools + planner" },
   { id: "nlp", label: "NeuroEval: NLP", short: "Signals + TF-IDF" },
   { id: "ml", label: "NeuroEval: ML", short: "Labels + classifier" },
   { id: "evaluation", label: "Model Evaluation", short: "Metrics + errors" },
@@ -70,6 +73,8 @@ const ledgerRows: Array<[string, Status, string, Status, string]> = [
   ["Logistic regression", "Lab", "Cross-validation + metrics", "Lab", "Learning/evaluation tool"],
   ["Sentence embeddings", "Lab", "Real browser model wired; benchmark expanding", "Planned", "MiniLM comparison runs locally in Build Lab"],
   ["Semantic retrieval", "Lab", "Side-by-side TF-IDF comparison implemented", "Candidate", "Must beat fixed retrieval baseline before Elias adoption"],
+  ["Model Router + Tool Registry", "Lab", "Deterministic planner prototype implemented", "Candidate", "Needs production integration + regression tests"],
+  ["Agent Planner", "Lab", "Interactive task decomposition prototype", "Candidate", "Approval gates preserved before write/export actions"],
   ["PyTorch classifier", "Planned", "Not implemented", "Planned", "Deep-learning learning track"],
   ["EvidencePipe quality checks", "Lab", "Unit tests in branch", "Candidate", "Promote only non-mutating checks"],
 ];
@@ -193,6 +198,7 @@ function App() {
           {view === "data" && <DataLesson technical={technical} />}
           {view === "dataset" && <DatasetLab technical={technical} />}
           {view === "classifier_dataset" && <ClassifierDatasetLab technical={technical} />}
+          {view === "orchestration" && <OrchestrationLab technical={technical} />}
           {view === "nlp" && <NlpLesson technical={technical} />}
           {view === "ml" && <MlLesson technical={technical} />}
           {view === "evaluation" && <EvaluationLesson technical={technical} />}
@@ -748,6 +754,174 @@ function ClassifierDatasetLab({ technical }: { technical: boolean }) {
       <WhyBox
         why="This gives logistic regression and the future PyTorch model the same clean comparison dataset. Neither model gets credit for memorizing a paraphrase that leaked into the test set."
         skills={["Classification datasets", "Grouped splitting", "Leakage prevention", "Label balance", "Failure-mode analysis", "Benchmark design"]}
+      />
+    </>
+  );
+}
+
+function OrchestrationLab({ technical }: { technical: boolean }) {
+  const [task, setTask] = useState(
+    "Build an evidence packet that identifies the strongest support, contradictions, chronology, and source trace.",
+  );
+  const [plan, setPlan] = useState(() => planEvidenceTask(task));
+  const [modelExample, setModelExample] = useState("Explain conflicting evidence and draft a grounded summary.");
+
+  const routedModel = chooseModelForTask(modelExample);
+
+  const runPlanner = () => {
+    setPlan(planEvidenceTask(task));
+  };
+
+  const modelDescriptions: Record<ModelTier, string> = {
+    deterministic:
+      "Use ordinary code for exact, auditable operations such as dates, quotes, source links, and packet assembly.",
+    local_model:
+      "Use a smaller specialized model when semantic matching or narrow classification is enough.",
+    frontier_llm:
+      "Use the strongest general model only when the task genuinely needs synthesis, comparison, or complex language reasoning.",
+  };
+
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">AGENT ORCHESTRATION LAB</span>
+        <h1>Give each problem to the cheapest tool that can solve it reliably.</h1>
+        <p>
+          Elias does not need one giant model to perform every operation. The router selects
+          deterministic code, a specialized local model, or a frontier LLM; the planner then
+          chooses evidence tools and preserves approval gates before consequential actions.
+        </p>
+      </div>
+
+      <div className="orchestration-map">
+        <div className="system-card production">
+          <span className="badge adopted">ELIAS REQUEST</span>
+          <h3>User goal</h3>
+          <p>Natural language request enters one orchestration layer.</p>
+        </div>
+        <div className="orchestration-arrow">→</div>
+        <div className="system-card lab">
+          <span className="badge lab">ROUTER</span>
+          <h3>Choose intelligence</h3>
+          <p>Deterministic code · local model · frontier LLM</p>
+        </div>
+        <div className="orchestration-arrow">→</div>
+        <div className="system-card lab">
+          <span className="badge lab">PLANNER</span>
+          <h3>Choose tools</h3>
+          <p>Search → compare → trace → draft → verify → approve</p>
+        </div>
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">MODEL ROUTER — TRY IT</div>
+          <label>Task description</label>
+          <input
+            className="text-input"
+            value={modelExample}
+            onChange={(e) => setModelExample(e.target.value)}
+          />
+          <div className="router-result">
+            <span>Selected route</span>
+            <strong>{modelLabel(routedModel)}</strong>
+            <p>{modelDescriptions[routedModel]}</p>
+          </div>
+          <div className="router-examples">
+            <button onClick={() => setModelExample("Find the exact phrase and page number for this quote.")}>
+              Exact quote → code
+            </button>
+            <button onClick={() => setModelExample("Find paraphrases and semantically related evidence.")}>
+              Paraphrase → local model
+            </button>
+            <button onClick={() => setModelExample("Compare conflicting evidence and explain what it means.")}>
+              Synthesis → frontier model
+            </button>
+          </div>
+        </div>
+
+        <CodePanel
+          code={'if (exact || date || quote)\n  use("deterministic");\nelse if (semantic_match)\n  use("local_model");\nelse\n  use("frontier_llm");'}
+          notes={[
+            "Routing keeps simple operations cheap and auditable.",
+            "A frontier model is reserved for work that benefits from broad reasoning.",
+            technical
+              ? "In production, routing decisions should be benchmarked by task class, latency, cost, failure rate, and provenance requirements rather than keyword rules alone."
+              : "This prototype uses simple rules so we can see the architecture clearly before adding learned routing.",
+          ]}
+        />
+      </div>
+
+      <div className="tool-registry">
+        <div className="panel-kicker">TOOL REGISTRY</div>
+        <div className="tool-grid">
+          {TOOL_REGISTRY.map((tool) => (
+            <div key={tool.id}>
+              <div className="tool-head">
+                <strong>{tool.label}</strong>
+                <span className={"model-pill " + tool.model}>{modelLabel(tool.model)}</span>
+              </div>
+              <p>{tool.purpose}</p>
+              <small>{tool.preservesProvenance ? "✓ provenance-preserving" : "△ derived reasoning — reattach source trace"}</small>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="try-box">
+        <div className="panel-kicker">AGENT PLANNER — TRY IT</div>
+        <textarea
+          className="planner-input"
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+          rows={4}
+        />
+        <button className="run-button" onClick={runPlanner}>Build plan</button>
+      </div>
+
+      <div className="plan-flow">
+        {plan.map((item) => (
+          <div key={item.order} className="plan-step">
+            <span className="plan-order">{item.order}</span>
+            <div className="plan-main">
+              <div className="plan-title-row">
+                <strong>{item.tool.label}</strong>
+                <span className={"model-pill " + item.tool.model}>{modelLabel(item.tool.model)}</span>
+                {item.requiresApproval && <span className="approval-pill">HUMAN APPROVAL</span>}
+              </div>
+              <p>{item.reason}</p>
+              <code>{item.tool.id}</code>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">WHY THE APPROVAL GATE MATTERS</div>
+          <div className="approval-flow">
+            <span>AI proposes</span><b>→</b><span>sources verified</span><b>→</b><span>user reviews</span><b>→</b><span>write / export</span>
+          </div>
+          <p>
+            The planner can prepare a packet or draft, but the user remains the decision point
+            before Elias performs a consequential write/export action.
+          </p>
+        </div>
+        <CodePanel
+          code={'plan = planner(request)\n\nfor step in plan:\n  result = tool(step)\n  if step.requiresApproval:\n    await human_approval(result)'}
+          notes={[
+            "The planner decides sequence, not truth.",
+            "Tool outputs stay tied to provenance wherever possible.",
+            technical
+              ? "A later production version should log plan state, tool inputs/outputs, retries, and approval decisions so agent behavior can be audited."
+              : "If Elias takes several steps for you, we should still be able to see what it did and why.",
+          ]}
+        />
+      </div>
+
+      <WhyBox
+        why="This closes an important practical gap with general AI agents: Elias can become capable of multi-step work without giving up evidence traceability or turning every operation into an expensive LLM call."
+        skills={["Agent architecture", "Model routing", "Tool calling", "Planning", "Human-in-the-loop", "AI orchestration"]}
       />
     </>
   );
