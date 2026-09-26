@@ -71,3 +71,32 @@ python ml_experiment.py
 See [AI_ML_LEARNING_TRACK.md](AI_ML_LEARNING_TRACK.md) for the concepts, limitations, and planned
 embedding/deep-learning stages. The current benchmark is small, so its metrics are demonstration
 results rather than production-performance claims.
+
+
+## Visual AI/ML Lab
+
+The Streamlit dashboard now works as a guided visual lab rather than only a scoring form. Each step
+pairs a plain-English visual with the code that produces it, then explains why the concept matters.
+
+Current walkthrough:
+
+1. benchmark cases and labels;
+2. rule-based text signals;
+3. TF-IDF feature engineering;
+4. logistic-regression training and prediction probabilities;
+5. stratified cross-validation;
+6. accuracy, precision, recall, F1, and confusion matrices;
+7. held-out error analysis;
+8. TF-IDF/cosine-similarity retrieval;
+9. a portfolio learning summary and explicit next stages.
+
+Run it with:
+
+```bash
+pip install -e .
+pip install -r requirements-dashboard.txt
+streamlit run dashboard.py
+```
+
+The dashboard deliberately distinguishes what is implemented today from future work. Sentence
+embeddings and PyTorch deep learning are shown as next stages, not as completed capabilities.
