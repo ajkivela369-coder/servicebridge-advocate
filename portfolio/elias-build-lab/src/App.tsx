@@ -6,6 +6,7 @@ import { analyzeDataset, buildCandidateExpansion } from "./datasetQuality";
 import { CLASSIFIER_DATASET, type ClassLabel, type DataSplit } from "./classifierDataset";
 import { analyzeClassifierDataset, classifierDatasetAssertions } from "./classifierQuality";
 import { TOOL_REGISTRY, chooseModelForTask, modelLabel, planEvidenceTask, type ModelTier } from "./orchestration";
+import { runPlannerBenchmark, summarizePlannerBenchmark, type PlannerBenchmarkCategory } from "./plannerBenchmark";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
@@ -15,6 +16,7 @@ type ViewId =
   | "dataset"
   | "classifier_dataset"
   | "orchestration"
+  | "planner_benchmark"
   | "nlp"
   | "ml"
   | "evaluation"
@@ -38,6 +40,7 @@ const LESSONS: Lesson[] = [
   { id: "dataset", label: "Dataset Lab", short: "Retrieval coverage + quality" },
   { id: "classifier_dataset", label: "Classifier Dataset", short: "300 labeled examples + splits" },
   { id: "orchestration", label: "Agent Orchestration", short: "Model router + tools + planner" },
+  { id: "planner_benchmark", label: "Planner Benchmark", short: "40 tasks + routing metrics" },
   { id: "nlp", label: "NeuroEval: NLP", short: "Signals + TF-IDF" },
   { id: "ml", label: "NeuroEval: ML", short: "Labels + classifier" },
   { id: "evaluation", label: "Model Evaluation", short: "Metrics + errors" },
@@ -75,6 +78,7 @@ const ledgerRows: Array<[string, Status, string, Status, string]> = [
   ["Semantic retrieval", "Lab", "Side-by-side TF-IDF comparison implemented", "Candidate", "Must beat fixed retrieval baseline before Elias adoption"],
   ["Model Router + Tool Registry", "Lab", "Deterministic planner prototype implemented", "Candidate", "Needs production integration + regression tests"],
   ["Agent Planner", "Lab", "Interactive task decomposition prototype", "Candidate", "Approval gates preserved before write/export actions"],
+  ["Planner Benchmark", "Lab", "40-task routing benchmark implemented", "Candidate", "Measures model route, tools, order, approvals, provenance, stop behavior"],
   ["PyTorch classifier", "Planned", "Not implemented", "Planned", "Deep-learning learning track"],
   ["EvidencePipe quality checks", "Lab", "Unit tests in branch", "Candidate", "Promote only non-mutating checks"],
 ];
@@ -199,6 +203,7 @@ function App() {
           {view === "dataset" && <DatasetLab technical={technical} />}
           {view === "classifier_dataset" && <ClassifierDatasetLab technical={technical} />}
           {view === "orchestration" && <OrchestrationLab technical={technical} />}
+          {view === "planner_benchmark" && <PlannerBenchmarkLab technical={technical} />}
           {view === "nlp" && <NlpLesson technical={technical} />}
           {view === "ml" && <MlLesson technical={technical} />}
           {view === "evaluation" && <EvaluationLesson technical={technical} />}
@@ -922,6 +927,192 @@ function OrchestrationLab({ technical }: { technical: boolean }) {
       <WhyBox
         why="This closes an important practical gap with general AI agents: Elias can become capable of multi-step work without giving up evidence traceability or turning every operation into an expensive LLM call."
         skills={["Agent architecture", "Model routing", "Tool calling", "Planning", "Human-in-the-loop", "AI orchestration"]}
+      />
+    </>
+  );
+}
+
+function PlannerBenchmarkLab({ technical }: { technical: boolean }) {
+  const rows = useMemo(() => runPlannerBenchmark(), []);
+  const metrics = useMemo(() => summarizePlannerBenchmark(rows), [rows]);
+  const [category, setCategory] = useState<"all" | PlannerBenchmarkCategory>("all");
+  const [show, setShow] = useState<"all" | "pass" | "miss">("all");
+
+  const categories = useMemo(
+    () => [...new Set(rows.map((row) => row.category))] as PlannerBenchmarkCategory[],
+    [rows],
+  );
+
+  const filtered = useMemo(
+    () =>
+      rows.filter((row) => {
+        const categoryMatch = category === "all" || row.category === category;
+        const isPass = row.overallScore >= 0.9;
+        const statusMatch =
+          show === "all" || (show === "pass" ? isPass : !isPass);
+        return categoryMatch && statusMatch;
+      }),
+    [rows, category, show],
+  );
+
+  const pct = (value: number) => (value * 100).toFixed(1) + "%";
+
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">AGENT PLANNER BENCHMARK</span>
+        <h1>Measure whether Elias chooses the right intelligence and tools.</h1>
+        <p>
+          Forty fixed tasks define the expected model route, tool sequence, approval gates,
+          provenance behavior, and stop behavior before the planner runs. That gives us a baseline
+          we can improve instead of judging orchestration by vibes.
+        </p>
+      </div>
+
+      <div className="planner-score-grid">
+        <div><small>Cases</small><b>{metrics.caseCount}</b><span>fixed benchmark tasks</span></div>
+        <div><small>Overall</small><b>{pct(metrics.meanOverallScore)}</b><span>weighted baseline score</span></div>
+        <div><small>Model route</small><b>{pct(metrics.modelRouteAccuracy)}</b><span>correct intelligence tier</span></div>
+        <div><small>Tool F1</small><b>{pct(metrics.meanToolF1)}</b><span>right tools without extras</span></div>
+        <div><small>Order score</small><b>{pct(metrics.meanOrderScore)}</b><span>expected steps in order</span></div>
+        <div><small>Exact sequence</small><b>{pct(metrics.exactSequenceAccuracy)}</b><span>perfect tool plan</span></div>
+        <div><small>Approval gates</small><b>{pct(metrics.approvalGateAccuracy)}</b><span>correct human checkpoints</span></div>
+        <div><small>Stop behavior</small><b>{pct(metrics.stopAccuracy)}</b><span>halts when it should</span></div>
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">WHAT WE SCORE</div>
+          <div className="metric-explain planner-metric-explain">
+            <div><b>Route</b><span>Did the task go to deterministic code, a local model, or a frontier LLM?</span></div>
+            <div><b>Tool F1</b><span>Did the planner choose the needed tools without piling on unnecessary ones?</span></div>
+            <div><b>Order</b><span>Did evidence retrieval, reasoning, tracing, QA, and approval happen in the intended order?</span></div>
+            <div><b>Provenance</b><span>If reasoning created derived prose, did the plan reattach Claim → Source Trace?</span></div>
+            <div><b>Stop</b><span>Did Elias refuse to fabricate when records, verified quotes, or reliable dates were missing?</span></div>
+          </div>
+        </div>
+        <div className="visual-panel">
+          <div className="panel-kicker">CURRENT DIAGNOSTIC SIGNALS</div>
+          <div className="quality-checks">
+            <div className={metrics.meanUnnecessaryToolRate <= 0.1 ? "check-pass" : "check-warn"}>
+              <b>{pct(metrics.meanUnnecessaryToolRate)}</b>
+              <span>mean unnecessary-tool rate; lower is better</span>
+            </div>
+            <div className={metrics.provenanceAccuracy >= 0.9 ? "check-pass" : "check-warn"}>
+              <b>{pct(metrics.provenanceAccuracy)}</b>
+              <span>plans preserving required source trace</span>
+            </div>
+            <div className={metrics.approvalGateAccuracy >= 0.95 ? "check-pass" : "check-warn"}>
+              <b>{pct(metrics.approvalGateAccuracy)}</b>
+              <span>correct approval-gate behavior</span>
+            </div>
+            <div className={metrics.stopAccuracy >= 0.9 ? "check-pass" : "check-warn"}>
+              <b>{pct(metrics.stopAccuracy)}</b>
+              <span>correct stop / do-not-fabricate behavior</span>
+            </div>
+          </div>
+          <p className="caption">
+            A low score is useful here: it identifies exactly where the simple keyword planner
+            needs better intent recognition, failure handling, or routing logic.
+          </p>
+        </div>
+      </div>
+
+      <div className="filter-bar">
+        <label>Category
+          <select value={category} onChange={(e) => setCategory(e.target.value as "all" | PlannerBenchmarkCategory)}>
+            <option value="all">All categories</option>
+            {categories.map((value) => (
+              <option key={value} value={value}>{value.replaceAll("_", " ")}</option>
+            ))}
+          </select>
+        </label>
+        <label>Result
+          <select value={show} onChange={(e) => setShow(e.target.value as "all" | "pass" | "miss")}>
+            <option value="all">All cases</option>
+            <option value="pass">Strong passes ≥90%</option>
+            <option value="miss">Needs improvement</option>
+          </select>
+        </label>
+        <div className="filter-count">{filtered.length} / {rows.length} cases</div>
+      </div>
+
+      <div className="planner-case-list">
+        {filtered.map((row) => (
+          <div key={row.id} className="planner-case">
+            <div className="planner-case-head">
+              <div>
+                <span className="eyebrow">{row.id} · {row.category.replaceAll("_", " ")}</span>
+                <h3>{row.task}</h3>
+              </div>
+              <span className={row.overallScore >= 0.9 ? "case-score good" : row.overallScore >= 0.7 ? "case-score review" : "case-score miss"}>
+                {pct(row.overallScore)}
+              </span>
+            </div>
+
+            <p className="caption">{row.note}</p>
+
+            <div className="planner-compare">
+              <div>
+                <strong>Expected</strong>
+                <span>Model: {modelLabel(row.expectedModel)}</span>
+                <code>{row.shouldStop ? "STOP / REQUEST SOURCE OR CORRECTION" : row.expectedTools.join(" → ")}</code>
+              </div>
+              <div>
+                <strong>Actual baseline</strong>
+                <span className={row.modelCorrect ? "metric-good" : "metric-review"}>
+                  Model: {modelLabel(row.actualModel)}
+                </span>
+                <code>{row.actualTools.length ? row.actualTools.join(" → ") : "STOP"}</code>
+              </div>
+            </div>
+
+            <div className="case-metrics">
+              <span className={row.modelCorrect ? "good" : "miss"}>route {row.modelCorrect ? "✓" : "×"}</span>
+              <span className={row.toolF1 >= 0.9 ? "good" : "review"}>tool F1 {pct(row.toolF1)}</span>
+              <span className={row.orderScore >= 0.9 ? "good" : "review"}>order {pct(row.orderScore)}</span>
+              <span className={row.approvalCorrect ? "good" : "miss"}>approval {row.approvalCorrect ? "✓" : "×"}</span>
+              <span className={row.provenancePreserved ? "good" : "miss"}>trace {row.provenancePreserved ? "✓" : "×"}</span>
+              <span className={row.stopCorrect ? "good" : "miss"}>stop {row.stopCorrect ? "✓" : "×"}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="two-col planner-explain">
+        <div className="visual-panel">
+          <div className="panel-kicker">BENCHMARK CATEGORIES</div>
+          <div className="category-grid">
+            {categories.map((value) => {
+              const categoryRows = rows.filter((row) => row.category === value);
+              const score =
+                categoryRows.reduce((sum, row) => sum + row.overallScore, 0) /
+                categoryRows.length;
+              return (
+                <div key={value}>
+                  <span>{value.replaceAll("_", " ")}</span>
+                  <b>{pct(score)}</b>
+                  <small>{categoryRows.length} tasks</small>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <CodePanel
+          code={'expected = human_defined_plan(task)\nactual = planner(task)\n\nscore({\n  model_route,\n  tool_precision_recall,\n  sequence_order,\n  approval_gates,\n  provenance,\n  stop_behavior\n})'}
+          notes={[
+            "The expected answer is defined before the planner is scored.",
+            "Failure-handling cases intentionally expect no tool execution when the request asks Elias to invent or erase evidence.",
+            technical
+              ? "The current benchmark combines exact-match signals with softer tool-set F1 and longest-common-subsequence order scoring so partial improvement is measurable."
+              : "We can improve one weakness at a time and immediately see whether the change actually helps.",
+          ]}
+        />
+      </div>
+
+      <WhyBox
+        why="This turns agent behavior into an engineering problem we can measure. The next planner version has to beat this baseline without weakening provenance, approval gates, or stop behavior."
+        skills={["Agent evaluation", "Routing benchmarks", "Tool selection", "Sequence evaluation", "Safety stops", "Regression testing"]}
       />
     </>
   );
