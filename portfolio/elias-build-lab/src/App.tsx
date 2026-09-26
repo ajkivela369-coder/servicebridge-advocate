@@ -8,6 +8,7 @@ import { analyzeClassifierDataset, classifierDatasetAssertions } from "./classif
 import { TOOL_REGISTRY, chooseModelForTask, modelLabel, planEvidenceTask, type ModelTier } from "./orchestration";
 import { runPlannerBenchmark, summarizePlannerBenchmark, type PlannerBenchmarkCategory } from "./plannerBenchmark";
 import { AJ_PACKET_PRESENTATION_RULES, AJ_PACKET_STYLES, AJ_REBUTTAL_BLOCK_TEMPLATE } from "./veteranPacketTemplate";
+import { CORPUS_PIPELINE, CORPUS_POLICIES, PRIVATE_REFERENCE_SOURCES } from "./corpusPolicy";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
@@ -16,6 +17,7 @@ type ViewId =
   | "data"
   | "dataset"
   | "classifier_dataset"
+  | "corpus"
   | "orchestration"
   | "veteran_advocacy"
   | "planner_benchmark"
@@ -41,6 +43,7 @@ const LESSONS: Lesson[] = [
   { id: "data", label: "Evidence Cloud", short: "Data engineering + provenance" },
   { id: "dataset", label: "Dataset Lab", short: "Retrieval coverage + quality" },
   { id: "classifier_dataset", label: "Classifier Dataset", short: "300 labeled examples + splits" },
+  { id: "corpus", label: "Corpus Governance", short: "Private reference → public-safe tests" },
   { id: "orchestration", label: "Agent Orchestration", short: "Model router + tools + planner" },
   { id: "veteran_advocacy", label: "Veteran Advocacy", short: "Defense packets + decision audit" },
   { id: "planner_benchmark", label: "Planner Benchmark", short: "45 tasks + routing metrics" },
@@ -206,6 +209,7 @@ function App() {
           {view === "data" && <DataLesson technical={technical} />}
           {view === "dataset" && <DatasetLab technical={technical} />}
           {view === "classifier_dataset" && <ClassifierDatasetLab technical={technical} />}
+          {view === "corpus" && <CorpusGovernanceLab technical={technical} />}
           {view === "orchestration" && <OrchestrationLab technical={technical} />}
           {view === "veteran_advocacy" && <VeteranAdvocacyLab technical={technical} />}
           {view === "planner_benchmark" && <PlannerBenchmarkLab technical={technical} />}
@@ -764,6 +768,85 @@ function ClassifierDatasetLab({ technical }: { technical: boolean }) {
       <WhyBox
         why="This gives logistic regression and the future PyTorch model the same clean comparison dataset. Neither model gets credit for memorizing a paraphrase that leaked into the test set."
         skills={["Classification datasets", "Grouped splitting", "Leakage prevention", "Label balance", "Failure-mode analysis", "Benchmark design"]}
+      />
+    </>
+  );
+}
+
+function CorpusGovernanceLab({ technical }: { technical: boolean }) {
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">CORPUS GOVERNANCE</span>
+        <h1>Use the real work to teach Elias — without putting private records in the public repo.</h1>
+        <p>
+          Prior packets, chats, connected Drive files, and current uploads can inform Elias's
+          packet architecture, benchmarks, failure cases, and visual patterns. Private source
+          content stays private; public Build Lab fixtures are synthetic or carefully de-identified.
+        </p>
+      </div>
+
+      <div className="corpus-tier-grid">
+        {CORPUS_POLICIES.map((policy) => (
+          <div key={policy.tier}>
+            <span className="eyebrow">{policy.tier.replaceAll("_", " ")}</span>
+            <div className="corpus-flags">
+              <span>{policy.mayContainPrivateData ? "private data possible" : "public-safe data"}</span>
+              <span>{policy.mayEnterPublicRepo ? "may enter public repo" : "never commit raw source"}</span>
+            </div>
+            <p>{policy.notes}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">PRIVATE REFERENCE SOURCES</div>
+          <div className="corpus-source-list">
+            {PRIVATE_REFERENCE_SOURCES.map((source) => (
+              <div key={source.sourceClass}>
+                <strong>{source.sourceClass.replaceAll("_", " ")}</strong>
+                <p>{source.rule}</p>
+                <small>{source.uses.map((use) => use.replaceAll("_", " ")).join(" · ")}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+        <CodePanel
+          code={'private packet/chat/Drive file\n        ↓\nextract reusable pattern\n        ↓\nremove identifiers + private facts\n        ↓\nreview labels / provenance\n        ↓\nsynthetic or de-identified case\n        ↓\nbenchmark + CI'}
+          notes={[
+            "The public benchmark learns from patterns, not from exposed medical records or identifiers.",
+            "Private sources can still be used to discover realistic edge cases, packet structures, and failure modes.",
+            technical
+              ? "This separates data lineage from code distribution: the derivation process is documented while raw source bytes remain outside Git history."
+              : "We get the realism of our actual work without publishing the private case itself.",
+          ]}
+        />
+      </div>
+
+      <div className="corpus-pipeline">
+        {CORPUS_PIPELINE.map((step, index) => (
+          <div key={step}>
+            <span>{index + 1}</span>
+            <strong>{step}</strong>
+          </div>
+        ))}
+      </div>
+
+      <div className="why-card">
+        <div className="panel-kicker">WHAT THIS MEANS FOR OUR CURRENT CORPUS</div>
+        <p>
+          The packet library can teach Elias how strong packets are structured, how evidence is
+          separated by evidentiary function, how visual exhibits are used, where prior versions
+          failed, and what kinds of reviewer questions matter. Prior chats can supply corrections
+          and edge cases. Connected Drive can be searched for relevant packet families and source
+          sets when needed. None of that requires committing the raw private records into Build Lab.
+        </p>
+      </div>
+
+      <WhyBox
+        why="Real-world packet work gives us much better training and evaluation cases than generic examples, while a strict private-reference boundary keeps the public project safe to share."
+        skills={["Dataset governance", "De-identification", "Evaluation design", "Private/public separation", "Data lineage"]}
       />
     </>
   );
