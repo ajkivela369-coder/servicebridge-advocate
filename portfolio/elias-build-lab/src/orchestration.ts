@@ -173,6 +173,28 @@ export function planEvidenceTask(task: string): PlanStep[] {
   const plan: PlanStep[] = [];
   let order = 1;
 
+  const asksToFabricateOrHideEvidence =
+    q.includes("invent reasonable support") ||
+    q.includes("invent evidence") ||
+    q.includes("delete the contradictory evidence") ||
+    q.includes("delete the unfavorable") ||
+    q.includes("hide unfavorable") ||
+    q.includes("ignore adverse evidence") ||
+    q.includes("stronger medical conclusion than the evidence supports") ||
+    q.includes("guessing the dates") ||
+    q.includes("guess the dates") ||
+    q.includes("even if you cannot verify it") ||
+    q.includes("exact page and quote anyway");
+
+  const explicitlyMissingSource =
+    q.includes("no records loaded") ||
+    q.includes("have not provided the document") ||
+    q.includes("without the source");
+
+  if (asksToFabricateOrHideEvidence || explicitlyMissingSource) {
+    return [];
+  }
+
   const addHybridSearch = () => {
     plan.push(
       step(order++, "evidence.search_lexical", "Start with cheap, transparent exact-term retrieval."),
