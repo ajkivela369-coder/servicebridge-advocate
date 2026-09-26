@@ -42,7 +42,7 @@ const LESSONS: Lesson[] = [
   { id: "classifier_dataset", label: "Classifier Dataset", short: "300 labeled examples + splits" },
   { id: "orchestration", label: "Agent Orchestration", short: "Model router + tools + planner" },
   { id: "veteran_advocacy", label: "Veteran Advocacy", short: "Defense packets + decision audit" },
-  { id: "planner_benchmark", label: "Planner Benchmark", short: "40 tasks + routing metrics" },
+  { id: "planner_benchmark", label: "Planner Benchmark", short: "45 tasks + routing metrics" },
   { id: "nlp", label: "NeuroEval: NLP", short: "Signals + TF-IDF" },
   { id: "ml", label: "NeuroEval: ML", short: "Labels + classifier" },
   { id: "evaluation", label: "Model Evaluation", short: "Metrics + errors" },
@@ -1104,7 +1104,7 @@ function PlannerBenchmarkLab({ technical }: { technical: boolean }) {
         <span className="eyebrow">AGENT PLANNER BENCHMARK</span>
         <h1>Measure whether Elias chooses the right intelligence and tools.</h1>
         <p>
-          Forty fixed tasks define the expected model route, tool sequence, approval gates,
+          Forty-five fixed tasks define the expected model route, tool sequence, approval gates,
           provenance behavior, and stop behavior before the planner runs. That gives us a baseline
           we can improve instead of judging orchestration by vibes.
         </p>
