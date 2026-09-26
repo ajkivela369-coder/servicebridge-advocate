@@ -188,3 +188,28 @@
 .advocacy-boundary-note{margin:18px 0}
 
 @media(max-width:900px){.advocacy-principle,.advocacy-grid{grid-template-columns:1fr}}
+
+.packet-style-panel{border:1px solid var(--line);border-radius:16px;background:#0f161e;padding:20px;margin:20px 0}
+.packet-style-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.packet-style-head h2{margin:7px 0 8px;font-size:24px}
+.packet-style-head p{color:#9fb0be;line-height:1.55;max-width:760px}
+.packet-style-head label{display:grid;gap:6px;color:#92a5b7;font-size:10px;text-transform:uppercase;letter-spacing:.06em;min-width:230px}
+.packet-style-head select{background:#0b1117;border:1px solid #334251;color:#eef4f8;padding:10px;border-radius:8px}
+.packet-style-description{border-left:3px solid #46c6b1;padding:10px 12px;margin:12px 0 16px;background:#0d151d;color:#b9c8d4;line-height:1.5}
+.packet-section-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.packet-section-grid>div{display:grid;grid-template-columns:34px 1fr;gap:10px;border:1px solid #293846;border-radius:10px;background:#0d141b;padding:12px}
+.packet-section-grid>div>span{width:28px;height:28px;display:grid;place-items:center;border:1px solid #31554f;border-radius:50%;color:var(--teal);font-size:10px}
+.packet-section-grid strong{color:#dce7ee;font-size:12px}
+.packet-section-grid p{color:#9fb0be;font-size:11px;line-height:1.45;margin:5px 0}
+.packet-section-grid small{color:#718597;font-size:9px}
+.packet-patterns{margin:18px 0}
+.rebuttal-stack{display:grid;gap:8px;margin-top:14px}
+.rebuttal-stack>div{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:center;border:1px solid #293846;border-radius:9px;background:#0d141b;padding:10px}
+.rebuttal-stack span{width:22px;height:22px;display:grid;place-items:center;border:1px solid #31554f;border-radius:50%;color:#7bd8c7;font-size:9px}
+.rebuttal-stack strong{font-size:11px;color:#d0dce5}
+.packet-rules{display:grid;gap:8px;margin-top:14px}
+.packet-rules>div{display:grid;grid-template-columns:24px 1fr;gap:8px;border-bottom:1px solid #23313d;padding:7px 0}
+.packet-rules span{color:#6ad8c5;font-weight:700}
+.packet-rules p{margin:0;color:#9fb0be;font-size:11px;line-height:1.45}
+
+@media(max-width:900px){.packet-style-head{flex-direction:column}.packet-style-head label{min-width:0;width:100%}.packet-section-grid{grid-template-columns:1fr}}
