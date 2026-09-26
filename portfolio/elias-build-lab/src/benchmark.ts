@@ -4,13 +4,10 @@ import {
   type RetrievalDoc,
   type RetrievalScore,
 } from "./semantic";
-
-export type BenchmarkCase = {
-  id: string;
-  query: string;
-  relevantIds: string[];
-  note: string;
-};
+import {
+  RETRIEVAL_BENCHMARK,
+  type RetrievalBenchmarkCase,
+} from "./datasets";
 
 export type BenchmarkCaseResult = {
   id: string;
@@ -29,69 +26,6 @@ export type BenchmarkMetrics = {
   recallAt3: number;
   mrr: number;
 };
-
-export const RETRIEVAL_BENCHMARK: BenchmarkCase[] = [
-  {
-    id: "Q01",
-    query: "Which ion channels are responsible for the rising and falling phases of an action potential?",
-    relevantIds: ["N001"],
-    note: "Direct vocabulary overlap with sodium, potassium, and action-potential physiology.",
-  },
-  {
-    id: "Q02",
-    query: "What membrane proteins make a neuron spike and then return toward resting voltage?",
-    relevantIds: ["N001"],
-    note: "Semantic paraphrase with less exact vocabulary overlap.",
-  },
-  {
-    id: "Q03",
-    query: "How does NMDA receptor activity participate in long-term changes at synapses?",
-    relevantIds: ["N003"],
-    note: "Direct receptor/plasticity query.",
-  },
-  {
-    id: "Q04",
-    query: "What mechanism links glutamate, depolarization, calcium entry, and synaptic strengthening?",
-    relevantIds: ["N003"],
-    note: "Mechanistic paraphrase that should still retrieve the NMDA passage.",
-  },
-  {
-    id: "Q05",
-    query: "Which brain-resident immune cells respond to inflammatory signals?",
-    relevantIds: ["N005"],
-    note: "Paraphrase of microglial immune function.",
-  },
-  {
-    id: "Q06",
-    query: "What cells act like the nervous system's local immune sentinels?",
-    relevantIds: ["N005"],
-    note: "Low lexical overlap; intended to probe semantic retrieval.",
-  },
-  {
-    id: "Q07",
-    query: "What structure enables saltatory conduction between nodes of Ranvier?",
-    relevantIds: ["N007"],
-    note: "Direct vocabulary overlap with myelin physiology.",
-  },
-  {
-    id: "Q08",
-    query: "What insulation around axons helps electrical signals travel faster?",
-    relevantIds: ["N007"],
-    note: "Semantic paraphrase of myelin and conduction speed.",
-  },
-  {
-    id: "Q09",
-    query: "Which glial cells help regulate extracellular ions and support synaptic metabolism?",
-    relevantIds: ["N009"],
-    note: "Direct astrocyte/homeostasis query.",
-  },
-  {
-    id: "Q10",
-    query: "What support cells help neurons keep the chemical environment around synapses stable?",
-    relevantIds: ["N009"],
-    note: "Semantic paraphrase with reduced exact-term overlap.",
-  },
-];
 
 function scoreRank(
   ranked: RetrievalScore[],
@@ -129,7 +63,7 @@ export function summarizeBenchmark(rows: BenchmarkCaseResult[]): BenchmarkMetric
 
 export function runTfidfBenchmark(
   docs: RetrievalDoc[],
-  cases: BenchmarkCase[] = RETRIEVAL_BENCHMARK,
+  cases: RetrievalBenchmarkCase[] = RETRIEVAL_BENCHMARK,
 ): BenchmarkCaseResult[] {
   return cases.map((benchmarkCase) => {
     const ranked = rankByTfidf(benchmarkCase.query, docs);
@@ -143,7 +77,7 @@ export function runTfidfBenchmark(
 
 export async function runEmbeddingBenchmark(
   docs: RetrievalDoc[],
-  cases: BenchmarkCase[] = RETRIEVAL_BENCHMARK,
+  cases: RetrievalBenchmarkCase[] = RETRIEVAL_BENCHMARK,
 ): Promise<BenchmarkCaseResult[]> {
   const results: BenchmarkCaseResult[] = [];
   for (const benchmarkCase of cases) {
