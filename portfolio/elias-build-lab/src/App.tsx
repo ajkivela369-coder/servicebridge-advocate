@@ -3,6 +3,8 @@ import { rankByEmbedding, rankByTfidf, type RetrievalScore } from "./semantic";
 import { runEmbeddingBenchmark, runTfidfBenchmark, summarizeBenchmark, type BenchmarkCaseResult } from "./benchmark";
 import { RETRIEVAL_BENCHMARK, RETRIEVAL_DOCS, type Difficulty, type QueryType, type Topic } from "./datasets";
 import { analyzeDataset, buildCandidateExpansion } from "./datasetQuality";
+import { CLASSIFIER_DATASET, type ClassLabel, type DataSplit } from "./classifierDataset";
+import { analyzeClassifierDataset, classifierDatasetAssertions } from "./classifierQuality";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
@@ -10,6 +12,7 @@ type ViewId =
   | "architecture"
   | "data"
   | "dataset"
+  | "classifier_dataset"
   | "nlp"
   | "ml"
   | "evaluation"
@@ -30,7 +33,8 @@ const LESSONS: Lesson[] = [
   { id: "overview", label: "Overview", short: "Two-app model" },
   { id: "architecture", label: "System Architecture", short: "Frontend, backend, API, DB" },
   { id: "data", label: "Evidence Cloud", short: "Data engineering + provenance" },
-  { id: "dataset", label: "Dataset Lab", short: "Coverage, quality, expansion" },
+  { id: "dataset", label: "Dataset Lab", short: "Retrieval coverage + quality" },
+  { id: "classifier_dataset", label: "Classifier Dataset", short: "300 labeled examples + splits" },
   { id: "nlp", label: "NeuroEval: NLP", short: "Signals + TF-IDF" },
   { id: "ml", label: "NeuroEval: ML", short: "Labels + classifier" },
   { id: "evaluation", label: "Model Evaluation", short: "Metrics + errors" },
@@ -188,6 +192,7 @@ function App() {
           {view === "architecture" && <Architecture technical={technical} />}
           {view === "data" && <DataLesson technical={technical} />}
           {view === "dataset" && <DatasetLab technical={technical} />}
+          {view === "classifier_dataset" && <ClassifierDatasetLab technical={technical} />}
           {view === "nlp" && <NlpLesson technical={technical} />}
           {view === "ml" && <MlLesson technical={technical} />}
           {view === "evaluation" && <EvaluationLesson technical={technical} />}
@@ -515,6 +520,234 @@ function DatasetLab({ technical }: { technical: boolean }) {
       <WhyBox
         why="Model quality is capped by dataset quality. This lab makes coverage and labeling visible before we compare TF-IDF, embeddings, logistic regression, or neural networks."
         skills={["Dataset engineering", "Benchmark design", "Data validation", "Hard negatives", "Label quality", "Leakage prevention"]}
+      />
+    </>
+  );
+}
+
+function ClassifierDatasetLab({ technical }: { technical: boolean }) {
+  const report = useMemo(
+    () => analyzeClassifierDataset(CLASSIFIER_DATASET),
+    [],
+  );
+  const assertions = useMemo(
+    () => classifierDatasetAssertions(report),
+    [report],
+  );
+  const [label, setLabel] = useState<"all" | ClassLabel>("all");
+  const [split, setSplit] = useState<"all" | DataSplit>("all");
+  const [topic, setTopic] = useState("all");
+
+  const topics = useMemo(
+    () => [...new Set(CLASSIFIER_DATASET.map((row) => row.topic))].sort(),
+    [],
+  );
+
+  const filtered = useMemo(
+    () =>
+      CLASSIFIER_DATASET.filter(
+        (row) =>
+          (label === "all" || row.label === label) &&
+          (split === "all" || row.split === split) &&
+          (topic === "all" || row.topic === topic),
+      ),
+    [label, split, topic],
+  );
+
+  const splitRows: Array<[DataSplit, string]> = [
+    ["train", "Model learns from these examples"],
+    ["validation", "Tune and compare without touching the final test set"],
+    ["test", "Locked holdout for the fairest final comparison"],
+  ];
+
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">CLASSIFICATION DATASET</span>
+        <h1>300 balanced examples, grouped before the models see them.</h1>
+        <p>
+          This synthetic teaching dataset contains 100 PASS, 100 REVIEW, and 100 FAIL examples
+          across 50 concept families. Each family stays entirely in train, validation, or test so
+          near-related variants cannot leak across the evaluation boundary.
+        </p>
+      </div>
+
+      <div className="dataset-summary classifier-summary">
+        <div><small>Examples</small><b>{report.exampleCount}</b><span>balanced classification set</span></div>
+        <div><small>Families</small><b>{report.familyCount}</b><span>grouped to limit leakage</span></div>
+        <div><small>Topics</small><b>{report.topicCount}</b><span>neuroscience coverage</span></div>
+        <div><small>Human-reviewed</small><b>{report.humanReviewedCount}</b><span>currently 0: review queue next</span></div>
+      </div>
+
+      <div className="why-card dataset-warning">
+        <div className="panel-kicker">IMPORTANT DATASET STATUS</div>
+        <p>
+          These are <strong>template-generated synthetic labels</strong>, not a human-validated gold
+          benchmark. They are useful for building the pipeline and testing leakage controls, but we
+          should not treat model scores on this dataset as production-quality evidence of model
+          performance until a reviewed gold subset exists.
+        </p>
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">CLASS BALANCE</div>
+          <div className="class-balance">
+            {(["PASS", "REVIEW", "FAIL"] as ClassLabel[]).map((classLabel) => (
+              <div key={classLabel}>
+                <span>{classLabel}</span>
+                <div><i style={{ width: (report.labelCounts[classLabel] / report.exampleCount) * 100 + "%" }} /></div>
+                <b>{report.labelCounts[classLabel]}</b>
+              </div>
+            ))}
+          </div>
+
+          <div className="panel-kicker dataset-kicker">GROUPED SPLITS</div>
+          <div className="split-grid">
+            {splitRows.map(([splitName, description]) => (
+              <div key={splitName}>
+                <strong>{splitName}</strong>
+                <b>{report.splitCounts[splitName]}</b>
+                <span>{description}</span>
+                <small>
+                  PASS {report.splitLabelCounts[splitName].PASS} · REVIEW {report.splitLabelCounts[splitName].REVIEW} · FAIL {report.splitLabelCounts[splitName].FAIL}
+                </small>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="visual-panel">
+          <div className="panel-kicker">LEAKAGE + QUALITY AUDIT</div>
+          <div className="quality-checks">
+            <div className={report.leakingFamilies.length ? "check-warn" : "check-pass"}>
+              <b>{report.leakingFamilies.length ? "Review" : "Pass"}</b>
+              <span>Concept families stay inside a single data split</span>
+            </div>
+            <div className={report.duplicateTexts.length ? "check-warn" : "check-pass"}>
+              <b>{report.duplicateTexts.length ? "Review" : "Pass"}</b>
+              <span>No exact duplicate texts after normalization</span>
+            </div>
+            <div className={report.familyLabelProblems.length ? "check-warn" : "check-pass"}>
+              <b>{report.familyLabelProblems.length ? "Review" : "Pass"}</b>
+              <span>Every family contains PASS, REVIEW, and FAIL examples</span>
+            </div>
+            <div className={report.missingRationales.length ? "check-warn" : "check-pass"}>
+              <b>{report.missingRationales.length ? "Review" : "Pass"}</b>
+              <span>Every example has a written rationale</span>
+            </div>
+            <div className={assertions.length ? "check-warn" : "check-pass"}>
+              <b>{assertions.length ? "Review" : "Pass"}</b>
+              <span>Expected 300 examples with 100 / 100 / 100 label balance</span>
+            </div>
+          </div>
+          {assertions.length > 0 && (
+            <div className="error-box">
+              {assertions.map((problem) => <div key={problem}>{problem}</div>)}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="pipeline-row classifier-pipeline">
+        {[
+          "50 concept families",
+          "2 variants × 3 labels",
+          "family-grouped split",
+          "180 train",
+          "60 validation",
+          "60 locked test",
+        ].map((step) => <div key={step}>{step}</div>)}
+      </div>
+
+      <div className="filter-bar">
+        <label>Label
+          <select value={label} onChange={(e) => setLabel(e.target.value as "all" | ClassLabel)}>
+            <option value="all">All labels</option>
+            <option value="PASS">PASS</option>
+            <option value="REVIEW">REVIEW</option>
+            <option value="FAIL">FAIL</option>
+          </select>
+        </label>
+        <label>Split
+          <select value={split} onChange={(e) => setSplit(e.target.value as "all" | DataSplit)}>
+            <option value="all">All splits</option>
+            <option value="train">Train</option>
+            <option value="validation">Validation</option>
+            <option value="test">Test</option>
+          </select>
+        </label>
+        <label>Topic
+          <select value={topic} onChange={(e) => setTopic(e.target.value)}>
+            <option value="all">All topics</option>
+            {topics.map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}
+          </select>
+        </label>
+        <div className="filter-count">{filtered.length} / {report.exampleCount} examples</div>
+      </div>
+
+      <div className="table-wrap classifier-table">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Family</th><th>Topic</th><th>Split</th><th>Label</th><th>Text</th><th>Why</th><th>Failure mode</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.slice(0, 80).map((row) => (
+              <tr key={row.id}>
+                <td>{row.id}</td>
+                <td>{row.familyId}</td>
+                <td>{row.topic.replaceAll("_", " ")}</td>
+                <td><span className={"split-tag " + row.split}>{row.split}</span></td>
+                <td><span className={"class-label " + row.label.toLowerCase()}>{row.label}</span></td>
+                <td>{row.text}</td>
+                <td>{row.rationale}</td>
+                <td>{row.failureMode.replaceAll("_", " ")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {filtered.length > 80 && <p className="caption">Showing the first 80 filtered rows to keep the browser view responsive.</p>}
+
+      <div className="two-col classifier-explain">
+        <div className="visual-panel">
+          <div className="panel-kicker">WHY GROUP BY FAMILY?</div>
+          <div className="family-demo">
+            <div>
+              <strong>F012</strong>
+              <span>PASS variant 1</span>
+              <span>PASS variant 2</span>
+              <span>REVIEW variant 1</span>
+              <span>REVIEW variant 2</span>
+              <span>FAIL variant 1</span>
+              <span>FAIL variant 2</span>
+            </div>
+            <b>→</b>
+            <div className="family-destination">ONE SPLIT ONLY</div>
+          </div>
+          <p className="caption">
+            If nearly identical variants land in both train and test, a model can appear to
+            generalize when it is mostly recognizing material it already saw.
+          </p>
+        </div>
+
+        <CodePanel
+          code={'family → split first\n\ntrain families      → fit model\nvalidation families → tune choices\ntest families       → final comparison\n\nnever split one family across sets'}
+          notes={[
+            "We assign the data split at the concept-family level before model training.",
+            "Because every family contains both variants of all three labels, each split remains class-balanced.",
+            technical
+              ? "The current deterministic layout yields 180 train / 60 validation / 60 test examples and keeps each family wholly inside one partition."
+              : "The final test examples come from concept families the model was not allowed to train on.",
+          ]}
+        />
+      </div>
+
+      <WhyBox
+        why="This gives logistic regression and the future PyTorch model the same clean comparison dataset. Neither model gets credit for memorizing a paraphrase that leaked into the test set."
+        skills={["Classification datasets", "Grouped splitting", "Leakage prevention", "Label balance", "Failure-mode analysis", "Benchmark design"]}
       />
     </>
   );
