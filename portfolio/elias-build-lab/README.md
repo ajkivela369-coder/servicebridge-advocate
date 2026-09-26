@@ -119,7 +119,7 @@ the production Elias agent has already adopted autonomous orchestration.
 
 ## Planner benchmark
 
-Build Lab now includes a fixed **40-case agent-planner benchmark** covering:
+Build Lab now includes a fixed **45-case agent-planner benchmark** covering:
 
 - exact lookup / quote / page tasks;
 - semantic retrieval;
@@ -141,3 +141,31 @@ The dashboard scores model-route accuracy, tool precision/recall/F1, sequence or
 accuracy, unnecessary-tool rate, approval gates, provenance preservation, stop behavior, and a
 weighted overall score. This intentionally exposes weaknesses in the current simple keyword planner
 before any smarter routing is promoted into production Elias.
+
+
+## Veteran Advocacy Mode
+
+Build Lab now includes a candidate **Veteran Advocacy Mode** for VBA-facing evidence packets.
+
+The design intentionally gives Elias more freedom **inside** the packet-building workflow:
+- repeatedly search the evidence corpus;
+- build an issue matrix;
+- audit an adverse VBA decision against the cited record;
+- identify favorable evidence, adverse evidence, and evidentiary gaps;
+- verify configured official authority;
+- build a source-backed rebuttal map;
+- create and revise packet drafts;
+- rerun citation, contradiction, completeness, and reviewer-readiness QA until the draft is ready.
+
+The human-approval boundary is moved to the **final export / filing handoff** rather than every
+internal draft step. This lets Elias do meaningful multi-step advocacy work without requiring the
+veteran to micromanage every search and revision.
+
+The advocacy constraint is equally explicit: Elias may argue strongly from the record, but it must
+not fabricate facts, invent quotations, guess missing dates, hide or delete adverse evidence, or
+state unsupported medical conclusions. Adverse evidence should be addressed, contextualized, or
+rebutted when the record supports doing so.
+
+“Help the veteran win” therefore means: produce the strongest truthful, well-organized,
+source-traceable packet supported by the available evidence and verified authority. It is not an
+outcome guarantee.
