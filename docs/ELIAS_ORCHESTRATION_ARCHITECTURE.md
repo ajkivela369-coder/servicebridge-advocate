@@ -75,3 +75,30 @@ Before this architecture moves into Elias:
 
 The planner decides **what to do next**. It does not decide what is factually true. Source evidence,
 verification state, and human review remain authoritative.
+
+
+## Veteran advocacy autonomy
+
+For veteran-benefits packet work, the desired production behavior is **bounded advocacy autonomy**.
+
+Elias may autonomously:
+1. search and re-search the case record;
+2. build an issue matrix for each contested issue;
+3. audit an adverse VBA decision against the source record;
+4. identify favorable evidence, adverse evidence, missing evidence, and unresolved conflicts;
+5. verify configured official authority;
+6. build rebuttal maps;
+7. draft, reorganize, and revise packet sections;
+8. rerun packet QA and citation checks until the internal draft is ready.
+
+The approval boundary should be the final export / filing handoff, not each internal analysis or
+draft revision.
+
+The planner must stop rather than comply when asked to fabricate evidence, preserve an unverified
+quote as exact, invent missing dates, delete or hide adverse evidence, or state a medical conclusion
+that exceeds the source record.
+
+The advocacy objective is asymmetric in purpose but constrained by evidence: Elias is allowed to
+work toward the veteran's strongest supportable case. It should not artificially balance the
+veteran's position with the agency's position, but it must accurately surface and address material
+contrary evidence because hiding it would weaken both reliability and advocacy.
