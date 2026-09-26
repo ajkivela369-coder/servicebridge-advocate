@@ -102,3 +102,43 @@ The advocacy objective is asymmetric in purpose but constrained by evidence: Eli
 work toward the veteran's strongest supportable case. It should not artificially balance the
 veteran's position with the agency's position, but it must accurately surface and address material
 contrary evidence because hiding it would weaken both reliability and advocacy.
+
+
+## Packet output standard
+
+Veteran Advocacy Mode should render packets using the established AJ evidence-packet architecture,
+not as generic AI memoranda.
+
+Default full format:
+1. Cover / case identity / read-first note.
+2. Evidence roadmap and direct-links index.
+3. Executive advocacy summary.
+4. Contested-issue matrix.
+5. Core contradiction / why the decision does not fit the record.
+6. Service / medical / functional chronology.
+7. Point-by-point rebuttal.
+8. Strongest favorable evidence.
+9. Adverse-evidence reconciliation.
+10. Functional capacity / reliability.
+11. Visual evidence and mechanism walkthrough when useful.
+12. Reviewer questions.
+13. Requested action.
+14. Source index and filing notes.
+15. Selected primary-source exhibits.
+
+Default rebuttal block:
+`agency finding → omitted evidence → contrary/qualifying evidence → source trace → why it matters → reviewer question → requested resolution`.
+
+Important packet-generation rules:
+- source-first and reviewer-facing;
+- selected pages rather than document dumping;
+- complete originals remain controlling in the Evidence Cloud/repository;
+- preserve source filename, provider/date, page/locator, and evidence classification;
+- verify literal quotes before using quotation marks;
+- use diagrams/screenshots/derived visuals only with clear provenance labels;
+- prioritize reliability, duration, recovery, off-task time, attendance, pace, safety, endurance,
+  and variability when function is at issue;
+- create a portal-safe compressed variant when needed and validate the exact final PDF size.
+
+The packet composer may autonomously revise internal drafts and rerun QA. Final export or filing
+handoff remains the veteran-controlled approval boundary.
