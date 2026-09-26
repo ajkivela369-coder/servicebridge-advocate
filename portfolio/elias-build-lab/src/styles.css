@@ -168,3 +168,23 @@
 
 @media(max-width:900px){.planner-score-grid{grid-template-columns:repeat(2,1fr)}.planner-compare{grid-template-columns:1fr}}
 @media(max-width:560px){.planner-score-grid{grid-template-columns:1fr}.category-grid{grid-template-columns:1fr}.planner-case-head{flex-direction:column}}
+
+.advocacy-principle{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:22px 0}
+.advocacy-principle>div{border:1px solid var(--line);border-radius:16px;background:#101720;padding:20px}
+.advocacy-principle h3{font-size:20px;margin:14px 0 8px}
+.advocacy-principle p{color:#9fb0be;line-height:1.55}
+.advocacy-liberty{border:1px solid var(--line);border-radius:16px;background:#0f161e;padding:20px;margin:18px 0}
+.advocacy-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+.advocacy-grid>div{border:1px solid #293846;border-radius:11px;background:#0d141b;padding:13px}
+.advocacy-grid strong{color:#dce8ee}
+.advocacy-grid p{color:#9fb0be;font-size:12px;line-height:1.45;margin:7px 0 0}
+.approval-boundary{border:1px solid #5c4d2d;border-radius:16px;background:#201b11;padding:20px;margin:18px 0}
+.approval-boundary p{color:#c8b78f;line-height:1.55}
+.approval-stop{border-color:#7e6435!important;background:#342914!important;color:#f0c978!important;font-weight:700}
+.defense-flow{display:grid;gap:8px;margin-top:14px}
+.defense-flow>div{display:grid;grid-template-columns:32px 1fr;gap:10px;align-items:center;border:1px solid #293846;border-radius:9px;background:#0d141b;padding:10px}
+.defense-flow span{width:24px;height:24px;display:grid;place-items:center;border:1px solid #31554f;border-radius:50%;color:var(--teal);font-size:10px}
+.defense-flow strong{font-size:12px;color:#cbd8e2}
+.advocacy-boundary-note{margin:18px 0}
+
+@media(max-width:900px){.advocacy-principle,.advocacy-grid{grid-template-columns:1fr}}
