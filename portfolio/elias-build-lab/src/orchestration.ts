@@ -9,8 +9,12 @@ export type ToolId =
   | "evidence.verify_quote"
   | "authority.verify"
   | "reason.synthesize"
+  | "veteran.issue_matrix"
+  | "veteran.decision_audit"
+  | "veteran.rebuttal_map"
   | "packet.build"
-  | "packet.qa";
+  | "packet.qa"
+  | "packet.export";
 
 export type ToolDefinition = {
   id: ToolId;
@@ -85,6 +89,27 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
     preservesProvenance: false,
   },
   {
+    id: "veteran.issue_matrix",
+    label: "Veteran issue matrix",
+    purpose: "Map each contested issue to favorable evidence, adverse evidence, missing evidence, and verified authority.",
+    model: "frontier_llm",
+    preservesProvenance: true,
+  },
+  {
+    id: "veteran.decision_audit",
+    label: "VBA decision audit",
+    purpose: "Compare an agency decision with the cited record and flag unsupported, incomplete, or internally inconsistent reasoning for review.",
+    model: "frontier_llm",
+    preservesProvenance: true,
+  },
+  {
+    id: "veteran.rebuttal_map",
+    label: "Rebuttal map",
+    purpose: "Build a source-backed response to adverse findings without hiding contradictory evidence.",
+    model: "frontier_llm",
+    preservesProvenance: true,
+  },
+  {
     id: "packet.build",
     label: "Packet builder",
     purpose: "Assemble approved evidence and derived text into a structured packet.",
@@ -94,8 +119,15 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   {
     id: "packet.qa",
     label: "Packet QA",
-    purpose: "Check citation trace, missing sources, ordering, and export readiness.",
+    purpose: "Check citation trace, missing sources, adverse-evidence treatment, ordering, and export readiness.",
     model: "frontier_llm",
+    preservesProvenance: true,
+  },
+  {
+    id: "packet.export",
+    label: "Packet export / filing handoff",
+    purpose: "Create the final export artifact or filing handoff after the veteran reviews the packet.",
+    model: "deterministic",
     preservesProvenance: true,
   },
 ];
@@ -148,6 +180,33 @@ export function planEvidenceTask(task: string): PlanStep[] {
     );
   };
 
+  if (
+    q.includes("veteran") ||
+    q.includes("vba") ||
+    q.includes("va claim") ||
+    q.includes("hlr") ||
+    q.includes("supplemental claim") ||
+    q.includes("board appeal") ||
+    q.includes("c&p") ||
+    q.includes("rating decision")
+  ) {
+    addHybridSearch();
+    plan.push(
+      step(order++, "veteran.issue_matrix", "Map each contested issue to favorable evidence, adverse evidence, gaps, and verified authority."),
+      step(order++, "veteran.decision_audit", "Audit the agency reasoning against the cited record rather than accepting conclusions at face value."),
+      step(order++, "evidence.find_contradictions", "Surface conflicts and adverse evidence so the packet can address them directly."),
+      step(order++, "evidence.build_timeline", "Build a chronology that preserves uncertain dates and links events to sources."),
+      step(order++, "authority.verify", "Verify configured official authority before relying on it in advocacy."),
+      step(order++, "veteran.rebuttal_map", "Develop the strongest source-backed response to adverse findings while preserving contrary evidence."),
+      step(order++, "reason.synthesize", "Draft veteran-focused advocacy from verified evidence and authority."),
+      step(order++, "evidence.trace_claim", "Attach source and locator trace to important factual propositions."),
+      step(order++, "packet.build", "Build the complete veteran advocacy packet without requiring approval for each internal draft iteration."),
+      step(order++, "packet.qa", "Iterate QA for citations, gaps, adverse evidence, and reviewer readiness before presenting the final draft."),
+      step(order++, "packet.export", "Export or hand off the final packet only after the veteran approves it.", true),
+    );
+    return plan;
+  }
+
   if (q.includes("packet") || q.includes("rebuttal") || q.includes("submission")) {
     addHybridSearch();
     plan.push(
@@ -155,8 +214,9 @@ export function planEvidenceTask(task: string): PlanStep[] {
       step(order++, "evidence.build_timeline", "Organize dated support and preserve uncertain dates."),
       step(order++, "reason.synthesize", "Draft only from the retrieved and reviewed evidence."),
       step(order++, "evidence.trace_claim", "Attach source and locator trace to important generated propositions."),
-      step(order++, "packet.build", "Assemble approved content into a structured packet.", true),
-      step(order++, "packet.qa", "Run final citation and completeness checks before export.", true),
+      step(order++, "packet.build", "Assemble the structured packet and permit iterative internal revisions."),
+      step(order++, "packet.qa", "Run citation, adverse-evidence, completeness, and export-readiness checks."),
+      step(order++, "packet.export", "Export or hand off the final packet only after user approval.", true),
     );
     return plan;
   }
