@@ -28,7 +28,7 @@ This distinction is intentional: a newer model is not promoted into Elias unless
 
 ## Retrieval benchmark
 
-The semantic-retrieval lesson now has a fixed 10-query benchmark with human-defined relevant
+The semantic-retrieval lesson now has a fixed 50-query benchmark with human-defined relevant
 passages. TF-IDF and sentence embeddings are scored against the same documents, queries, and
 relevance labels.
 
@@ -40,3 +40,26 @@ Current metrics:
 The benchmark intentionally includes both direct vocabulary queries and semantic paraphrases. This
 creates a measurable promotion gate: sentence embeddings remain a Build Lab experiment until they
 show a useful retrieval improvement and their false matches are reviewed.
+
+
+## Dataset Lab
+
+The first benchmark expansion increases the retrieval dataset from **5 passages / 10 queries** to
+**25 passages / 50 queries** across ten neuroscience topics.
+
+Each query now carries:
+- topic;
+- query family;
+- query style (direct, paraphrase, mechanism, indirect, or multi-source);
+- difficulty;
+- one or more human-defined relevant passage IDs;
+- a short rationale.
+
+Dataset Lab visualizes topic/style/difficulty coverage and validates missing relevance IDs, exact
+normalized duplicates, unused distractor passages, average query/document length, and
+multi-passage relevance. It also exposes a review-first candidate expansion queue. Generated or
+templated variants are never treated as gold labels automatically.
+
+This is the first dataset-engineering stage. A larger PASS / REVIEW / FAIL classifier dataset and
+grouped train/validation/test splitting are next; paraphrase families should remain entirely within
+one split to reduce leakage.
