@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { rankByEmbedding, rankByTfidf, type RetrievalScore } from "./semantic";
 import { runEmbeddingBenchmark, runTfidfBenchmark, summarizeBenchmark, type BenchmarkCaseResult } from "./benchmark";
+import { RETRIEVAL_BENCHMARK, RETRIEVAL_DOCS, type Difficulty, type QueryType, type Topic } from "./datasets";
+import { analyzeDataset, buildCandidateExpansion } from "./datasetQuality";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
   | "overview"
   | "architecture"
   | "data"
+  | "dataset"
   | "nlp"
   | "ml"
   | "evaluation"
@@ -27,6 +30,7 @@ const LESSONS: Lesson[] = [
   { id: "overview", label: "Overview", short: "Two-app model" },
   { id: "architecture", label: "System Architecture", short: "Frontend, backend, API, DB" },
   { id: "data", label: "Evidence Cloud", short: "Data engineering + provenance" },
+  { id: "dataset", label: "Dataset Lab", short: "Coverage, quality, expansion" },
   { id: "nlp", label: "NeuroEval: NLP", short: "Signals + TF-IDF" },
   { id: "ml", label: "NeuroEval: ML", short: "Labels + classifier" },
   { id: "evaluation", label: "Model Evaluation", short: "Metrics + errors" },
@@ -66,13 +70,6 @@ const ledgerRows: Array<[string, Status, string, Status, string]> = [
   ["EvidencePipe quality checks", "Lab", "Unit tests in branch", "Candidate", "Promote only non-mutating checks"],
 ];
 
-const retrievalDocs = [
-  { id: "N001", text: "Sodium channels depolarize the neuronal membrane and potassium channels contribute to repolarization." },
-  { id: "N003", text: "NMDA receptors contribute to synaptic plasticity when glutamate binding and membrane depolarization permit calcium entry." },
-  { id: "N005", text: "Microglia participate in immune signaling and context-dependent inflammatory responses." },
-  { id: "N007", text: "Myelin supports saltatory conduction between nodes of Ranvier and increases conduction speed along axons." },
-  { id: "N009", text: "Astrocytes help regulate extracellular ions and support metabolic homeostasis around synapses." },
-];
 
 function overlapScore(query: string, text: string): number {
   const words = (value: string) =>
@@ -140,7 +137,7 @@ function App() {
   };
 
   const retrieval = useMemo(
-    () => rankByTfidf(query, retrievalDocs),
+    () => rankByTfidf(query, RETRIEVAL_DOCS),
     [query],
   );
 
@@ -190,6 +187,7 @@ function App() {
           {view === "overview" && <Overview technical={technical} />}
           {view === "architecture" && <Architecture technical={technical} />}
           {view === "data" && <DataLesson technical={technical} />}
+          {view === "dataset" && <DatasetLab technical={technical} />}
           {view === "nlp" && <NlpLesson technical={technical} />}
           {view === "ml" && <MlLesson technical={technical} />}
           {view === "evaluation" && <EvaluationLesson technical={technical} />}
@@ -331,6 +329,193 @@ function DataLesson({ technical }: { technical: boolean }) {
         />
       </div>
       <WhyBox why="If provenance is lost during ingestion, a later AI answer can sound correct while becoming impossible to verify." skills={["Data engineering", "SQL", "Normalization", "Provenance"]} />
+    </>
+  );
+}
+
+function DatasetLab({ technical }: { technical: boolean }) {
+  const report = useMemo(
+    () => analyzeDataset(RETRIEVAL_DOCS, RETRIEVAL_BENCHMARK),
+    [],
+  );
+  const [topic, setTopic] = useState<"all" | Topic>("all");
+  const [difficulty, setDifficulty] = useState<"all" | Difficulty>("all");
+  const [queryType, setQueryType] = useState<"all" | QueryType>("all");
+  const [selectedId, setSelectedId] = useState(RETRIEVAL_BENCHMARK[0].id);
+
+  const filtered = useMemo(
+    () =>
+      RETRIEVAL_BENCHMARK.filter(
+        (item) =>
+          (topic === "all" || item.topic === topic) &&
+          (difficulty === "all" || item.difficulty === difficulty) &&
+          (queryType === "all" || item.queryType === queryType),
+      ),
+    [topic, difficulty, queryType],
+  );
+
+  const selected =
+    RETRIEVAL_BENCHMARK.find((item) => item.id === selectedId) ??
+    RETRIEVAL_BENCHMARK[0];
+  const expansion = buildCandidateExpansion(selected);
+  const topics = Object.keys(report.topicCounts) as Topic[];
+
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">DATASET ENGINEERING</span>
+        <h1>Bigger is useful only when the dataset becomes more representative.</h1>
+        <p>
+          The retrieval benchmark now has 25 synthetic passages and 50 labeled queries across ten
+          neuroscience topics. Dataset Lab checks coverage, difficulty, query style, missing
+          references, duplicate queries, and multi-passage relevance before we trust model scores.
+        </p>
+      </div>
+
+      <div className="dataset-summary">
+        <div><small>Passages</small><b>{report.documentCount}</b><span>5× larger corpus</span></div>
+        <div><small>Queries</small><b>{report.queryCount}</b><span>5× benchmark growth</span></div>
+        <div><small>Topics</small><b>{topics.length}</b><span>broader concept coverage</span></div>
+        <div><small>Multi-source queries</small><b>{report.multiRelevantCount}</b><span>more realistic retrieval</span></div>
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">COVERAGE BY QUERY STYLE</div>
+          <div className="distribution-list">
+            {Object.entries(report.queryTypeCounts).map(([label, count]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <div><i style={{ width: (count / report.queryCount) * 100 + "%" }} /></div>
+                <b>{count}</b>
+              </div>
+            ))}
+          </div>
+          <div className="panel-kicker dataset-kicker">DIFFICULTY MIX</div>
+          <div className="distribution-list">
+            {Object.entries(report.difficultyCounts).map(([label, count]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <div><i style={{ width: (count / report.queryCount) * 100 + "%" }} /></div>
+                <b>{count}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="visual-panel">
+          <div className="panel-kicker">VALIDATION CHECKS</div>
+          <div className="quality-checks">
+            <div className={report.missingRelevantDocumentIds.length ? "check-warn" : "check-pass"}>
+              <b>{report.missingRelevantDocumentIds.length ? "Review" : "Pass"}</b>
+              <span>Every gold relevance ID resolves to a real passage</span>
+            </div>
+            <div className={report.duplicateNormalizedQueries.length ? "check-warn" : "check-pass"}>
+              <b>{report.duplicateNormalizedQueries.length ? "Review" : "Pass"}</b>
+              <span>No exact normalized duplicate queries</span>
+            </div>
+            <div className="check-pass">
+              <b>{report.averageQueryWords.toFixed(1)}</b>
+              <span>average words per query</span>
+            </div>
+            <div className="check-pass">
+              <b>{report.averageDocumentWords.toFixed(1)}</b>
+              <span>average words per passage</span>
+            </div>
+            <div className={report.unusedDocumentIds.length > 5 ? "check-warn" : "check-pass"}>
+              <b>{report.unusedDocumentIds.length}</b>
+              <span>deliberate distractor / currently unused passages</span>
+            </div>
+          </div>
+          <p className="caption">
+            Unused passages are not automatically bad: distractors make retrieval harder. Missing
+            relevance IDs and accidental duplicate queries are data-quality defects.
+          </p>
+        </div>
+      </div>
+
+      <div className="filter-bar">
+        <label>Topic
+          <select value={topic} onChange={(e) => setTopic(e.target.value as "all" | Topic)}>
+            <option value="all">All topics</option>
+            {topics.map((value) => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}
+          </select>
+        </label>
+        <label>Difficulty
+          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as "all" | Difficulty)}>
+            <option value="all">All</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <label>Query type
+          <select value={queryType} onChange={(e) => setQueryType(e.target.value as "all" | QueryType)}>
+            <option value="all">All</option>
+            <option value="direct">Direct</option>
+            <option value="paraphrase">Paraphrase</option>
+            <option value="mechanism">Mechanism</option>
+            <option value="indirect">Indirect</option>
+            <option value="multi">Multi-source</option>
+          </select>
+        </label>
+        <div className="filter-count">{filtered.length} / {report.queryCount} queries</div>
+      </div>
+
+      <div className="table-wrap dataset-table">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Topic</th><th>Type</th><th>Difficulty</th><th>Query</th><th>Gold source(s)</th></tr>
+          </thead>
+          <tbody>
+            {filtered.map((item) => (
+              <tr key={item.id}>
+                <td><button className="link-button" onClick={() => setSelectedId(item.id)}>{item.id}</button></td>
+                <td>{item.topic.replaceAll("_", " ")}</td>
+                <td>{item.queryType}</td>
+                <td><span className={"difficulty " + item.difficulty}>{item.difficulty}</span></td>
+                <td>{item.query}</td>
+                <td>{item.relevantIds.join(", ")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="two-col dataset-expansion">
+        <div className="visual-panel">
+          <div className="panel-kicker">REVIEW-FIRST EXPANSION QUEUE</div>
+          <h3>{selected.id} · {selected.topic.replaceAll("_", " ")}</h3>
+          <p className="selected-query">{selected.query}</p>
+          <p className="caption">
+            New variants are candidates, not automatic gold labels. A reviewer must verify wording,
+            relevance IDs, difficulty, and whether a near-duplicate should stay in the same family.
+          </p>
+          <div className="candidate-list">
+            {expansion.candidates.map((candidate) => (
+              <div key={candidate.kind}>
+                <span>{candidate.kind.replaceAll("_", " ")}</span>
+                <p>{candidate.query}</p>
+                <b>REVIEW REQUIRED</b>
+              </div>
+            ))}
+          </div>
+        </div>
+        <CodePanel
+          code={'candidate → duplicate check\n          → family check\n          → relevance review\n          → difficulty tag\n          → approve / reject\n          → benchmark'}
+          notes={[
+            "AI-assisted or templated expansion should create candidates, not silently create truth.",
+            "Family IDs keep closely related variants grouped so later train/test splits do not leak paraphrases across the boundary.",
+            technical
+              ? "The next classifier dataset will use grouped splitting so paraphrase families remain entirely in train, validation, or test."
+              : "Near-duplicate questions should not appear on both sides of a test, because that can make a model look smarter than it is.",
+          ]}
+        />
+      </div>
+
+      <WhyBox
+        why="Model quality is capped by dataset quality. This lab makes coverage and labeling visible before we compare TF-IDF, embeddings, logistic regression, or neural networks."
+        skills={["Dataset engineering", "Benchmark design", "Data validation", "Hard negatives", "Label quality", "Leakage prevention"]}
+      />
     </>
   );
 }
@@ -522,13 +707,13 @@ function EmbeddingLesson({ technical }: { technical: boolean }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const tfidfResults = useMemo(() => rankByTfidf(query, retrievalDocs), [query]);
+  const tfidfResults = useMemo(() => rankByTfidf(query, RETRIEVAL_DOCS), [query]);
 
   const runEmbeddings = async () => {
     setLoading(true);
     setError("");
     try {
-      const results = await rankByEmbedding(query, retrievalDocs);
+      const results = await rankByEmbedding(query, RETRIEVAL_DOCS);
       setEmbeddingResults(results);
     } catch (err) {
       setEmbeddingResults([]);
@@ -660,7 +845,7 @@ function RetrievalColumn({
 }
 
 function RetrievalBenchmarkLesson({ technical }: { technical: boolean }) {
-  const tfidfRows = useMemo(() => runTfidfBenchmark(retrievalDocs), []);
+  const tfidfRows = useMemo(() => runTfidfBenchmark(RETRIEVAL_DOCS), []);
   const tfidfMetrics = useMemo(() => summarizeBenchmark(tfidfRows), [tfidfRows]);
   const [embeddingRows, setEmbeddingRows] = useState<BenchmarkCaseResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -674,7 +859,7 @@ function RetrievalBenchmarkLesson({ technical }: { technical: boolean }) {
     setLoading(true);
     setError("");
     try {
-      setEmbeddingRows(await runEmbeddingBenchmark(retrievalDocs));
+      setEmbeddingRows(await runEmbeddingBenchmark(RETRIEVAL_DOCS));
     } catch (err) {
       setEmbeddingRows([]);
       setError(err instanceof Error ? err.message : "Embedding benchmark could not run.");
@@ -691,7 +876,7 @@ function RetrievalBenchmarkLesson({ technical }: { technical: boolean }) {
         <span className="eyebrow">RETRIEVAL BENCHMARK</span>
         <h1>Newer does not mean better. Measure it.</h1>
         <p>
-          Ten fixed neuroscience queries have human-defined relevant passages. Both retrieval
+          Fifty fixed neuroscience queries have human-defined relevant passages. Both retrieval
           methods must answer the same test so we can compare performance fairly.
         </p>
       </div>
@@ -714,11 +899,11 @@ function RetrievalBenchmarkLesson({ technical }: { technical: boolean }) {
       <div className="try-box">
         <div className="panel-kicker">RUN THE REAL EMBEDDING BENCHMARK</div>
         <p>
-          TF-IDF is already scored locally. This button runs the same ten queries through MiniLM
+          TF-IDF is already scored locally. This button runs the same fifty queries through MiniLM
           sentence embeddings and calculates Hit@1, Recall@3, and Mean Reciprocal Rank.
         </p>
         <button className="run-button" onClick={runBenchmark} disabled={loading}>
-          {loading ? "Running 10-query semantic benchmark…" : "Run embedding benchmark"}
+          {loading ? "Running 50-query semantic benchmark…" : "Run embedding benchmark"}
         </button>
         {error && <div className="error-box">{error}</div>}
       </div>
