@@ -115,3 +115,29 @@ packet building, and packet QA.
 The planner converts natural-language goals into ordered tool steps and marks consequential packet
 write/export steps with a **human approval** gate. This is a Build Lab prototype, not a claim that
 the production Elias agent has already adopted autonomous orchestration.
+
+
+## Planner benchmark
+
+Build Lab now includes a fixed **40-case agent-planner benchmark** covering:
+
+- exact lookup / quote / page tasks;
+- semantic retrieval;
+- timelines and chronologies;
+- contradiction review;
+- authority verification;
+- grounded synthesis;
+- packet workflows;
+- failure-handling cases where Elias should stop rather than fabricate, erase, or guess evidence.
+
+Each case defines the expected:
+- model tier;
+- ordered tool sequence;
+- human approval tools;
+- provenance requirement;
+- stop behavior.
+
+The dashboard scores model-route accuracy, tool precision/recall/F1, sequence order, exact-plan
+accuracy, unnecessary-tool rate, approval gates, provenance preservation, stop behavior, and a
+weighted overall score. This intentionally exposes weaknesses in the current simple keyword planner
+before any smarter routing is promoted into production Elias.
