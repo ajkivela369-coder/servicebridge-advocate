@@ -16,6 +16,7 @@ type ViewId =
   | "dataset"
   | "classifier_dataset"
   | "orchestration"
+  | "veteran_advocacy"
   | "planner_benchmark"
   | "nlp"
   | "ml"
@@ -40,6 +41,7 @@ const LESSONS: Lesson[] = [
   { id: "dataset", label: "Dataset Lab", short: "Retrieval coverage + quality" },
   { id: "classifier_dataset", label: "Classifier Dataset", short: "300 labeled examples + splits" },
   { id: "orchestration", label: "Agent Orchestration", short: "Model router + tools + planner" },
+  { id: "veteran_advocacy", label: "Veteran Advocacy", short: "Defense packets + decision audit" },
   { id: "planner_benchmark", label: "Planner Benchmark", short: "40 tasks + routing metrics" },
   { id: "nlp", label: "NeuroEval: NLP", short: "Signals + TF-IDF" },
   { id: "ml", label: "NeuroEval: ML", short: "Labels + classifier" },
@@ -78,7 +80,8 @@ const ledgerRows: Array<[string, Status, string, Status, string]> = [
   ["Semantic retrieval", "Lab", "Side-by-side TF-IDF comparison implemented", "Candidate", "Must beat fixed retrieval baseline before Elias adoption"],
   ["Model Router + Tool Registry", "Lab", "Deterministic planner prototype implemented", "Candidate", "Needs production integration + regression tests"],
   ["Agent Planner", "Lab", "Interactive task decomposition prototype", "Candidate", "Approval gates preserved before write/export actions"],
-  ["Planner Benchmark", "Lab", "40-task routing benchmark implemented", "Candidate", "Measures model route, tools, order, approvals, provenance, stop behavior"],
+  ["Planner Benchmark", "Lab", "45-task routing benchmark implemented", "Candidate", "Measures model route, tools, order, approvals, provenance, stop behavior"],
+  ["Veteran Advocacy Mode", "Lab", "Issue matrix + decision audit + rebuttal map + packet workflow", "Candidate", "Autonomous internal drafting; veteran approval required only for final export"],
   ["PyTorch classifier", "Planned", "Not implemented", "Planned", "Deep-learning learning track"],
   ["EvidencePipe quality checks", "Lab", "Unit tests in branch", "Candidate", "Promote only non-mutating checks"],
 ];
@@ -203,6 +206,7 @@ function App() {
           {view === "dataset" && <DatasetLab technical={technical} />}
           {view === "classifier_dataset" && <ClassifierDatasetLab technical={technical} />}
           {view === "orchestration" && <OrchestrationLab technical={technical} />}
+          {view === "veteran_advocacy" && <VeteranAdvocacyLab technical={technical} />}
           {view === "planner_benchmark" && <PlannerBenchmarkLab technical={technical} />}
           {view === "nlp" && <NlpLesson technical={technical} />}
           {view === "ml" && <MlLesson technical={technical} />}
@@ -909,7 +913,7 @@ function OrchestrationLab({ technical }: { technical: boolean }) {
           </div>
           <p>
             The planner can prepare a packet or draft, but the user remains the decision point
-            before Elias performs a consequential write/export action.
+            before Elias exports or hands off a final packet.
           </p>
         </div>
         <CodePanel
@@ -927,6 +931,143 @@ function OrchestrationLab({ technical }: { technical: boolean }) {
       <WhyBox
         why="This closes an important practical gap with general AI agents: Elias can become capable of multi-step work without giving up evidence traceability or turning every operation into an expensive LLM call."
         skills={["Agent architecture", "Model routing", "Tool calling", "Planning", "Human-in-the-loop", "AI orchestration"]}
+      />
+    </>
+  );
+}
+
+function VeteranAdvocacyLab({ technical }: { technical: boolean }) {
+  const exampleTask =
+    "For this veteran's VBA rating decision, build the strongest truthful defense packet, audit the decision against the record, address unfavorable evidence, and stop before final export.";
+  const plan = useMemo(() => planEvidenceTask(exampleTask), []);
+
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">VETERAN ADVOCACY MODE</span>
+        <h1>Give Elias room to build the strongest truthful, source-backed veteran packet.</h1>
+        <p>
+          The goal is not neutrality between the veteran and the agency. The goal is disciplined
+          advocacy for the veteran: find favorable evidence, audit adverse findings, identify
+          missing support, develop source-backed rebuttals, and iterate the packet until QA passes.
+          The factual record still controls what Elias may say.
+        </p>
+      </div>
+
+      <div className="advocacy-principle">
+        <div>
+          <span className="badge adopted">ADVOCACY GOAL</span>
+          <h3>Make the veteran's strongest support easy to see and hard to misread.</h3>
+          <p>Organize, explain, rebut, verify, and package the record around the veteran's contested issues.</p>
+        </div>
+        <div>
+          <span className="badge lab">EVIDENCE BOUNDARY</span>
+          <h3>Fight hard with the record we actually have.</h3>
+          <p>No invented facts, fake quotes, hidden adverse records, guessed dates, or unsupported medical conclusions.</p>
+        </div>
+      </div>
+
+      <div className="advocacy-liberty">
+        <div className="panel-kicker">WHAT ELIAS MAY DO WITHOUT STOPPING FOR APPROVAL</div>
+        <div className="advocacy-grid">
+          {[
+            ["Issue matrix", "Map each issue to favorable evidence, adverse evidence, gaps, and authority."],
+            ["Decision audit", "Test VBA reasoning against the cited record and identify weak or incomplete reasoning for review."],
+            ["Evidence search", "Run lexical + semantic searches repeatedly as new leads appear."],
+            ["Rebuttal map", "Build the strongest supportable response to each adverse finding."],
+            ["Chronology", "Organize events and service/medical history while preserving uncertainty."],
+            ["Draft + revise", "Create and improve briefs, rebuttals, timelines, and packet sections."],
+            ["Packet QA", "Re-run citation, contradiction, missing-evidence, and reviewer-readiness checks."],
+            ["Authority check", "Verify configured official authority before relying on it."],
+          ].map(([title, text]) => (
+            <div key={title}>
+              <strong>{title}</strong>
+              <p>{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="approval-boundary">
+        <div className="panel-kicker">THE APPROVAL BOUNDARY MOVES TO THE END</div>
+        <div className="approval-flow">
+          <span>search freely</span><b>→</b>
+          <span>analyze freely</span><b>→</b>
+          <span>draft freely</span><b>→</b>
+          <span>revise + QA freely</span><b>→</b>
+          <span className="approval-stop">VETERAN APPROVES FINAL EXPORT</span>
+        </div>
+        <p>
+          Elias does not need permission for every internal draft iteration. The veteran keeps
+          control over the consequential step: exporting, filing, or handing off the final packet.
+        </p>
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">VETERAN DEFENSE PACKET WORKFLOW</div>
+          <div className="defense-flow">
+            {[
+              "Contested issues",
+              "Issue matrix",
+              "Decision audit",
+              "Favorable + adverse evidence",
+              "Verified authority",
+              "Rebuttal map",
+              "Claim → Source Trace",
+              "Packet draft",
+              "QA loop",
+              "Veteran approval",
+              "Export",
+            ].map((item, index) => (
+              <div key={item}>
+                <span>{index + 1}</span>
+                <strong>{item}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+        <CodePanel
+          code={'while (!packet.qa_passes) {\n  search_more_if_needed();\n  audit_decision();\n  address_adverse_evidence();\n  verify_authority();\n  trace_claims_to_sources();\n  revise_packet();\n}\n\nawait veteran_approval();\nexport_packet();'}
+          notes={[
+            "The internal loop can be persistent and veteran-focused rather than stopping after one draft.",
+            "Adverse evidence is addressed, contextualized, or rebutted when the record supports doing so; it is not erased.",
+            technical
+              ? "Production promotion should separate read/analyze/draft permissions from the single state-changing export/file permission and log each plan iteration."
+              : "Elias can do the tedious searching and rebuilding itself while the veteran keeps the final say.",
+          ]}
+        />
+      </div>
+
+      <div className="plan-flow">
+        {plan.map((item) => (
+          <div key={item.order} className="plan-step">
+            <span className="plan-order">{item.order}</span>
+            <div className="plan-main">
+              <div className="plan-title-row">
+                <strong>{item.tool.label}</strong>
+                <span className={"model-pill " + item.tool.model}>{modelLabel(item.tool.model)}</span>
+                {item.requiresApproval && <span className="approval-pill">VETERAN APPROVAL</span>}
+              </div>
+              <p>{item.reason}</p>
+              <code>{item.tool.id}</code>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="why-card advocacy-boundary-note">
+        <div className="panel-kicker">WHAT “HELP THE VETERAN WIN” MEANS HERE</div>
+        <p>
+          Elias should be assertive about favorable evidence and weaknesses in an adverse decision,
+          but it cannot promise an outcome. Its job is to produce the clearest, strongest,
+          best-sourced advocacy packet the available record and verified authority support.
+        </p>
+      </div>
+
+      <WhyBox
+        why="Veterans should not have to micromanage every retrieval query and packet revision. Bounded autonomy lets Elias do the repetitive advocacy work while provenance and final veteran control remain intact."
+        skills={["Veteran advocacy workflows", "Decision auditing", "Issue mapping", "Rebuttal design", "Evidence provenance", "Human approval boundaries"]}
       />
     </>
   );
