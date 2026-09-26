@@ -97,3 +97,21 @@ The current examples are explicitly marked **template_generated**, not human-rev
 Dataset Lab audits label balance, family leakage, duplicates, missing rationales, and family label
 coverage. A human-reviewed gold subset should be created before treating model metrics as strong
 claims about generalization.
+
+
+## Agent orchestration
+
+Build Lab now includes an interactive **Model Router + Tool Registry + Agent Planner** prototype.
+
+The model router demonstrates a three-tier policy:
+- deterministic code for exact, auditable operations such as dates, quotes, source links, and packet assembly;
+- smaller/local specialized models for semantic retrieval and narrow ML tasks;
+- frontier LLMs for synthesis, comparison, and complex natural-language reasoning.
+
+The tool registry currently models lexical search, semantic search, Claim → Source Trace,
+contradiction review, timeline construction, quote verification, authority verification, reasoning,
+packet building, and packet QA.
+
+The planner converts natural-language goals into ordered tool steps and marks consequential packet
+write/export steps with a **human approval** gate. This is a Build Lab prototype, not a claim that
+the production Elias agent has already adopted autonomous orchestration.
