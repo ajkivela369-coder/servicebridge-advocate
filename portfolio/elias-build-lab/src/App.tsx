@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { rankByEmbedding, rankByTfidf, type RetrievalScore } from "./semantic";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
@@ -9,6 +10,7 @@ type ViewId =
   | "ml"
   | "evaluation"
   | "retrieval"
+  | "embeddings"
   | "timeline"
   | "ledger"
   | "portfolio";
@@ -27,6 +29,7 @@ const LESSONS: Lesson[] = [
   { id: "ml", label: "NeuroEval: ML", short: "Labels + classifier" },
   { id: "evaluation", label: "Model Evaluation", short: "Metrics + errors" },
   { id: "retrieval", label: "Retrieval / RAG", short: "Find → ground → answer" },
+  { id: "embeddings", label: "TF-IDF vs Embeddings", short: "Words vs meaning" },
   { id: "timeline", label: "Build Timeline", short: "How Elias grows" },
   { id: "ledger", label: "Upgrade Ledger", short: "Lab → test → Elias" },
   { id: "portfolio", label: "Portfolio Skills", short: "What this proves" },
@@ -54,16 +57,18 @@ const ledgerRows: Array<[string, Status, string, Status, string]> = [
   ["Evidence provenance trace", "Implemented", "Regression coverage exists", "Adopted", "Core Elias requirement"],
   ["TF-IDF retrieval", "Lab", "Classical baseline under test", "Candidate", "Useful lexical baseline"],
   ["Logistic regression", "Lab", "Cross-validation + metrics", "Lab", "Learning/evaluation tool"],
-  ["Sentence embeddings", "Planned", "Not benchmarked", "Planned", "Must beat fixed retrieval baseline"],
-  ["Semantic retrieval", "Planned", "Not benchmarked", "Planned", "Measure recall + false matches"],
+  ["Sentence embeddings", "Lab", "Real browser model wired; benchmark expanding", "Planned", "MiniLM comparison runs locally in Build Lab"],
+  ["Semantic retrieval", "Lab", "Side-by-side TF-IDF comparison implemented", "Candidate", "Must beat fixed retrieval baseline before Elias adoption"],
   ["PyTorch classifier", "Planned", "Not implemented", "Planned", "Deep-learning learning track"],
   ["EvidencePipe quality checks", "Lab", "Unit tests in branch", "Candidate", "Promote only non-mutating checks"],
 ];
 
 const retrievalDocs = [
   { id: "N001", text: "Sodium channels depolarize the neuronal membrane and potassium channels contribute to repolarization." },
+  { id: "N003", text: "NMDA receptors contribute to synaptic plasticity when glutamate binding and membrane depolarization permit calcium entry." },
   { id: "N005", text: "Microglia participate in immune signaling and context-dependent inflammatory responses." },
-  { id: "N007", text: "Myelin supports saltatory conduction between nodes of Ranvier." },
+  { id: "N007", text: "Myelin supports saltatory conduction between nodes of Ranvier and increases conduction speed along axons." },
+  { id: "N009", text: "Astrocytes help regulate extracellular ions and support metabolic homeostasis around synapses." },
 ];
 
 function overlapScore(query: string, text: string): number {
@@ -132,10 +137,7 @@ function App() {
   };
 
   const retrieval = useMemo(
-    () =>
-      retrievalDocs
-        .map((doc) => ({ ...doc, score: overlapScore(query, doc.text) }))
-        .sort((a, b) => b.score - a.score),
+    () => rankByTfidf(query, retrievalDocs),
     [query],
   );
 
@@ -191,6 +193,7 @@ function App() {
           {view === "retrieval" && (
             <RetrievalLesson query={query} setQuery={setQuery} results={retrieval} technical={technical} />
           )}
+          {view === "embeddings" && <EmbeddingLesson technical={technical} />}
           {view === "timeline" && <Timeline />}
           {view === "ledger" && <Ledger />}
           {view === "portfolio" && (
@@ -509,12 +512,155 @@ function RetrievalLesson({
   );
 }
 
+function EmbeddingLesson({ technical }: { technical: boolean }) {
+  const [query, setQuery] = useState("What material wraps axons so electrical signals can travel faster?");
+  const [embeddingResults, setEmbeddingResults] = useState<RetrievalScore[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const tfidfResults = useMemo(() => rankByTfidf(query, retrievalDocs), [query]);
+
+  const runEmbeddings = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const results = await rankByEmbedding(query, retrievalDocs);
+      setEmbeddingResults(results);
+    } catch (err) {
+      setEmbeddingResults([]);
+      setError(err instanceof Error ? err.message : "Embedding model could not run in this browser.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">SEMANTIC RETRIEVAL LAB</span>
+        <h1>TF-IDF compares words. Embeddings compare meaning.</h1>
+        <p>
+          We run both methods against the same synthetic neuroscience passages so the newer
+          technique has to prove what it adds.
+        </p>
+      </div>
+
+      <div className="compare-explainer">
+        <div>
+          <span className="badge lab">TF-IDF</span>
+          <h3>Lexical representation</h3>
+          <p>
+            TF-IDF builds a sparse vector from words and phrases. Shared important terms create
+            similarity; synonyms with no shared vocabulary can be missed.
+          </p>
+          <div className="mini-vector">myelin → 0.78<br />axons → 0.42<br />conduction → 0.64</div>
+        </div>
+        <div className="versus">VS</div>
+        <div>
+          <span className="badge lab">EMBEDDINGS</span>
+          <h3>Semantic representation</h3>
+          <p>
+            A transformer converts the whole sentence into a dense 384-number vector. Texts can
+            be close even when they use different words but express similar meaning.
+          </p>
+          <div className="mini-vector">[0.095, −0.025, 0.041, … 381 more]</div>
+        </div>
+      </div>
+
+      <div className="try-box">
+        <div className="panel-kicker">TRY THE SAME QUERY BOTH WAYS</div>
+        <input className="text-input" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <button className="run-button" onClick={runEmbeddings} disabled={loading}>
+          {loading ? "Loading model / computing embeddings…" : "Run real embedding comparison"}
+        </button>
+        <p className="caption">
+          TF-IDF runs instantly. The embedding side loads the open MiniLM model in your browser on
+          first use, then caches the model and document vectors for later comparisons.
+        </p>
+        {error && <div className="error-box">{error}</div>}
+      </div>
+
+      <div className="retrieval-compare-grid">
+        <RetrievalColumn title="TF-IDF ranking" subtitle="important word/phrase overlap" rows={tfidfResults} />
+        <RetrievalColumn
+          title="Embedding ranking"
+          subtitle="transformer-based semantic similarity"
+          rows={embeddingResults}
+          emptyText={loading ? "Computing…" : "Run the embedding comparison to populate this side."}
+        />
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">WHAT CHANGES?</div>
+          <table className="concept-table">
+            <tbody>
+              <tr><th>Representation</th><td>TF-IDF: sparse word weights</td><td>Embeddings: dense learned vector</td></tr>
+              <tr><th>Understands synonyms?</th><td>Usually only with word overlap</td><td>Often, through learned semantic patterns</td></tr>
+              <tr><th>Interpretability</th><td>High: inspect weighted terms</td><td>Lower: dimensions are learned features</td></tr>
+              <tr><th>Compute cost</th><td>Low</td><td>Higher; model inference required</td></tr>
+              <tr><th>Elias decision</th><td>Current lab baseline</td><td>Candidate only if benchmark improves retrieval</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <CodePanel
+          code={'// TF-IDF\nrankByTfidf(query, documents)\n\n// Embeddings\nconst extractor = await pipeline(\n  "feature-extraction",\n  "onnx-community/all-MiniLM-L6-v2-ONNX"\n);\nconst vector = await extractor(text, {\n  pooling: "mean",\n  normalize: true,\n});'}
+          notes={[
+            "Both methods ultimately create vectors so we can compare texts numerically.",
+            "TF-IDF learns weights from this document collection; the embedding model learned semantic patterns during pretraining.",
+            technical
+              ? "MiniLM produces normalized dense vectors; cosine similarity then compares vector direction in semantic feature space."
+              : "Embeddings turn the overall meaning of a sentence into a numeric fingerprint.",
+          ]}
+        />
+      </div>
+
+      <WhyBox
+        why="Elias should not adopt semantic retrieval merely because embeddings are fashionable. Build Lab now gives us a real comparison surface where we can define correct sources, run identical queries, inspect false matches, and decide from evidence."
+        skills={["Sentence embeddings", "Transformers.js", "Semantic search", "TF-IDF", "Cosine similarity", "Retrieval evaluation"]}
+      />
+    </>
+  );
+}
+
+function RetrievalColumn({
+  title,
+  subtitle,
+  rows,
+  emptyText = "No results",
+}: {
+  title: string;
+  subtitle: string;
+  rows: RetrievalScore[];
+  emptyText?: string;
+}) {
+  return (
+    <div className="visual-panel retrieval-column">
+      <div className="panel-kicker">{title}</div>
+      <p className="caption">{subtitle}</p>
+      {rows.length === 0 ? (
+        <div className="empty-state">{emptyText}</div>
+      ) : (
+        <div className="retrieval-list">
+          {rows.map((item, index) => (
+            <div key={item.id}>
+              <b>#{index + 1} {item.id}</b>
+              <span>{item.score.toFixed(3)}</span>
+              <p>{item.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Timeline() {
   const items: Array<[string, string, Status, string]> = [
     ["1", "Deterministic evidence rules", "Implemented", "Keep source categories distinct."],
     ["2", "Lexical retrieval", "Implemented", "Search and source-grounded prompting."],
     ["3", "NeuroEval NLP / ML baselines", "Lab", "TF-IDF, logistic regression, cross-validation."],
-    ["4", "Embedding comparison", "Planned", "Meaning-based retrieval benchmark."],
+    ["4", "Embedding comparison", "Lab", "Real MiniLM browser embeddings vs TF-IDF baseline."],
     ["5", "Deep-learning comparison", "Planned", "PyTorch classifier vs classical ML."],
     ["6", "Production promotion gate", "Candidate", "Only validated gains move into Elias."],
   ];
@@ -563,7 +709,8 @@ function Portfolio({ checks, toggleCheck }: { checks: Record<string, boolean>; t
     "Explain train/test separation and cross-validation",
     "Interpret precision, recall, F1, and a confusion matrix",
     "Explain lexical retrieval, cosine similarity, and RAG",
-    "Describe why embeddings and PyTorch are still planned experiments",
+    "Explain the difference between TF-IDF and sentence embeddings",
+    "Describe why PyTorch is still a planned experiment",
   ];
   return (
     <>
