@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { rankByEmbedding, rankByTfidf, type RetrievalScore } from "./semantic";
+import { runEmbeddingBenchmark, runTfidfBenchmark, summarizeBenchmark, type BenchmarkCaseResult } from "./benchmark";
 
 type Status = "Implemented" | "Lab" | "Candidate" | "Planned" | "Adopted";
 type ViewId =
@@ -11,6 +12,7 @@ type ViewId =
   | "evaluation"
   | "retrieval"
   | "embeddings"
+  | "benchmark"
   | "timeline"
   | "ledger"
   | "portfolio";
@@ -30,6 +32,7 @@ const LESSONS: Lesson[] = [
   { id: "evaluation", label: "Model Evaluation", short: "Metrics + errors" },
   { id: "retrieval", label: "Retrieval / RAG", short: "Find → ground → answer" },
   { id: "embeddings", label: "TF-IDF vs Embeddings", short: "Words vs meaning" },
+  { id: "benchmark", label: "Retrieval Benchmark", short: "Measure which method wins" },
   { id: "timeline", label: "Build Timeline", short: "How Elias grows" },
   { id: "ledger", label: "Upgrade Ledger", short: "Lab → test → Elias" },
   { id: "portfolio", label: "Portfolio Skills", short: "What this proves" },
@@ -194,6 +197,7 @@ function App() {
             <RetrievalLesson query={query} setQuery={setQuery} results={retrieval} technical={technical} />
           )}
           {view === "embeddings" && <EmbeddingLesson technical={technical} />}
+          {view === "benchmark" && <RetrievalBenchmarkLesson technical={technical} />}
           {view === "timeline" && <Timeline />}
           {view === "ledger" && <Ledger />}
           {view === "portfolio" && (
@@ -651,6 +655,174 @@ function RetrievalColumn({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function RetrievalBenchmarkLesson({ technical }: { technical: boolean }) {
+  const tfidfRows = useMemo(() => runTfidfBenchmark(retrievalDocs), []);
+  const tfidfMetrics = useMemo(() => summarizeBenchmark(tfidfRows), [tfidfRows]);
+  const [embeddingRows, setEmbeddingRows] = useState<BenchmarkCaseResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const embeddingMetrics = useMemo(
+    () => summarizeBenchmark(embeddingRows),
+    [embeddingRows],
+  );
+
+  const runBenchmark = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setEmbeddingRows(await runEmbeddingBenchmark(retrievalDocs));
+    } catch (err) {
+      setEmbeddingRows([]);
+      setError(err instanceof Error ? err.message : "Embedding benchmark could not run.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatMetric = (value: number) => (value * 100).toFixed(1) + "%";
+
+  return (
+    <>
+      <div className="lesson-heading">
+        <span className="eyebrow">RETRIEVAL BENCHMARK</span>
+        <h1>Newer does not mean better. Measure it.</h1>
+        <p>
+          Ten fixed neuroscience queries have human-defined relevant passages. Both retrieval
+          methods must answer the same test so we can compare performance fairly.
+        </p>
+      </div>
+
+      <div className="benchmark-rule">
+        <strong>Fair comparison rule</strong>
+        <span>same documents</span><b>+</b><span>same queries</span><b>+</b><span>same relevance labels</span><b>→</b><span>comparable metrics</span>
+      </div>
+
+      <div className="benchmark-metrics">
+        <MetricSet title="TF-IDF baseline" metrics={tfidfMetrics} status="Implemented" />
+        <MetricSet
+          title="Sentence embeddings"
+          metrics={embeddingMetrics}
+          status={embeddingRows.length ? "Lab" : "Planned"}
+          empty={!embeddingRows.length}
+        />
+      </div>
+
+      <div className="try-box">
+        <div className="panel-kicker">RUN THE REAL EMBEDDING BENCHMARK</div>
+        <p>
+          TF-IDF is already scored locally. This button runs the same ten queries through MiniLM
+          sentence embeddings and calculates Hit@1, Recall@3, and Mean Reciprocal Rank.
+        </p>
+        <button className="run-button" onClick={runBenchmark} disabled={loading}>
+          {loading ? "Running 10-query semantic benchmark…" : "Run embedding benchmark"}
+        </button>
+        {error && <div className="error-box">{error}</div>}
+      </div>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Query</th>
+              <th>Expected</th>
+              <th>TF-IDF top result</th>
+              <th>TF-IDF rank</th>
+              <th>Embedding top result</th>
+              <th>Embedding rank</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tfidfRows.map((row, index) => {
+              const semantic = embeddingRows[index];
+              return (
+                <tr key={row.id}>
+                  <td>
+                    <strong>{row.id}</strong>
+                    <div className="table-query">{row.query}</div>
+                    <div className="caption">{row.note}</div>
+                  </td>
+                  <td>{row.relevantIds.join(", ")}</td>
+                  <td>{row.ranked[0]?.id ?? "—"}</td>
+                  <td className={row.top1Correct ? "metric-good" : "metric-review"}>
+                    {row.firstRelevantRank ?? "miss"}
+                  </td>
+                  <td>{semantic?.ranked[0]?.id ?? "—"}</td>
+                  <td className={
+                    semantic
+                      ? semantic.top1Correct
+                        ? "metric-good"
+                        : "metric-review"
+                      : ""
+                  }>
+                    {semantic?.firstRelevantRank ?? "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="two-col">
+        <div className="visual-panel">
+          <div className="panel-kicker">WHAT THE METRICS MEAN</div>
+          <div className="metric-explain">
+            <div><b>Hit@1</b><span>How often the correct source is ranked first.</span></div>
+            <div><b>Recall@3</b><span>How often a relevant source appears somewhere in the top three.</span></div>
+            <div><b>MRR</b><span>Rewards putting the first relevant source as high in the ranking as possible.</span></div>
+          </div>
+          <p className="caption">
+            With one relevant passage per query in this starter benchmark, Recall@3 is effectively
+            the percentage of queries whose correct passage appears in the top three.
+          </p>
+        </div>
+        <CodePanel
+          code={'const ranked = retrieve(query, docs);\nconst rank = firstRelevantRank(ranked);\n\nhitAt1 = mean(rank === 1);\nrecallAt3 = mean(rank <= 3);\nmrr = mean(1 / rank);'}
+          notes={[
+            "The benchmark defines relevance before either method runs.",
+            "Every method gets the same queries and document collection.",
+            technical
+              ? "MRR emphasizes ranking quality; later we can add multi-relevance metrics such as nDCG and precision@k when the benchmark contains several valid passages per query."
+              : "We are scoring the methods by where they place the correct evidence, not by which output looks more impressive.",
+          ]}
+        />
+      </div>
+
+      <WhyBox
+        why="If semantic retrieval actually improves relevant-source ranking, we have evidence for an Elias candidate upgrade. If it does not, TF-IDF remains the safer, cheaper baseline."
+        skills={["Benchmark design", "Retrieval evaluation", "Hit@1", "Recall@K", "MRR", "Error analysis"]}
+      />
+    </>
+  );
+}
+
+function MetricSet({
+  title,
+  metrics,
+  status,
+  empty = false,
+}: {
+  title: string;
+  metrics: { queryCount: number; hitAt1: number; recallAt3: number; mrr: number };
+  status: Status;
+  empty?: boolean;
+}) {
+  return (
+    <div className="visual-panel benchmark-set">
+      <div className="benchmark-set-head">
+        <strong>{title}</strong>
+        <span className={statusClass(status)}>{status}</span>
+      </div>
+      <div className="metric-grid">
+        <div><small>Queries</small><b>{empty ? "—" : metrics.queryCount}</b></div>
+        <div><small>Hit@1</small><b>{empty ? "—" : (metrics.hitAt1 * 100).toFixed(1) + "%"}</b></div>
+        <div><small>Recall@3</small><b>{empty ? "—" : (metrics.recallAt3 * 100).toFixed(1) + "%"}</b></div>
+        <div><small>MRR</small><b>{empty ? "—" : metrics.mrr.toFixed(3)}</b></div>
+      </div>
     </div>
   );
 }
