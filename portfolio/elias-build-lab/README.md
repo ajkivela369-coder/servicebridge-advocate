@@ -63,3 +63,37 @@ templated variants are never treated as gold labels automatically.
 This is the first dataset-engineering stage. A larger PASS / REVIEW / FAIL classifier dataset and
 grouped train/validation/test splitting are next; paraphrase families should remain entirely within
 one split to reduce leakage.
+
+
+## Classifier dataset
+
+Build Lab now includes a deterministic **300-example synthetic classification dataset** for the
+future logistic-regression-vs-PyTorch comparison.
+
+Structure:
+- 100 PASS
+- 100 REVIEW
+- 100 FAIL
+- 50 concept families
+- 10 neuroscience topics
+- 2 variants of each label per family
+- 180 train / 60 validation / 60 locked test examples
+
+The split happens at the **family level**, not the row level. All six examples belonging to a
+concept family stay together, which reduces paraphrase leakage across train, validation, and test.
+
+Each example records:
+- family ID;
+- topic and concept;
+- label;
+- rationale;
+- difficulty;
+- failure mode;
+- split;
+- synthetic source status;
+- review status.
+
+The current examples are explicitly marked **template_generated**, not human-reviewed gold labels.
+Dataset Lab audits label balance, family leakage, duplicates, missing rationales, and family label
+coverage. A human-reviewed gold subset should be created before treating model metrics as strong
+claims about generalization.
