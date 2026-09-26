@@ -24,3 +24,19 @@ Build Lab now includes a real side-by-side retrieval experiment:
 - Embeddings remain a **lab experiment** until a fixed retrieval benchmark shows a useful improvement over the baseline.
 
 This distinction is intentional: a newer model is not promoted into Elias unless it improves a user-relevant metric while preserving provenance and acceptable false-match behavior.
+
+
+## Retrieval benchmark
+
+The semantic-retrieval lesson now has a fixed 10-query benchmark with human-defined relevant
+passages. TF-IDF and sentence embeddings are scored against the same documents, queries, and
+relevance labels.
+
+Current metrics:
+- **Hit@1** — correct source ranked first;
+- **Recall@3** — relevant source appears in the top three;
+- **MRR** — mean reciprocal rank of the first relevant source.
+
+The benchmark intentionally includes both direct vocabulary queries and semantic paraphrases. This
+creates a measurable promotion gate: sentence embeddings remain a Build Lab experiment until they
+show a useful retrieval improvement and their false matches are reviewed.
