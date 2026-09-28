@@ -1,0 +1,102 @@
+from __future__ import annotations
+
+from pathlib import Path
+import tempfile
+import unittest
+
+from servicebridge.local_runtime import (
+    AssetCache,
+    JobQueue,
+    LocalOpenAICompatibleProvider,
+    RuntimeMode,
+    RuntimePolicy,
+)
+from servicebridge.local_runtime.media import concat_command, still_to_video_command
+from servicebridge.providers import provider_for_runtime
+
+
+class LocalRuntimePolicyTests(unittest.TestCase):
+    def test_creditless_allows_loopback(self):
+        policy = RuntimePolicy(mode=RuntimeMode.CREDITLESS)
+        for url in (
+            "http://127.0.0.1:8080/v1/chat/completions",
+            "http://localhost:8188/prompt",
+            "http://[::1]:11434/api/tags",
+        ):
+            policy.assert_url_allowed(url)
+
+    def test_creditless_blocks_external_even_if_external_flag_is_true(self):
+        policy = RuntimePolicy(
+            mode=RuntimeMode.CREDITLESS,
+            allow_external_network=True,
+            allow_cloud_fallback=True,
+        )
+        with self.assertRaises(PermissionError):
+            policy.assert_url_allowed("https://api.example.com/v1/chat")
+
+    def test_hybrid_requires_explicit_external_network_permission(self):
+        policy = RuntimePolicy(mode=RuntimeMode.HYBRID)
+        with self.assertRaises(PermissionError):
+            policy.assert_url_allowed("https://api.example.com/v1/chat")
+
+    def test_cloud_allowed_only_when_both_flags_are_explicit(self):
+        self.assertFalse(
+            RuntimePolicy(
+                mode=RuntimeMode.CLOUD,
+                allow_external_network=True,
+                allow_cloud_fallback=False,
+            ).cloud_allowed
+        )
+        self.assertTrue(
+            RuntimePolicy(
+                mode=RuntimeMode.CLOUD,
+                allow_external_network=True,
+                allow_cloud_fallback=True,
+            ).cloud_allowed
+        )
+
+    def test_creditless_provider_is_local_client(self):
+        provider = provider_for_runtime(mode=RuntimeMode.CREDITLESS)
+        self.assertIsInstance(provider, LocalOpenAICompatibleProvider)
+        self.assertTrue(provider.endpoint.startswith("http://127.0.0.1:"))
+
+
+class LocalRuntimeStorageTests(unittest.TestCase):
+    def test_asset_cache_deduplicates_identical_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with AssetCache(Path(tmp) / "vault") as cache:
+                a = cache.put(b"same bytes", kind="text", suffix=".txt")
+                b = cache.put(b"same bytes", kind="text", suffix=".txt")
+                self.assertEqual(a["asset_id"], b["asset_id"])
+                self.assertEqual(a["sha256"], b["sha256"])
+                self.assertTrue(Path(a["path"]).exists())
+
+    def test_job_queue_persists_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            queue = JobQueue(Path(tmp) / "jobs.sqlite3")
+            job_id = queue.enqueue("render", {"scene": 4})
+            self.assertEqual(queue.get(job_id)["status"], "queued")
+            queue.update(job_id, "completed", {"output": "scene04.mp4"})
+            job = queue.get(job_id)
+            self.assertEqual(job["status"], "completed")
+            self.assertEqual(job["result"]["output"], "scene04.mp4")
+            queue.close()
+
+
+class LocalRuntimeMediaTests(unittest.TestCase):
+    def test_still_video_command_is_local_ffmpeg(self):
+        command = still_to_video_command("frame.png", "out.mp4", duration=3.5)
+        self.assertEqual(command[0], "ffmpeg")
+        self.assertIn("frame.png", command)
+        self.assertIn("out.mp4", command)
+        self.assertIn("3.500", command)
+
+    def test_concat_command_is_local_ffmpeg(self):
+        command = concat_command("concat.txt", "movie.mp4")
+        self.assertEqual(command[0], "ffmpeg")
+        self.assertIn("concat.txt", command)
+        self.assertIn("movie.mp4", command)
+
+
+if __name__ == "__main__":
+    unittest.main()
