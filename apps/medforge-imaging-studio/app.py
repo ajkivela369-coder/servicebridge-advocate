@@ -3,11 +3,11 @@ import io
 import json
 from pathlib import Path
 
-import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
 
+from med_io import load_medical_image_bytes
 from med_engine import (
     ANALYSIS_ENGINES,
     EVIDENCE_LANES,
@@ -19,12 +19,6 @@ from med_engine import (
     label_from_dict,
     mechanism_step_from_dict,
 )
-
-try:
-    import pydicom
-except Exception:
-    pydicom = None
-
 
 st.set_page_config(
     page_title="MedForge Imaging Studio",
@@ -98,56 +92,19 @@ def pil_to_data_uri(image: Image.Image, fmt="PNG"):
     return f"data:image/{fmt.lower()};base64,{encoded}"
 
 
-def normalize_dicom(ds):
-    arr = ds.pixel_array.astype(np.float32)
-    slope = float(getattr(ds, "RescaleSlope", 1) or 1)
-    intercept = float(getattr(ds, "RescaleIntercept", 0) or 0)
-    arr = arr * slope + intercept
-
-    center = getattr(ds, "WindowCenter", None)
-    width = getattr(ds, "WindowWidth", None)
-    try:
-        if center is not None and width is not None:
-            center = float(center[0] if hasattr(center, "__len__") and not isinstance(center, str) else center)
-            width = float(width[0] if hasattr(width, "__len__") and not isinstance(width, str) else width)
-            lo, hi = center - width / 2, center + width / 2
-            arr = np.clip(arr, lo, hi)
-    except Exception:
-        pass
-
-    lo, hi = np.percentile(arr, (1, 99))
-    if hi <= lo:
-        lo, hi = float(arr.min()), float(arr.max() or 1)
-    arr = np.clip((arr - lo) / max(1e-6, hi - lo), 0, 1)
-    img = Image.fromarray((arr * 255).astype(np.uint8)).convert("RGB")
-    return img
-
-
 def load_source(uploaded):
     if uploaded is None:
         return
-    raw = uploaded.getvalue()
-    name = uploaded.name
-    suffix = Path(name).suffix.lower()
-
-    if suffix == ".dcm":
-        if pydicom is None:
-            st.error("DICOM support is not installed in this build.")
-            return
-        ds = pydicom.dcmread(io.BytesIO(raw), force=True)
-        img = normalize_dicom(ds)
-        st.session_state.source_data_uri = pil_to_data_uri(img)
-        st.session_state.source_mime = "image/png"
-        st.session_state.source_name = name
-        modality = str(getattr(ds, "Modality", "") or "")
-        if modality:
-            st.session_state.source_modality = modality
+    try:
+        loaded = load_medical_image_bytes(uploaded.getvalue(), uploaded.name)
+    except Exception as exc:
+        st.error(f"Could not read this medical image: {exc}")
         return
-
-    img = Image.open(io.BytesIO(raw)).convert("RGB")
-    st.session_state.source_data_uri = pil_to_data_uri(img)
-    st.session_state.source_mime = uploaded.type or "image/png"
-    st.session_state.source_name = name
+    st.session_state.source_data_uri = pil_to_data_uri(loaded.image)
+    st.session_state.source_mime = "image/png"
+    st.session_state.source_name = loaded.source_name
+    if loaded.modality:
+        st.session_state.source_modality = loaded.modality
 
 
 def project_payload():
