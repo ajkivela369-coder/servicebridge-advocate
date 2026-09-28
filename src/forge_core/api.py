@@ -76,6 +76,28 @@ class VaultBytesBody(BaseModel):
     data_b64: str
     mime_type: str = ""
     metadata: dict = {}
+    role: str = "source"
+    locator: str = ""
+
+
+class IngestBody(BaseModel):
+    app_id: str
+    original_name: str
+    data_b64: str
+    mime_type: str = ""
+    metadata: dict = {}
+
+
+class SearchBody(BaseModel):
+    app_id: str
+    query: str
+    limit: int = 12
+
+
+def _sdk(app_id: str) -> ForgeSDK:
+    # The Forge daemon must execute jobs locally. Never recurse back into its
+    # own HTTP surface even if FORGE_CORE_URL is present in the environment.
+    return ForgeSDK(app_id=app_id, core_url="")
 
 
 app = FastAPI(
@@ -175,7 +197,7 @@ def recovery_drill():
 
 @app.post("/v1/reason")
 def reason(body: ReasonBody):
-    return ForgeSDK.for_app(body.app_id).reason(
+    return _sdk(body.app_id).reason(
         body.instructions,
         body.input,
         work_class=body.work_class,
@@ -184,7 +206,7 @@ def reason(body: ReasonBody):
 
 @app.post("/v1/vision")
 def vision(body: VisionBody):
-    return ForgeSDK.for_app(body.app_id).vision(
+    return _sdk(body.app_id).vision(
         image_data_uri=body.image_data_uri,
         instructions=body.instructions,
         question=body.question,
@@ -194,12 +216,12 @@ def vision(body: VisionBody):
 
 @app.post("/v1/embed")
 def embed(body: EmbedBody):
-    return ForgeSDK.for_app(body.app_id).embed(body.texts)
+    return _sdk(body.app_id).embed(body.texts)
 
 
 @app.post("/v1/transcribe")
 def transcribe(body: TranscribeBody):
-    return ForgeSDK.for_app(body.app_id).transcribe(
+    return _sdk(body.app_id).transcribe(
         body.media_path,
         model_size=body.model_size,
         device=body.device,
@@ -210,7 +232,7 @@ def transcribe(body: TranscribeBody):
 
 @app.post("/v1/tts")
 def tts(body: TTSBody):
-    return ForgeSDK.for_app(body.app_id).tts(
+    return _sdk(body.app_id).tts(
         body.text,
         output_wav=body.output_wav,
         piper_model=body.piper_model,
@@ -220,22 +242,24 @@ def tts(body: TTSBody):
 
 @app.post("/v1/ocr")
 def ocr(body: OCRBody):
-    return ForgeSDK.for_app(body.app_id).ocr(body.path)
+    return _sdk(body.app_id).ocr(body.path)
 
 
 @app.post("/v1/video")
 def video(body: VideoBody):
-    return ForgeSDK.for_app(body.app_id).render_video(body.plan)
+    return _sdk(body.app_id).render_video(body.plan)
 
 
 @app.post("/v1/vault/source")
 def vault_source(body: VaultBytesBody):
     import base64
-    return ForgeSDK.for_app(body.app_id).vault_add_bytes(
+    return _sdk(body.app_id).vault_add_bytes(
         base64.b64decode(body.data_b64),
         original_name=body.original_name,
         mime_type=body.mime_type,
         metadata=body.metadata,
+        role=body.role,
+        locator=body.locator,
     )
 
 
@@ -265,4 +289,23 @@ def provenance(payload: dict):
         "backend": "Forge Core",
         "provenance": payload,
         "rule": "Every derived asset must reference its source_id or parent asset.",
+    }
+
+
+@app.post("/v1/ingest")
+def ingest(body: IngestBody):
+    import base64
+    return _sdk(body.app_id).ingest_document_bytes(
+        base64.b64decode(body.data_b64),
+        original_name=body.original_name,
+        mime_type=body.mime_type,
+        metadata=body.metadata,
+    )
+
+
+@app.post("/v1/search")
+def search(body: SearchBody):
+    return {
+        "backend": "Forge Core",
+        "hits": _sdk(body.app_id).search(body.query, limit=body.limit),
     }
