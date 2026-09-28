@@ -139,29 +139,56 @@ def main():
         results.append(exercise_pipeline(display, loaded, "pydicom public example dataset"))
 
     # TCIA documents getSingleImage as a public API that returns one DICOM
-    # object identified by SeriesInstanceUID + SOPInstanceUID.
-    tcia_url = (
-        "https://services.cancerimagingarchive.net/nbia-api/services/v1/getSingleImage"
+    # object identified by SeriesInstanceUID + SOPInstanceUID. External archive
+    # availability is recorded separately from MedForge ingestion correctness.
+    tcia_query = (
+        "/nbia-api/services/v1/getSingleImage"
         "?SeriesInstanceUID=143.284188174537413748743284550513035752067"
         "&SOPInstanceUID=143.53599064898089361503082484556513429004"
     )
-    req = urllib.request.Request(tcia_url, headers={"User-Agent": "MedForge-public-smoke/1.0"})
-    with urllib.request.urlopen(req, timeout=90) as response:
-        tcia_bytes = response.read()
-    loaded = med_io.load_dicom_bytes(tcia_bytes, "TCIA_getSingleImage.dcm")
-    results.append(
-        exercise_pipeline(
-            "TCIA public single DICOM",
-            loaded,
-            "The Cancer Imaging Archive public getSingleImage example endpoint",
+    tcia_hosts = [
+        "https://services.cancerimagingarchive.net",
+        "https://public.cancerimagingarchive.net",
+    ]
+    tcia_errors = []
+    tcia_bytes = None
+    for host in tcia_hosts:
+        try:
+            req = urllib.request.Request(
+                host + tcia_query,
+                headers={"User-Agent": "MedForge-public-smoke/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=25) as response:
+                tcia_bytes = response.read()
+            if tcia_bytes:
+                break
+        except Exception as exc:
+            tcia_errors.append(f"{host}: {type(exc).__name__}: {exc}")
+
+    if tcia_bytes:
+        loaded = med_io.load_dicom_bytes(tcia_bytes, "TCIA_getSingleImage.dcm")
+        results.append(
+            exercise_pipeline(
+                "TCIA public single DICOM",
+                loaded,
+                "The Cancer Imaging Archive public getSingleImage example endpoint",
+            )
         )
-    )
+    else:
+        results.append({
+            "source": "TCIA public single DICOM",
+            "source_note": "The Cancer Imaging Archive public getSingleImage example endpoint",
+            "status": "SKIP_EXTERNAL",
+            "reason": "TCIA endpoint was unreachable from the GitHub runner; no DICOM bytes reached MedForge.",
+            "errors": tcia_errors,
+        })
 
     report = {
         "suite": "MedForge public imaging smoke test",
         "result_count": len(results),
         "passed": sum(1 for x in results if x["status"] == "PASS"),
-        "failed": sum(1 for x in results if x["status"] != "PASS"),
+        "failed": sum(1 for x in results if x["status"] == "FAIL"),
+        "skipped_external": sum(1 for x in results if x["status"] == "SKIP_EXTERNAL"),
         "results": results,
         "known_scope_limits": [
             "Initial prototype tests single rendered medical images, not complete DICOM series.",
