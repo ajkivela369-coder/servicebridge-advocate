@@ -247,7 +247,7 @@ LESSONS = [
         "failure": "The native renderer applies different motion math than the Blender handoff or loses the illustrative label.",
         "fix": "Use the same mm/degree tracks and render a permanent ILLUSTRATIVE / DERIVED label into every frame.",
         "check": "Unit tests verify motion interpolation and rigid-body rotation/translation around the mesh center.",
-    },,
+    },
     {
         "id": "20",
         "title": "Measure geometric proximity without calling it compression",
