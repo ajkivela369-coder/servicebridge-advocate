@@ -2,10 +2,18 @@ import base64
 import html
 import json
 import random
+import sys
 from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from servicebridge.local_runtime import RuntimeMode, discover_services
 
 from war_engine import (
     FACTIONS,
@@ -78,6 +86,10 @@ div[data-testid="stPopover"] button {border-color:#6b542d !important;}
 
 if "mode" not in st.session_state:
     st.session_state.mode = "Simple"
+if "runtime_mode" not in st.session_state:
+    st.session_state.runtime_mode = RuntimeMode.CREDITLESS.value
+if "local_runtime_status" not in st.session_state:
+    st.session_state.local_runtime_status = []
 if "presets" not in st.session_state:
     st.session_state.presets = {group: options[0] for group, options in PRESETS.items()}
 if "faction" not in st.session_state:
@@ -173,6 +185,7 @@ def current_project_payload():
         "commander": st.session_state.commander,
         "objective": st.session_state.objective,
         "mode": st.session_state.mode,
+        "runtime_mode": st.session_state.runtime_mode,
         "presets": dict(st.session_state.presets),
         "faction": st.session_state.faction,
         "lens_name": st.session_state.lens_name,
@@ -195,7 +208,7 @@ def load_project_payload(payload):
     if not isinstance(payload, dict):
         raise ValueError("Project file must contain a JSON object.")
     for key in [
-        "title", "enemy", "commander", "objective", "mode", "presets", "faction",
+        "title", "enemy", "commander", "objective", "mode", "runtime_mode", "presets", "faction",
         "lens_name", "custom_minutes", "scene_count", "narrator_voice",
         "narrator_enabled", "tts_engine", "video_engine", "gpu_backend", "reference_url", "reference_library", "full_episode_profile",
     ]:
@@ -218,6 +231,23 @@ with st.sidebar:
     st.markdown('<div class="gf-eyebrow">GRIMFORGE</div><div class="gf-title">War Theater</div>', unsafe_allow_html=True)
     st.caption("GitHub-first · Streamlit build")
     st.session_state.mode = st.radio("Workspace", ["Simple", "Pro"], horizontal=True, index=0 if st.session_state.mode == "Simple" else 1)
+    st.markdown("**Runtime**")
+    runtime_options = [x.value for x in RuntimeMode]
+    st.session_state.runtime_mode = st.selectbox(
+        "Execution policy",
+        runtime_options,
+        index=runtime_options.index(st.session_state.runtime_mode)
+        if st.session_state.runtime_mode in runtime_options else 0,
+        help="Creditless blocks non-local AI endpoints. Hybrid/Cloud require explicit external-provider configuration.",
+    )
+    if st.button("Scan local engines", use_container_width=True, key="grimforge_scan_local"):
+        st.session_state.local_runtime_status = [x.to_dict() for x in discover_services()]
+    if st.session_state.runtime_mode == RuntimeMode.CREDITLESS.value:
+        st.caption("Creditless: local engines + deterministic Forge rendering only. No automatic paid fallback.")
+    if st.session_state.local_runtime_status:
+        ready = [x["service_id"] for x in st.session_state.local_runtime_status if x["healthy"]]
+        st.caption("Local ready: " + (", ".join(ready) if ready else "none detected yet"))
+
     st.markdown("**Project file**")
     project_json = json.dumps(current_project_payload(), indent=2)
     st.download_button(
