@@ -27,6 +27,8 @@ def load_module(name, filename):
 
 med_io = load_module("medforge_io_smoke", "med_io.py")
 med_engine = load_module("medforge_engine_smoke", "med_engine.py")
+med_volume = load_module("medforge_volume_smoke", "med_volume.py")
+med_segmentation = load_module("medforge_segmentation_smoke", "med_segmentation.py")
 
 PUBLIC_DATASETS = [
     {
@@ -42,6 +44,13 @@ PUBLIC_DATASETS = [
         "expected_md5": "28209eda62fecd6e6a2d98b1501bb15f",
         "kind": "npz",
         "source_note": "MedMNIST public benchmark; pediatric chest X-ray-derived dataset",
+    },
+    {
+        "name": "MedMNIST OrganMNIST3D",
+        "url": "https://zenodo.org/records/10519652/files/organmnist3d.npz?download=1",
+        "expected_md5": "a0c5a1ff56af4f155c46d46fbb45a2fe",
+        "kind": "npz3d",
+        "source_note": "MedMNIST public 3D benchmark derived from abdominal CT organ crops",
     },
 ]
 
@@ -78,6 +87,44 @@ def npz_sample_to_png_bytes(path):
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue(), arr.shape
+
+def npz_sample_volume(path):
+    data = np.load(path)
+    for key in ("test_images", "val_images", "train_images"):
+        if key in data and len(data[key]):
+            arr = np.asarray(data[key][0], dtype=np.float32)
+            break
+    else:
+        raise RuntimeError(f"No volume array found in {path}")
+    if arr.ndim != 3:
+        raise RuntimeError(f"Expected a 3D volume sample, got {arr.shape}")
+    return arr
+
+
+def exercise_volume_pipeline(source_name, volume, source_note):
+    z, y, x = [s // 2 for s in volume.shape]
+    axial, coronal, sagittal = med_volume.mpr_slices(volume, z, y, x)
+    preview = med_volume.downsample_volume(volume, max_axis=32)
+    mask = med_segmentation.percentile_mask(volume, 85)
+    summary = med_segmentation.summarize_mask(mask)
+    assert axial.ndim == 2 and coronal.ndim == 2 and sagittal.ndim == 2
+    assert preview.ndim == 3
+    assert mask.shape == volume.shape
+    assert "not an anatomical" in summary.note
+    return {
+        "source": source_name,
+        "source_note": source_note,
+        "source_kind": "public-3d-volume",
+        "volume_shape": list(volume.shape),
+        "axial_shape": list(axial.shape),
+        "coronal_shape": list(coronal.shape),
+        "sagittal_shape": list(sagittal.shape),
+        "preview_shape": list(preview.shape),
+        "mask_voxels": summary.voxel_count,
+        "mask_non_anatomical": True,
+        "status": "PASS",
+    }
+
 
 def exercise_pipeline(source_name, loaded, source_note):
     label = med_engine.ImageLabel(
@@ -127,16 +174,45 @@ def main():
 
     for item in PUBLIC_DATASETS:
         path = download(item)
-        png_bytes, original_shape = npz_sample_to_png_bytes(path)
-        loaded = med_io.load_standard_image_bytes(png_bytes, item["name"] + ".png")
-        result = exercise_pipeline(item["name"], loaded, item["source_note"])
-        result["original_sample_shape"] = list(original_shape)
-        results.append(result)
+        if item["kind"] == "npz3d":
+            volume = npz_sample_volume(path)
+            results.append(exercise_volume_pipeline(item["name"], volume, item["source_note"]))
+        else:
+            png_bytes, original_shape = npz_sample_to_png_bytes(path)
+            loaded = med_io.load_standard_image_bytes(png_bytes, item["name"] + ".png")
+            result = exercise_pipeline(item["name"], loaded, item["source_note"])
+            result["original_sample_shape"] = list(original_shape)
+            results.append(result)
 
     for key, display in [("ct", "pydicom public CT example"), ("mr", "pydicom public MR example")]:
         path = examples.get_path(key)
         loaded = med_io.load_dicom_bytes(Path(path).read_bytes(), Path(path).name)
         results.append(exercise_pipeline(display, loaded, "pydicom public example dataset"))
+
+    compressed_cases = [
+        (
+            "pydicom-data JPEG2000 lossless",
+            "https://raw.githubusercontent.com/pydicom/pydicom-data/master/data_store/data/693_J2KR.dcm",
+        ),
+        (
+            "pydicom-data JPEG lossless",
+            "https://raw.githubusercontent.com/pydicom/pydicom-data/master/data_store/data/JPEG-LL.dcm",
+        ),
+    ]
+    for display, url in compressed_cases:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "MedForge-public-smoke/1.0"})
+            with urllib.request.urlopen(req, timeout=45) as response:
+                raw = response.read()
+            loaded = med_io.load_dicom_bytes(raw, display + ".dcm")
+            results.append(exercise_pipeline(display, loaded, "pydicom-data public compressed DICOM"))
+        except Exception as exc:
+            results.append({
+                "source": display,
+                "source_note": "pydicom-data public compressed DICOM",
+                "status": "FAIL",
+                "reason": f"Compressed DICOM path failed: {type(exc).__name__}: {exc}",
+            })
 
     # TCIA documents getSingleImage as a public API that returns one DICOM
     # object identified by SeriesInstanceUID + SOPInstanceUID. External archive
@@ -191,7 +267,7 @@ def main():
         "skipped_external": sum(1 for x in results if x["status"] == "SKIP_EXTERNAL"),
         "results": results,
         "known_scope_limits": [
-            "Initial prototype tests single rendered medical images, not complete DICOM series.",
+            "DICOM series assembly is unit-tested with synthetic geometry; a full public TCIA series still needs a reachable archive endpoint.",
             "No automated diagnosis or pathology classification is performed.",
             "Mechanism steps are software-test hypotheses and are not clinical conclusions.",
         ],
