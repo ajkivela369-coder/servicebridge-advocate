@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "profile_id": "reasoning-small",
+      "kind": "text",
+      "expected_path": "./private_data/forge/models/reasoning-small/model.gguf",
+      "quality_rank": 40,
+      "min_ram_gb": 4.0,
+      "min_vram_gb": 0.0,
+      "purpose": "Fast routing, extraction, short drafting, simple app tasks",
+      "policy": "Prefer for tiny/standard work on constrained machines"
+    },
+    {
+      "profile_id": "reasoning-medium",
+      "kind": "text",
+      "expected_path": "./private_data/forge/models/reasoning-medium/model.gguf",
+      "quality_rank": 80,
+      "min_ram_gb": 10.0,
+      "min_vram_gb": 6.0,
+      "purpose": "Complex reasoning and long-form synthesis",
+      "policy": "Use only when admission controller reports SAFE/TIGHT"
+    },
+    {
+      "profile_id": "coding",
+      "kind": "code",
+      "expected_path": "./private_data/forge/models/coding/model.gguf",
+      "quality_rank": 70,
+      "min_ram_gb": 8.0,
+      "min_vram_gb": 4.0,
+      "purpose": "Code review, generation, repair and repository work",
+      "policy": "Reserve for coding tasks rather than general chat"
+    },
+    {
+      "profile_id": "embedding",
+      "kind": "embedding",
+      "expected_path": "./private_data/forge/models/embedding/model.gguf",
+      "quality_rank": 90,
+      "min_ram_gb": 1.5,
+      "min_vram_gb": 0.0,
+      "purpose": "Shared semantic search across Elias and Evidence Auditor",
+      "policy": "Keep lightweight; CPU is acceptable"
+    },
+    {
+      "profile_id": "vision",
+      "kind": "vision",
+      "expected_path": "./private_data/forge/models/vision/model.gguf",
+      "quality_rank": 75,
+      "min_ram_gb": 8.0,
+      "min_vram_gb": 5.0,
+      "purpose": "Source-image understanding for MedForge and GrimForge",
+      "policy": "Unload idle text model first when VRAM is constrained"
+    },
+    {
+      "profile_id": "whisper",
+      "kind": "transcription",
+      "expected_path": "./private_data/forge/models/whisper",
+      "quality_rank": 80,
+      "min_ram_gb": 2.0,
+      "min_vram_gb": 0.0,
+      "purpose": "Local speech-to-text",
+      "policy": "Prefer CPU INT8 when GPU headroom is tight"
+    },
+    {
+      "profile_id": "kokoro",
+      "kind": "tts",
+      "expected_path": "./private_data/forge/models/kokoro",
+      "quality_rank": 80,
+      "min_ram_gb": 2.0,
+      "min_vram_gb": 0.0,
+      "purpose": "Primary local narration voice",
+      "policy": "Piper remains fallback"
+    }
+  ]
+}
