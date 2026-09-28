@@ -120,6 +120,12 @@ DEFAULT_SERVICES = {
         "endpoint": "http://127.0.0.1:11434/api/tags",
         "notes": "Optional local model runner.",
     },
+    "blender": {
+        "kind": "3d_render",
+        "executable": "blender",
+        "endpoint": "",
+        "notes": "Local 3D scene builder, animation, and renderer.",
+    },
 }
 
 
