@@ -4,6 +4,7 @@ from dataclasses import dataclass, asdict
 from io import BytesIO
 from typing import Iterable, List, Tuple
 import math
+import zipfile
 
 import numpy as np
 from PIL import Image
@@ -300,3 +301,28 @@ def downsample_volume(volume: np.ndarray, max_axis: int = 48) -> np.ndarray:
         raise ValueError("Expected a 3D volume.")
     steps = [max(1, math.ceil(size / max_axis)) for size in volume.shape]
     return volume[::steps[0], ::steps[1], ::steps[2]]
+
+
+def expand_dicom_blobs(files: Iterable[Tuple[str, bytes]]) -> List[Tuple[str, bytes]]:
+    """Expand direct DICOM uploads and ZIP archives into in-memory named blobs."""
+    expanded: List[Tuple[str, bytes]] = []
+    for name, raw in files:
+        lower = name.lower()
+        if lower.endswith(".zip"):
+            try:
+                with zipfile.ZipFile(BytesIO(raw)) as zf:
+                    for member in zf.infolist():
+                        if member.is_dir():
+                            continue
+                        # Avoid enormous accidental archive members in this prototype.
+                        if member.file_size > 128 * 1024 * 1024:
+                            continue
+                        member_name = member.filename.replace("\\", "/").split("/")[-1]
+                        if not member_name:
+                            continue
+                        expanded.append((member_name, zf.read(member)))
+            except zipfile.BadZipFile as exc:
+                raise ValueError(f"{name} is not a readable ZIP archive.") from exc
+        else:
+            expanded.append((name, raw))
+    return expanded
