@@ -21,6 +21,7 @@ from servicebridge.local_runtime import (
     RuntimeMode,
     RuntimePolicy,
     conservative_profile_guidance,
+    detect_hardware,
     runtime_snapshot,
 )
 from servicebridge.local_runtime.workers import worker_capabilities
@@ -129,9 +130,7 @@ with status_tab:
         st.success("Creditless invariant active: non-local model endpoints are blocked; cloud fallback is disabled.")
 
     st.markdown("**Hardware-aware guidance**")
-    st.json(conservative_profile_guidance(
-        __import__("servicebridge.local_runtime", fromlist=["detect_hardware"]).detect_hardware()
-    ))
+    st.json(conservative_profile_guidance(detect_hardware()))
 
 with policy_tab:
     st.subheader("Try the network guard")
@@ -250,7 +249,7 @@ with models_tab:
             except Exception as exc:
                 st.error(str(exc))
 
-    hardware = __import__("servicebridge.local_runtime", fromlist=["detect_hardware"]).detect_hardware()
+    hardware = detect_hardware()
     best = catalog.best(model_kind, hardware)
     st.markdown("**Best registered fit for this machine**")
     if best:
