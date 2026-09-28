@@ -7,12 +7,29 @@ cd "$REPO_ROOT"
 echo "ServiceBridge / Forge Creditless Bootstrap"
 echo "Installs Python-side local runtime dependencies; model weights are not downloaded automatically."
 
+WHEELHOUSE="${WHEELHOUSE:-}"
+PIP_SOURCE=()
+if [[ -n "$WHEELHOUSE" ]]; then
+  WHEELHOUSE="$(cd "$WHEELHOUSE" && pwd)"
+  PIP_SOURCE=(--no-index --find-links "$WHEELHOUSE")
+  echo "Offline wheelhouse: $WHEELHOUSE"
+fi
+
 python3 -m venv .venv-creditless
 PY=".venv-creditless/bin/python"
-"$PY" -m pip install --upgrade pip
-"$PY" -m pip install -e .
-"$PY" -m pip install -r apps/forge-systems-lab/requirements.txt
-"$PY" -m pip install "pypdf>=5"
+if [[ -z "$WHEELHOUSE" ]]; then
+  "$PY" -m pip install --upgrade pip
+fi
+"$PY" -m pip install "${PIP_SOURCE[@]}" -e .
+for req in \
+  apps/forge-systems-lab/requirements.txt \
+  apps/grimforge-war-theater/requirements.txt \
+  apps/wildtake-streamlit/requirements.txt \
+  apps/medforge-imaging-studio/requirements.txt \
+  apps/medforge-build-lab/requirements.txt; do
+  "$PY" -m pip install "${PIP_SOURCE[@]}" -r "$req"
+done
+"$PY" -m pip install "${PIP_SOURCE[@]}" "pypdf>=5"
 
 echo
 echo "Local executable checks"
