@@ -449,7 +449,21 @@ class ForgeSDK:
         mime_type: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Vault the original once, then extract local page/text records."""
+        """Vault the original once, then extract/index local page/text records."""
+        if self.core_url:
+            import base64
+            return self._http(
+                "POST",
+                "/v1/ingest",
+                {
+                    "app_id": self.app_id,
+                    "original_name": original_name,
+                    "data_b64": base64.b64encode(data).decode("ascii"),
+                    "mime_type": mime_type,
+                    "metadata": metadata or {},
+                },
+            )
+
         from pathlib import Path
         import tempfile
 
@@ -510,8 +524,56 @@ class ForgeSDK:
             page["sha256"] = source["sha256"]
             page["source_name"] = original_name
 
+        from .vault import ForgeVault
+        core = ForgeCore()
+        with ForgeVault(core.paths.vault) as vault:
+            indexed = vault.index_text_units(
+                source["source_id"],
+                [
+                    {
+                        "page": page.get("page"),
+                        "locator": (
+                            f'p. {page.get("page")}'
+                            if page.get("page") is not None
+                            else ""
+                        ),
+                        "text": page.get("text", ""),
+                        "metadata": {
+                            "source_name": original_name,
+                            "ocr_fallback": bool(page.get("ocr_fallback", False)),
+                        },
+                    }
+                    for page in pages
+                ],
+                replace=True,
+            )
+
         return {
             "source": source,
             "pages": pages,
+            "indexed_text_units": indexed,
             "backend": "Forge Core",
         }
+
+    def search(
+        self,
+        query: str,
+        *,
+        limit: int = 12,
+    ) -> list[dict[str, Any]]:
+        if self.core_url:
+            data = self._http(
+                "POST",
+                "/v1/search",
+                {
+                    "app_id": self.app_id,
+                    "query": query,
+                    "limit": int(limit),
+                },
+            )
+            return data.get("hits", [])
+
+        from .vault import ForgeVault
+        core = ForgeCore()
+        with ForgeVault(core.paths.vault) as vault:
+            return vault.search_text(query, limit=limit)
