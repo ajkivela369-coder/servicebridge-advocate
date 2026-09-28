@@ -19,6 +19,8 @@ class LocalModel:
     min_ram_gb: float = 0.0
     min_vram_gb: float = 0.0
     sha256: str = ""
+    license: str = ""
+    source: str = ""
     notes: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -63,11 +65,11 @@ class LocalModelCatalog:
         if model is None:
             raise KeyError(model_id)
         path = Path(model.path).expanduser()
-        exists = path.exists() and path.is_file()
+        exists = path.exists() and (path.is_file() or path.is_dir())
         digest = ""
         hash_match = None
         if exists and model.sha256:
-            digest = file_sha256(path)
+            digest = artifact_sha256(path)
             hash_match = digest.lower() == model.sha256.lower()
         return {
             "model_id": model_id,
@@ -86,7 +88,8 @@ class LocalModelCatalog:
         for model in self.list():
             if model.kind != kind:
                 continue
-            if not Path(model.path).expanduser().exists():
+            path = Path(model.path).expanduser()
+            if not path.exists() or not (path.is_file() or path.is_dir()):
                 continue
             if hardware.ram_gb is not None and hardware.ram_gb < model.min_ram_gb:
                 continue
@@ -111,6 +114,34 @@ def file_sha256(path: str | Path, chunk_size: int = 1024 * 1024) -> str:
             if not chunk:
                 break
             digest.update(chunk)
+    return digest.hexdigest()
+
+
+def artifact_sha256(path: str | Path) -> str:
+    """
+    Hash a model file or an entire local model directory deterministically.
+
+    Directory hashes include relative filenames and file bytes so a missing,
+    added, or changed weight/config file changes the digest.
+    """
+    root = Path(path).expanduser()
+    if root.is_file():
+        return file_sha256(root)
+    if not root.is_dir():
+        raise FileNotFoundError(root)
+
+    digest = sha256()
+    files = sorted(p for p in root.rglob("*") if p.is_file())
+    for file in files:
+        rel = file.relative_to(root).as_posix().encode("utf-8")
+        digest.update(len(rel).to_bytes(8, "big"))
+        digest.update(rel)
+        with open(file, "rb") as fh:
+            while True:
+                chunk = fh.read(1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
     return digest.hexdigest()
 
 
