@@ -234,3 +234,29 @@ def video_clip_scene_command(
         str(Path(output_path)),
     ]
     return cmd
+
+
+
+def probe_media_duration(path: str | Path, timeout: float = 15.0) -> float | None:
+    """Return local media duration in seconds using ffprobe when available."""
+    exe = shutil.which("ffprobe")
+    if not exe:
+        return None
+    try:
+        proc = subprocess.run(
+            [
+                exe,
+                "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                str(Path(path)),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=True,
+        )
+        value = float(proc.stdout.strip())
+        return value if value > 0 else None
+    except Exception:
+        return None
