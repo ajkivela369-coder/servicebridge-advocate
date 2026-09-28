@@ -14,9 +14,8 @@ _SRC = _REPO_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from servicebridge.local_runtime import RuntimeMode, discover_services
-from servicebridge.local_runtime.media import ffmpeg_available
-from servicebridge.local_runtime.workers import worker_capabilities
+from forge_core.contracts import FORGE_RUNTIME_MODES, RuntimeMode, ffmpeg_available
+from forge_core.sdk import ForgeSDK
 from local_pipeline import render_grimforge_local
 
 from war_engine import (
@@ -242,7 +241,7 @@ with st.sidebar:
     st.caption("GitHub-first · Streamlit build")
     st.session_state.mode = st.radio("Workspace", ["Simple", "Pro"], horizontal=True, index=0 if st.session_state.mode == "Simple" else 1)
     st.markdown("**Runtime**")
-    runtime_options = [x.value for x in RuntimeMode]
+    runtime_options = list(FORGE_RUNTIME_MODES)
     st.session_state.runtime_mode = st.selectbox(
         "Execution policy",
         runtime_options,
@@ -250,9 +249,14 @@ with st.sidebar:
         if st.session_state.runtime_mode in runtime_options else 0,
         help="Creditless blocks non-local AI endpoints. Hybrid/Cloud require explicit external-provider configuration.",
     )
-    if st.button("Scan local engines", use_container_width=True, key="grimforge_scan_local"):
-        st.session_state.local_runtime_status = [x.to_dict() for x in discover_services()]
-        st.session_state.local_worker_status = [x.to_dict() for x in worker_capabilities()]
+    if st.button("Scan Forge Core", use_container_width=True, key="grimforge_scan_local"):
+        try:
+            forge_state = ForgeSDK.for_app("grimforge").status()
+            st.session_state.local_runtime_status = list(forge_state.get("services", []))
+            st.session_state.local_worker_status = list(forge_state.get("workers", []))
+            st.session_state["forge_memory_budget"] = forge_state.get("memory_budget", {})
+        except Exception as exc:
+            st.error(f"Forge Core status failed: {exc}")
     if st.session_state.runtime_mode == RuntimeMode.CREDITLESS.value:
         st.caption("Creditless: local engines + deterministic Forge rendering only. No automatic paid fallback.")
     if st.session_state.local_runtime_status or st.session_state.local_worker_status:
@@ -286,6 +290,7 @@ with st.sidebar:
         st.caption(st.session_state.project_notice)
     st.divider()
     st.markdown("**Provider status**")
+    st.caption("Backend: Forge Core v0.4")
     st.caption("Episode generator: local/deterministic")
     st.caption("Source-locked media: connected")
     st.caption("Reference analyzer: local VLM adapter available when a compatible model is loaded")
