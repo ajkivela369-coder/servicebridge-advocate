@@ -221,7 +221,7 @@ LESSONS = [
         "failure": "Raw DICOM leaks into the renderer or the animation loses the distinction between derived anatomy and illustrative motion.",
         "fix": "Exclude DICOM entirely and carry evidence-class metadata into every object/motion and into the scene-level rules.",
         "check": "Bundle tests verify no .dcm files, the script is present, motions are explicit, and the source-DICOM flag is false.",
-    },,
+    },
     {
         "id": "18",
         "title": "Review the source with a localhost vision model",
