@@ -165,10 +165,10 @@ LESSONS = [
         "plain": "Compare the DICOM volume and imported mask using their real-world RAS coordinates instead of assuming matching array dimensions means matching anatomy.",
         "why": "A NIfTI file may reorder or flip voxel axes while still describing the same physical anatomy. Shape-only matching can produce dangerously wrong overlays.",
         "input": "DICOM z-y-x shape + DICOM affine + NIfTI shape + NIfTI affine",
-        "output": "Affine validity, voxel spacing, centers, physical overlap, and a spatial-overlay readiness decision",
+        "output": "Affine validity, voxel spacing, centers, physical overlap, and a geometry-compatibility decision",
         "failure": "Two unrelated volumes happen to have the same dimensions and are overlaid anyway.",
-        "fix": "Require finite invertible affines and sufficient patient-space overlap before automatic resampling.",
-        "check": "Tests include a deliberately transposed NIfTI mask that still aligns correctly through its affine, plus a distant mask that is blocked.",
+        "fix": "Require finite invertible affines and sufficient patient-space overlap, then require explicit confirmation that the mask belongs to or was co-registered with the selected source before showing an overlay.",
+        "check": "Tests include a deliberately transposed NIfTI mask that still aligns correctly through its affine, a distant mask that is blocked, and the UI keeps overlay disabled until the pairing is explicitly confirmed.",
     },
     {
         "id": "14",
@@ -219,7 +219,7 @@ LESSONS = [
         "input": "Imported masks + explicit motion tracks + render settings",
         "output": "Blender-ready ZIP containing scene.json, OBJ meshes, renderer script, and evidence-boundary README",
         "failure": "Raw DICOM leaks into the renderer or the animation loses the distinction between derived anatomy and illustrative motion.",
-        "fix": "Exclude DICOM entirely and carry evidence-class metadata into every object/motion and into the scene-level rules.",
+        "fix": "Exclude DICOM entirely, carry evidence-class metadata into every object/motion and into the scene-level rules, and burn ILLUSTRATIVE / DERIVED into rendered Blender frames.",
         "check": "Bundle tests verify no .dcm files, the script is present, motions are explicit, and the source-DICOM flag is false.",
     },
     {
