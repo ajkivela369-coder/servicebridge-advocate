@@ -61,3 +61,74 @@ def run_command(command: list[str], timeout: float = 600.0) -> subprocess.Comple
         timeout=timeout,
         check=True,
     )
+
+
+
+def mux_audio_command(
+    video_path: str | Path,
+    audio_path: str | Path,
+    output_path: str | Path,
+    *,
+    audio_lufs: int = -16,
+) -> list[str]:
+    """Mux local narration/audio into a video and normalize perceived loudness."""
+    return [
+        "ffmpeg",
+        "-y",
+        "-i", str(Path(video_path)),
+        "-i", str(Path(audio_path)),
+        "-filter:a", f"loudnorm=I={int(audio_lufs)}:TP=-1.5:LRA=11",
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-shortest",
+        str(Path(output_path)),
+    ]
+
+
+def burn_subtitles_command(
+    video_path: str | Path,
+    subtitles_path: str | Path,
+    output_path: str | Path,
+) -> list[str]:
+    """Burn SRT/ASS captions with FFmpeg's subtitles filter."""
+    subtitle = str(Path(subtitles_path)).replace("\\", "/").replace(":", "\\:")
+    return [
+        "ffmpeg",
+        "-y",
+        "-i", str(Path(video_path)),
+        "-vf", f"subtitles='{subtitle}'",
+        "-c:v", "libx264",
+        "-crf", "18",
+        "-preset", "medium",
+        "-c:a", "copy",
+        str(Path(output_path)),
+    ]
+
+
+def image_sequence_command(
+    frame_pattern: str,
+    output_path: str | Path,
+    *,
+    fps: int = 30,
+    width: int = 1920,
+    height: int = 1080,
+) -> list[str]:
+    """Turn numbered local frames into a normal H.264 MP4."""
+    return [
+        "ffmpeg",
+        "-y",
+        "-framerate", str(int(fps)),
+        "-i", frame_pattern,
+        "-vf",
+        (
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,format=yuv420p"
+        ),
+        "-c:v", "libx264",
+        "-r", str(int(fps)),
+        "-pix_fmt", "yuv420p",
+        str(Path(output_path)),
+    ]
