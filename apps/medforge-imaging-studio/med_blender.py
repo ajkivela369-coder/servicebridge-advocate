@@ -22,6 +22,21 @@ def safe_object_id(name: str) -> str:
     return cleaned or "structure"
 
 
+def object_ids_for_masks(masks) -> list[str]:
+    used_ids = set()
+    result = []
+    for mask in masks:
+        object_id = safe_object_id(mask.name)
+        base_id = object_id
+        counter = 2
+        while object_id in used_ids:
+            object_id = f"{base_id}_{counter}"
+            counter += 1
+        used_ids.add(object_id)
+        result.append(object_id)
+    return result
+
+
 def build_blender_scene_bundle(
     masks,
     motions: list[MechanismMotion] | None = None,
@@ -48,16 +63,9 @@ def build_blender_scene_bundle(
 
     objects = []
     mesh_files = {}
-    used_ids = set()
+    object_ids = object_ids_for_masks(masks)
 
-    for index, mask in enumerate(masks):
-        object_id = safe_object_id(mask.name)
-        base_id = object_id
-        counter = 2
-        while object_id in used_ids:
-            object_id = f"{base_id}_{counter}"
-            counter += 1
-        used_ids.add(object_id)
+    for index, (mask, object_id) in enumerate(zip(masks, object_ids)):
 
         mesh = mask_to_mesh(
             mask.data,
