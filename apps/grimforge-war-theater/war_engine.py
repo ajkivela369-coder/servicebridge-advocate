@@ -163,7 +163,7 @@ REFERENCE_LENSES = {
     },
 }
 
-PROJECT_SCHEMA_VERSION = 1
+PROJECT_SCHEMA_VERSION = 2
 
 FULL_EPISODE_PROFILES = {
     "Economy": {
@@ -360,6 +360,11 @@ class Scene:
     sound: str
     continuity: str
     palette: str
+    # Source-locked media framing. Defaults preserve backward compatibility
+    # with older GrimForge project JSON files.
+    focus_x: int = 50
+    focus_y: int = 50
+    source_zoom: float = 1.0
 
 
 @dataclass
