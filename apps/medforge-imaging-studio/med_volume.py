@@ -211,7 +211,9 @@ def build_dicom_volume(
         parsed = [(n, ds) for n, ds in parsed if _series_uid(ds) == chosen_uid]
         series_uid = chosen_uid
 
-    parsed.sort(key=lambda item: _slice_sort_value(item[1], parsed.index(item) if item in parsed else 0))
+    indexed = list(enumerate(parsed))
+    indexed.sort(key=lambda pair: _slice_sort_value(pair[1][1], pair[0]))
+    parsed = [item for _, item in indexed]
 
     decoded_slices = []
     expected_shape = None
