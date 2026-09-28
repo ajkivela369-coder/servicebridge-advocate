@@ -3,6 +3,7 @@ import html
 import json
 import random
 import sys
+import tempfile
 from pathlib import Path
 
 import streamlit as st
@@ -14,7 +15,9 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from servicebridge.local_runtime import RuntimeMode, discover_services
+from servicebridge.local_runtime.media import ffmpeg_available
 from servicebridge.local_runtime.workers import worker_capabilities
+from local_pipeline import render_grimforge_local
 
 from war_engine import (
     FACTIONS,
@@ -93,6 +96,10 @@ if "local_runtime_status" not in st.session_state:
     st.session_state.local_runtime_status = []
 if "local_worker_status" not in st.session_state:
     st.session_state.local_worker_status = []
+if "creditless_video_bytes" not in st.session_state:
+    st.session_state.creditless_video_bytes = b""
+if "creditless_render_meta" not in st.session_state:
+    st.session_state.creditless_render_meta = {}
 if "presets" not in st.session_state:
     st.session_state.presets = {group: options[0] for group, options in PRESETS.items()}
 if "faction" not in st.session_state:
@@ -451,7 +458,7 @@ st.markdown(
     f'<div class="gf-summary"><strong>{html.escape(st.session_state.narrator_voice)}</strong> · '
     f'<span class="gf-muted">{html.escape(voice_profile["description"])}</span><br>'
     f'<span class="gf-badge">TTS engine: {html.escape(st.session_state.tts_engine)}</span>'
-    f'<span class="gf-badge">Premium voice provider not connected</span>'
+    f'<span class="gf-badge">Local Auto: Kokoro → Piper → captions/silence</span>'
     f'<span class="gf-badge">Original voice direction — no narrator cloning</span></div>',
     unsafe_allow_html=True,
 )
@@ -702,7 +709,7 @@ else:
         st.selectbox("Frame rate intent", [24, 25, 30, 60])
         st.selectbox("Quality", ["Highest available", "Balanced", "Fast preview"])
         st.checkbox("Captions", True)
-        st.caption("Highest available means the best settings a connected provider actually supports.")
+        st.caption("Highest available uses the best local path that fits the machine; external providers are optional accelerators only.")
 
     if st.button("🔥 FORGE / REFORGE EPISODE", type="primary", use_container_width=True):
         st.session_state.episode = make_episode(
@@ -746,9 +753,9 @@ else:
         f'<span class="gf-muted">{html.escape(episode.logline)}</span><br>'
         f'<span class="gf-badge">PLAYABLE ANIMATIC</span>{source_lock_badge}'
         f'<span class="gf-badge">Story target {round(episode.runtime_seconds/60,1)} min</span>'
-        f'<span class="gf-badge">VIDEO: {html.escape(st.session_state.video_engine)} · planned</span>'
+        f'<span class="gf-badge">VIDEO: {html.escape(st.session_state.video_engine)}</span>'
         f'<span class="gf-badge">GPU: {html.escape(st.session_state.gpu_backend)}</span>'
-        f'<span class="gf-badge">FINAL FULL-MOTION RENDER · provider not connected</span></div>',
+        f'<span class="gf-badge">CREDITLESS MP4 · local deterministic fallback available</span></div>',
         unsafe_allow_html=True,
     )
 
@@ -951,17 +958,82 @@ else:
                 unsafe_allow_html=True,
             )
 
-    st.subheader("Final Render Queue")
+    st.subheader("Creditless Local Render")
+    st.caption(
+        "This renderer always has a local path: source-locked image or deterministic scene cards → "
+        "Kokoro/Piper when available (otherwise silence) → captions → FFmpeg MP4."
+    )
+    timing_mode = st.radio(
+        "Local timing",
+        ["Fast animatic · cap each scene at 12s", "Full story-runtime timing"],
+        horizontal=True,
+        key="creditless_timing_mode",
+    )
+    render_cap = 12.0 if timing_mode.startswith("Fast") else None
+    if st.button(
+        "🎬 RENDER CREDITLESS MP4",
+        type="primary",
+        use_container_width=True,
+        disabled=not ffmpeg_available(),
+        key="render_creditless_grimforge",
+    ):
+        st.session_state.creditless_video_bytes = b""
+        st.session_state.creditless_render_meta = {}
+        try:
+            with tempfile.TemporaryDirectory(prefix="grimforge-creditless-") as tmp:
+                result = render_grimforge_local(
+                    episode.to_dict(),
+                    output_dir=tmp,
+                    source_media=current_source_media_payload(),
+                    use_local_tts=st.session_state.narrator_enabled,
+                    scene_duration_cap=render_cap,
+                    fps=30,
+                    width=1280,
+                    height=720,
+                )
+                final_path = Path(result["output_path"])
+                st.session_state.creditless_video_bytes = final_path.read_bytes()
+                st.session_state.creditless_render_meta = result
+            st.success("Creditless GrimForge MP4 rendered locally.")
+        except Exception as exc:
+            st.error(f"Could not finish the local render: {exc}")
+
+    if not ffmpeg_available():
+        st.warning("Install local FFmpeg to enable the deterministic no-credit MP4 renderer.")
+
+    if st.session_state.creditless_video_bytes:
+        st.video(st.session_state.creditless_video_bytes)
+        st.download_button(
+            "⬇ Download GrimForge Creditless MP4",
+            data=st.session_state.creditless_video_bytes,
+            file_name="grimforge-creditless.mp4",
+            mime="video/mp4",
+            use_container_width=True,
+        )
+        with st.expander("Creditless render details"):
+            st.json(st.session_state.creditless_render_meta)
+
+    local_tts_workers = {
+        x.get("worker_id"): x.get("available")
+        for x in st.session_state.local_worker_status
+    }
+    local_tts_status = (
+        "Ready" if local_tts_workers.get("kokoro")
+        else ("Piper executable detected" if any(
+            x.get("service_id") == "piper" and x.get("healthy")
+            for x in st.session_state.local_runtime_status
+        ) else "Captions/silence fallback")
+    )
     queue_rows = [
         ("Episode structure", "Ready"),
         ("Playable animatic", "Ready"),
         ("Reference rights boundary", "Ready"),
-        ("Source-locked visual layer", "Ready" if source_media_src() else "Optional"),
-        ("Full-motion video generation", "Not connected"),
-        ("Premium voice performance", "Not connected"),
-        ("Music / SFX generation", "Not connected"),
-        ("Continuity render QC", "Waiting"),
-        ("Final MP4", "Waiting"),
+        ("Source-locked visual layer", "Ready" if source_media_src() else "Deterministic scene cards"),
+        ("Generative video", "Optional local upgrade"),
+        ("Local narration", local_tts_status),
+        ("Captions", "Ready"),
+        ("Deterministic renderer", "Ready" if ffmpeg_available() else "Needs local FFmpeg"),
+        ("Final MP4", "Ready locally" if ffmpeg_available() else "Needs local FFmpeg"),
     ]
     st.table({"Stage": [x[0] for x in queue_rows], "Status": [x[1] for x in queue_rows]})
 
