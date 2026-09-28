@@ -113,7 +113,7 @@ class LocalRuntimeMediaTests(unittest.TestCase):
         self.assertEqual(mux[0], "ffmpeg")
         self.assertEqual(caps[0], "ffmpeg")
         self.assertEqual(seq[0], "ffmpeg")
-        self.assertIn("loudnorm=I=-16", mux)
+        self.assertTrue(any(x.startswith("loudnorm=I=-16") for x in mux))
         self.assertTrue(any("subtitles=" in x for x in caps))
 
 
