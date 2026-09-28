@@ -16,8 +16,11 @@ if str(SRC) not in sys.path:
 from servicebridge.local_runtime import (
     AssetCache,
     JobQueue,
+    LocalModel,
+    LocalModelCatalog,
     RuntimeMode,
     RuntimePolicy,
+    conservative_profile_guidance,
     runtime_snapshot,
 )
 from servicebridge.local_runtime.workers import worker_capabilities
@@ -78,10 +81,11 @@ flow = '<div class="flow">' + ''.join(
 ) + '</div>'
 st.markdown(flow, unsafe_allow_html=True)
 
-status_tab, policy_tab, vault_tab, lesson_tab = st.tabs([
+status_tab, policy_tab, vault_tab, models_tab, lesson_tab = st.tabs([
     "Runtime status",
     "Policy simulator",
     "Cache + queue sandbox",
+    "Local models",
     "How it works",
 ])
 
@@ -123,6 +127,11 @@ with status_tab:
 
     if mode == RuntimeMode.CREDITLESS.value:
         st.success("Creditless invariant active: non-local model endpoints are blocked; cloud fallback is disabled.")
+
+    st.markdown("**Hardware-aware guidance**")
+    st.json(conservative_profile_guidance(
+        __import__("servicebridge.local_runtime", fromlist=["detect_hardware"]).detect_hardware()
+    ))
 
 with policy_tab:
     st.subheader("Try the network guard")
@@ -175,6 +184,80 @@ with vault_tab:
     st.info(
         "The asset hash lets every app reuse identical work. The job database keeps long local tasks separate from browser/UI state."
     )
+
+with models_tab:
+    st.subheader("Offline model catalog")
+    st.caption(
+        "Register files that already exist on this machine. The catalog never downloads model weights."
+    )
+    catalog_path = st.text_input(
+        "Catalog path",
+        "./private_data/local_runtime/models.json",
+        key="systems_model_catalog_path",
+    )
+    catalog = LocalModelCatalog(catalog_path)
+    existing = catalog.list()
+    if existing:
+        st.dataframe(
+            [
+                {
+                    "ID": m.model_id,
+                    "Kind": m.kind,
+                    "Format": m.format,
+                    "Quality": m.quality_rank,
+                    "Min RAM": m.min_ram_gb,
+                    "Min VRAM": m.min_vram_gb,
+                    "Path": m.path,
+                }
+                for m in existing
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+    else:
+        st.info("No local models registered yet.")
+
+    m1, m2 = st.columns(2)
+    model_id = m1.text_input("Model ID", "local-text-small")
+    model_kind = m2.selectbox(
+        "Kind",
+        ["text", "vision", "embedding", "reranker", "image", "video", "tts"],
+    )
+    model_path = st.text_input("Existing model file path", "")
+    q1, q2, q3 = st.columns(3)
+    quality_rank = q1.number_input("Quality rank", min_value=0, value=1, step=1)
+    min_ram = q2.number_input("Min RAM GB", min_value=0.0, value=0.0, step=1.0)
+    min_vram = q3.number_input("Min VRAM GB", min_value=0.0, value=0.0, step=1.0)
+    if st.button("Register existing model", type="primary"):
+        path = Path(model_path).expanduser()
+        if not path.is_file():
+            st.error("That model file does not exist on this machine.")
+        else:
+            try:
+                catalog.add(
+                    LocalModel(
+                        model_id=model_id.strip(),
+                        kind=model_kind,
+                        path=str(path.resolve()),
+                        quality_rank=int(quality_rank),
+                        min_ram_gb=float(min_ram),
+                        min_vram_gb=float(min_vram),
+                    ),
+                    replace=True,
+                )
+                st.success("Registered. Creditless Mode can now consider this file.")
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+
+    hardware = __import__("servicebridge.local_runtime", fromlist=["detect_hardware"]).detect_hardware()
+    best = catalog.best(model_kind, hardware)
+    st.markdown("**Best registered fit for this machine**")
+    if best:
+        st.json(best.to_dict())
+    else:
+        st.caption("No registered model of this kind currently fits and exists on disk.")
+
 
 with lesson_tab:
     lesson = LESSONS[lesson_idx]
