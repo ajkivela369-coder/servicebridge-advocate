@@ -65,3 +65,16 @@ def motion_manifest(motions: Iterable[MechanismMotion]) -> dict:
         ),
         "contains_inferred_motion": False,
     }
+
+
+
+def motion_from_dict(data: dict) -> MechanismMotion:
+    return MechanismMotion(
+        structure_id=str(data["structure_id"]),
+        start_frame=int(data["start_frame"]),
+        end_frame=int(data["end_frame"]),
+        translation_mm_xyz=tuple(float(x) for x in data["translation_mm_xyz"]),
+        rotation_deg_xyz=tuple(float(x) for x in data["rotation_deg_xyz"]),
+        evidence_lane=str(data.get("evidence_lane", "ILLUSTRATIVE / HYPOTHESIZED")),
+        note=str(data.get("note", "")),
+    )
