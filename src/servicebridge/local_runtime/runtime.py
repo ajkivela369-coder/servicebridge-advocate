@@ -34,6 +34,8 @@ class HardwareProfile:
     gpu_vram_gb: float | None
     nvidia_smi: bool
     tier: str
+    ram_available_gb: float | None = None
+    gpu_vram_free_gb: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -135,27 +137,65 @@ DEFAULT_SERVICES = {
 }
 
 
-def _ram_gb() -> float | None:
-    # Linux/macOS/Windows without psutil: prefer sysconf where available.
+def _ram_info_gb() -> tuple[float | None, float | None]:
+    """Return total/available physical RAM without making psutil mandatory."""
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        return round(vm.total / (1024**3), 2), round(vm.available / (1024**3), 2)
+    except Exception:
+        pass
+
+    if platform.system().lower() == "windows":
+        try:
+            import ctypes
+
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            status = MEMORYSTATUSEX()
+            status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+                return (
+                    round(status.ullTotalPhys / (1024**3), 2),
+                    round(status.ullAvailPhys / (1024**3), 2),
+                )
+        except Exception:
+            pass
+
     try:
         import os
 
         pages = os.sysconf("SC_PHYS_PAGES")
+        avail_pages = os.sysconf("SC_AVPHYS_PAGES")
         page_size = os.sysconf("SC_PAGE_SIZE")
-        return round((pages * page_size) / (1024**3), 2)
+        return (
+            round((pages * page_size) / (1024**3), 2),
+            round((avail_pages * page_size) / (1024**3), 2),
+        )
     except Exception:
-        return None
+        return None, None
 
 
-def _nvidia_profile() -> tuple[str | None, float | None, bool]:
+def _nvidia_profile() -> tuple[str | None, float | None, float | None, bool]:
     exe = shutil.which("nvidia-smi")
     if not exe:
-        return None, None, False
+        return None, None, None, False
     try:
         proc = subprocess.run(
             [
                 exe,
-                "--query-gpu=name,memory.total",
+                "--query-gpu=name,memory.total,memory.free",
                 "--format=csv,noheader,nounits",
             ],
             capture_output=True,
@@ -164,17 +204,22 @@ def _nvidia_profile() -> tuple[str | None, float | None, bool]:
             check=True,
         )
         first = proc.stdout.strip().splitlines()[0]
-        name, memory_mb = [x.strip() for x in first.split(",", 1)]
-        return name, round(float(memory_mb) / 1024, 2), True
+        name, memory_mb, free_mb = [x.strip() for x in first.split(",", 2)]
+        return (
+            name,
+            round(float(memory_mb) / 1024, 2),
+            round(float(free_mb) / 1024, 2),
+            True,
+        )
     except Exception:
-        return None, None, True
+        return None, None, None, True
 
 
 def detect_hardware() -> HardwareProfile:
     import os
 
-    gpu_name, gpu_vram_gb, has_smi = _nvidia_profile()
-    ram = _ram_gb()
+    gpu_name, gpu_vram_gb, gpu_vram_free_gb, has_smi = _nvidia_profile()
+    ram, ram_available_gb = _ram_info_gb()
     cpu_count = os.cpu_count() or 1
 
     if gpu_vram_gb is not None and gpu_vram_gb >= 16:
@@ -195,6 +240,8 @@ def detect_hardware() -> HardwareProfile:
         gpu_vram_gb=gpu_vram_gb,
         nvidia_smi=has_smi,
         tier=tier,
+        ram_available_gb=ram_available_gb,
+        gpu_vram_free_gb=gpu_vram_free_gb,
     )
 
 
