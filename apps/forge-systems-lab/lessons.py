@@ -190,6 +190,16 @@ LESSONS = [
         "why": "ComfyUI should be optional. When the machine can run a compatible model, Forge can call the model itself without a hosted service or a separate generation app.",
         "failure": "A generic profile passes unsupported parameters, a huge model exceeds VRAM, or missing weights trigger an internet download.",
         "fix": "Inspect the loaded pipeline signature, pass only supported parameters, use hardware/model profiles, and require local_files_only=True.",
+    },,
+    {
+        "id": "20",
+        "title": "Use a higher-quality local voice without cloud TTS",
+        "module": "servicebridge.local_runtime.tts",
+        "function": "generate_kokoro_local",
+        "plain": "Run Kokoro locally for narration while forcing Hugging Face/Transformers offline mode.",
+        "why": "Piper gives us a lightweight CPU baseline, while Kokoro gives the apps a second local voice-quality tier without per-character credits.",
+        "failure": "Kokoro lazily requests a missing model or voice file from the internet.",
+        "fix": "Force model-hub offline flags before pipeline creation and fail if the required model/voice is not already cached.",
     },
 ]
 
@@ -212,5 +222,6 @@ PIPELINE = [
     "Workflow Catalog",
     "Captions",
     "Direct Video Gen",
+    "Local Kokoro Voice",
     "Final Local Render",
 ]
