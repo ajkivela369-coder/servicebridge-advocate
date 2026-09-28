@@ -1,0 +1,44 @@
+name: MedForge Public Imaging Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/medforge-imaging-studio
+    paths:
+      - "apps/medforge-imaging-studio/**"
+      - "scripts/medforge_public_smoke.py"
+      - ".github/workflows/medforge-public-smoke.yml"
+  pull_request:
+    paths:
+      - "apps/medforge-imaging-studio/**"
+      - "scripts/medforge_public_smoke.py"
+      - ".github/workflows/medforge-public-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  public-imaging-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r apps/medforge-imaging-studio/requirements.txt
+
+      - name: Run public imaging smoke suite
+        run: python scripts/medforge_public_smoke.py
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: medforge-public-smoke-report
+          path: medforge-public-smoke-report.json
+          if-no-files-found: warn
