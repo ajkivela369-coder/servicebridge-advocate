@@ -72,6 +72,12 @@ def worker_capabilities() -> list[WorkerCapability]:
             "python-local",
             "Local embedded-text extraction from PDFs.",
         ),
+        WorkerCapability(
+            "diffusers",
+            importlib.util.find_spec("diffusers") is not None,
+            "python-local",
+            "Direct local image/video pipelines when torch and local model weights are installed.",
+        ),
     ]
 
 
