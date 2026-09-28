@@ -19,6 +19,7 @@ import med_io
 import med_masks
 import med_mesh
 import med_motion
+import med_native3d
 import med_segmentation
 import med_space
 import med_volume
@@ -32,6 +33,7 @@ MODULES = {
     "med_masks": med_masks,
     "med_mesh": med_mesh,
     "med_motion": med_motion,
+    "med_native3d": med_native3d,
     "med_space": med_space,
     "med_volume": med_volume,
     "med_segmentation": med_segmentation,
