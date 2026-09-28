@@ -95,6 +95,7 @@ def prepare_grimforge_local_assets(
     source_media: dict[str, Any] | None = None,
     use_local_tts: bool = True,
     piper_model: str | Path | None = None,
+    scene_duration_cap: float | None = 12.0,
 ) -> dict[str, Any]:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -131,7 +132,12 @@ def prepare_grimforge_local_assets(
             except Exception as exc:
                 tts_errors.append(f'{scene.get("id", index)}: {type(exc).__name__}: {exc}')
 
-        duration = float(scene.get("duration", 6) or 6)
+        story_duration = float(scene.get("duration", 6) or 6)
+        duration = (
+            min(story_duration, float(scene_duration_cap))
+            if scene_duration_cap is not None
+            else story_duration
+        )
         scene_assets.append(
             LocalSceneAsset(
                 scene_id=str(scene.get("id", f"S{index:02d}")),
@@ -143,7 +149,11 @@ def prepare_grimforge_local_assets(
 
     cue_source = [
         {
-            "duration": float(scene.get("duration", 6) or 6),
+            "duration": (
+                min(float(scene.get("duration", 6) or 6), float(scene_duration_cap))
+                if scene_duration_cap is not None
+                else float(scene.get("duration", 6) or 6)
+            ),
             "narration": " ".join(
                 x for x in [
                     str(scene.get("narration", "") or "").strip(),
@@ -173,6 +183,7 @@ def render_grimforge_local(
     source_media: dict[str, Any] | None = None,
     use_local_tts: bool = True,
     piper_model: str | Path | None = None,
+    scene_duration_cap: float | None = 12.0,
     fps: int = 30,
     width: int = 1280,
     height: int = 720,
@@ -185,6 +196,7 @@ def render_grimforge_local(
         source_media=source_media,
         use_local_tts=use_local_tts,
         piper_model=piper_model,
+        scene_duration_cap=scene_duration_cap,
     )
     final = out / "grimforge-creditless.mp4"
     plan = LocalRenderPlan(
@@ -205,4 +217,6 @@ def render_grimforge_local(
         "source_locked_image_used": prepared["source_locked_image_used"],
         "used_cloud": False,
         "render_mode": "Deterministic Forge",
+        "timing_mode": "story-runtime" if scene_duration_cap is None else "animatic-capped",
+        "scene_duration_cap": scene_duration_cap,
     }
