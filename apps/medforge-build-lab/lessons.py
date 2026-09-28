@@ -156,7 +156,7 @@ LESSONS = [
         "failure": "Raw DICOM or identifiers leak into a video handoff, or the renderer loses the distinction between source and reconstruction.",
         "fix": "Never include raw DICOM in the bundle, preserve mask affines, keep preview opt-in, and ship an evidence-boundary README with every package.",
         "check": "Bundle tests confirm manifest + NIfTI are present, affine is preserved, and no .dcm file is packaged.",
-    },,
+    },
     {
         "id": "13",
         "title": "Validate DICOM and NIfTI in patient space",
