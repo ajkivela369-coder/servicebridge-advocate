@@ -19,7 +19,15 @@ from servicebridge.local_runtime import RuntimeMode, discover_services
 
 from med_io import load_medical_image_bytes
 from med_export import build_render_bundle
-from med_masks import load_mask_upload, mask_alignment_note, mask_mpr
+from med_masks import load_mask_upload, mask_mpr
+from med_blender import (
+    blender_available,
+    build_blender_scene_bundle,
+    object_ids_for_masks,
+)
+from med_mesh import mask_to_mesh, mesh_surface_area_mm2
+from med_motion import build_motion, motion_from_dict
+from med_space import alignment_report, resample_mask_to_source
 from med_volume import (
     build_dicom_volume,
     downsample_volume,
@@ -114,6 +122,8 @@ for key, value in {
     "volume_study": None,
     "imported_masks": [],
     "selected_mask_name": "",
+    "blender_motions": [],
+    "blender_bundle_bytes": b"",
     "runtime_mode": RuntimeMode.CREDITLESS.value,
     "local_runtime_status": [],
 }.items():
@@ -125,6 +135,17 @@ def pil_to_data_uri(image: Image.Image, fmt="PNG"):
     image.save(buf, format=fmt)
     encoded = base64.b64encode(buf.getvalue()).decode("ascii")
     return f"data:image/{fmt.lower()};base64,{encoded}"
+
+
+def overlay_plane(base_plane, mask_plane, alpha=0.42):
+    base = np.asarray(window_to_pil(base_plane), dtype=np.float32)
+    mask = np.asarray(mask_plane, dtype=bool)
+    if mask.shape != base.shape[:2]:
+        raise ValueError("Overlay plane dimensions do not match the display plane.")
+    tint = np.asarray([235.0, 92.0, 70.0], dtype=np.float32)
+    out = base.copy()
+    out[mask] = (1.0 - float(alpha)) * out[mask] + float(alpha) * tint
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
 
 
 def load_source(uploaded):
@@ -173,6 +194,7 @@ def project_payload():
         "imported_masks": [
             m.safe_summary() for m in st.session_state.imported_masks
         ],
+        "blender_motions": [m.to_dict() for m in st.session_state.blender_motions],
     }
 
 
@@ -197,6 +219,9 @@ def load_project(data):
     analysis = data.get("analysis", {})
     st.session_state.analysis_engine = analysis.get("engine", st.session_state.analysis_engine)
     st.session_state.analysis_question = analysis.get("question", "")
+    st.session_state.blender_motions = [
+        motion_from_dict(x) for x in data.get("blender_motions", [])
+    ]
 
 
 with st.sidebar:
@@ -276,7 +301,8 @@ tabs = st.tabs([
     "5 · Image Understanding",
     "6 · Mechanism Synthesizer",
     "7 · Animatic",
-    "8 · Export",
+    "8 · Blender Studio",
+    "9 · Export",
 ])
 
 with tabs[0]:
@@ -509,15 +535,63 @@ with tabs[2]:
             q2.image(Image.fromarray((mc.astype(np.uint8) * 255)).convert("RGB"), caption="Mask coronal", use_container_width=True)
             q3.image(Image.fromarray((ms.astype(np.uint8) * 255)).convert("RGB"), caption="Mask sagittal", use_container_width=True)
 
-            alignment = mask_alignment_note(
-                selected_mask,
-                study.volume.shape if study is not None else None,
-            )
-            st.json(alignment)
-            st.warning(
-                "MedForge does not overlay an imported NIfTI mask on the DICOM source until spatial affine/orientation "
-                "validation is implemented. Matching array dimensions alone are not enough to prove alignment."
-            )
+            if study.affine_zyx_ras is None:
+                st.warning(
+                    "This DICOM series does not contain enough ImageOrientationPatient / ImagePositionPatient "
+                    "geometry for a patient-space overlay. MedForge will keep the mask separate."
+                )
+            else:
+                spatial = alignment_report(
+                    study.volume.shape,
+                    study.affine_zyx_ras,
+                    selected_mask.shape,
+                    selected_mask.affine,
+                )
+                st.markdown("**DICOM ↔ NIfTI spatial validation**")
+                st.json(spatial.to_dict())
+                if spatial.spatial_overlay_ready:
+                    st.success(
+                        "The DICOM and NIfTI volumes overlap in patient RAS space. "
+                        "MedForge can resample the DERIVED mask into the source DICOM grid."
+                    )
+                    show_overlay = st.checkbox(
+                        "Show affine-aligned source/mask overlay",
+                        value=False,
+                        key=f"show_aligned_overlay_{selected_mask.name}",
+                    )
+                    if show_overlay:
+                        try:
+                            aligned_mask, _ = resample_mask_to_source(
+                                selected_mask.data,
+                                selected_mask.affine,
+                                study.volume.shape,
+                                study.affine_zyx_ras,
+                            )
+                            aa, ac, ass = mpr_slices(aligned_mask.astype(np.float32), z, y, x)
+                            o1, o2, o3 = st.columns(3)
+                            o1.image(
+                                overlay_plane(axial, aa > 0),
+                                caption="Axial · source + DERIVED mask",
+                                use_container_width=True,
+                            )
+                            o2.image(
+                                overlay_plane(coronal, ac > 0),
+                                caption="Coronal · source + DERIVED mask",
+                                use_container_width=True,
+                            )
+                            o3.image(
+                                overlay_plane(sagittal, ass > 0),
+                                caption="Sagittal · source + DERIVED mask",
+                                use_container_width=True,
+                            )
+                            st.caption(
+                                "Overlay is a spatially resampled visualization. The mask remains DERIVED / UNREVIEWED "
+                                "until its anatomical label and segmentation quality are reviewed."
+                            )
+                        except Exception as exc:
+                            st.error(f"Could not create aligned overlay: {exc}")
+                else:
+                    st.warning(spatial.reason)
 
             mask_preview = downsample_volume(selected_mask.data.astype(np.float32), max_axis=42)
             zz2, yy2, xx2 = np.mgrid[
@@ -734,6 +808,161 @@ with tabs[6]:
         st.caption("This preview animates the explanation and source framing. A later renderer can replace hypothetical steps with dedicated anatomy illustrations or 3D scenes.")
 
 with tabs[7]:
+    st.subheader("Local 3D / Blender Studio")
+    st.caption(
+        "Convert imported segmentation masks into patient-space meshes and add only explicit, "
+        "user/record-specified motion. Meshes are DERIVED; motion remains ILLUSTRATIVE."
+    )
+
+    if not st.session_state.imported_masks:
+        st.info("Import at least one NIfTI segmentation mask in MPR & 3D first.")
+    else:
+        object_ids = object_ids_for_masks(st.session_state.imported_masks)
+        rows = []
+        for mask_item, object_id in zip(st.session_state.imported_masks, object_ids):
+            rows.append({
+                "Blender object": object_id,
+                "Mask file": mask_item.name,
+                "Voxels": mask_item.voxel_count,
+                "Evidence class": "DERIVED / UNREVIEWED",
+            })
+        st.dataframe(rows, use_container_width=True, hide_index=True)
+
+        selected_object_id = st.selectbox(
+            "Structure to animate",
+            object_ids,
+            key="blender_structure_id",
+        )
+        selected_index = object_ids.index(selected_object_id)
+        blender_mask = st.session_state.imported_masks[selected_index]
+
+        st.markdown("**Patient-space mesh preview**")
+        mesh_step = st.slider(
+            "Mesh detail (1 = highest detail)",
+            min_value=1,
+            max_value=6,
+            value=2,
+            key="blender_mesh_step",
+        )
+        if st.button("Inspect mesh geometry", key="inspect_blender_mesh"):
+            try:
+                mesh = mask_to_mesh(
+                    blender_mask.data,
+                    blender_mask.affine,
+                    name=blender_mask.name,
+                    provenance=blender_mask.provenance,
+                    step_size=mesh_step,
+                )
+                summary = mesh.summary()
+                summary["surface_area_mm2"] = mesh_surface_area_mm2(mesh)
+                st.session_state["last_mesh_summary"] = summary
+            except Exception as exc:
+                st.error(f"Could not build mesh: {exc}")
+        if st.session_state.get("last_mesh_summary"):
+            st.json(st.session_state["last_mesh_summary"])
+
+        st.markdown("**Illustrative rigid-body motion**")
+        st.caption(
+            "MedForge does not infer these values from the image. Enter motion only as an illustration, "
+            "or when you have a separate measurement/record basis."
+        )
+        t1, t2, t3 = st.columns(3)
+        tx = t1.number_input("Translate X / R-L (mm)", value=0.0, step=0.5)
+        ty = t2.number_input("Translate Y / A-P (mm)", value=0.0, step=0.5)
+        tz = t3.number_input("Translate Z / S-I (mm)", value=0.0, step=0.5)
+        r1, r2, r3 = st.columns(3)
+        rx = r1.number_input("Rotate X (deg)", value=0.0, step=0.5)
+        ry = r2.number_input("Rotate Y (deg)", value=0.0, step=0.5)
+        rz = r3.number_input("Rotate Z (deg)", value=0.0, step=0.5)
+        f1, f2 = st.columns(2)
+        start_frame = f1.number_input("Start frame", min_value=1, value=1, step=1)
+        end_frame = f2.number_input("End frame", min_value=2, value=90, step=1)
+        motion_note = st.text_input(
+            "Motion basis / note",
+            placeholder="Illustrative only, measured displacement, cited dynamic study, etc.",
+        )
+
+        if st.button("＋ Add illustrative motion", key="add_blender_motion"):
+            try:
+                motion = build_motion(
+                    selected_object_id,
+                    translation_mm_xyz=(tx, ty, tz),
+                    rotation_deg_xyz=(rx, ry, rz),
+                    start_frame=int(start_frame),
+                    end_frame=int(end_frame),
+                    note=motion_note,
+                )
+                st.session_state.blender_motions.append(motion)
+                st.session_state.blender_bundle_bytes = b""
+                st.success("Motion added as ILLUSTRATIVE / HYPOTHESIZED.")
+            except Exception as exc:
+                st.error(str(exc))
+
+        if st.session_state.blender_motions:
+            st.markdown("**Current motion tracks**")
+            for idx, motion in enumerate(st.session_state.blender_motions):
+                a, b = st.columns([0.82, 0.18])
+                a.json(motion.to_dict())
+                if b.button("Remove", key=f"remove_motion_{idx}"):
+                    st.session_state.blender_motions.pop(idx)
+                    st.session_state.blender_bundle_bytes = b""
+                    st.rerun()
+
+        st.markdown("**Blender handoff**")
+        local_blender = blender_available()
+        st.write(
+            "Local Blender detected." if local_blender
+            else "Blender is not currently detected on PATH. You can still export the self-contained bundle now."
+        )
+        render_in_blender = st.checkbox(
+            "Configure bundle to render an MP4 in Blender",
+            value=False,
+            key="blender_render_video",
+        )
+        b1, b2, b3 = st.columns(3)
+        blender_fps = b1.number_input("FPS", min_value=12, max_value=60, value=30, step=1)
+        blender_frames = b2.number_input("End frame", min_value=2, value=90, step=1)
+        blender_detail = b3.number_input("Mesh step", min_value=1, max_value=8, value=int(mesh_step), step=1)
+
+        if st.button("Build self-contained Blender bundle", type="primary", key="build_blender_bundle"):
+            try:
+                st.session_state.blender_bundle_bytes = build_blender_scene_bundle(
+                    st.session_state.imported_masks,
+                    st.session_state.blender_motions,
+                    title=st.session_state.project_title,
+                    fps=int(blender_fps),
+                    frame_end=int(blender_frames),
+                    mesh_step_size=int(blender_detail),
+                    render_video=render_in_blender,
+                )
+                st.success("Blender bundle built locally.")
+            except Exception as exc:
+                st.error(f"Could not build Blender bundle: {exc}")
+
+        if st.session_state.blender_bundle_bytes:
+            st.download_button(
+                "⬇ Download MedForge Blender bundle",
+                data=st.session_state.blender_bundle_bytes,
+                file_name="medforge-blender-bundle.zip",
+                mime="application/zip",
+                use_container_width=True,
+            )
+            st.code(
+                "python scripts/run_medforge_blender_bundle.py medforge-blender-bundle.zip --render",
+                language="bash",
+            )
+            st.caption(
+                "The bundle contains OBJ meshes, scene.json, the Blender build script, and evidence-boundary notes. "
+                "It contains no raw DICOM files."
+            )
+
+    st.warning(
+        "3D meshes and animation are explanatory reconstructions. A visually convincing animation does not "
+        "establish that a pathology or causal mechanism occurred."
+    )
+
+
+with tabs[8]:
     st.subheader("Evidence-aware export")
     manifest = build_render_manifest(
         st.session_state.project_title,
@@ -750,6 +979,9 @@ with tabs[7]:
     }
     manifest["imported_masks"] = [
         m.safe_summary() for m in st.session_state.imported_masks
+    ]
+    manifest["blender_motions"] = [
+        m.to_dict() for m in st.session_state.blender_motions
     ]
     st.download_button(
         "⬇ Download mechanism render manifest",
