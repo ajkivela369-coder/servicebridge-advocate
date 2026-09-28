@@ -104,6 +104,22 @@ class RecoveryDrillBody(BaseModel):
     primary_executable: str = "ollama"
 
 
+class CacheLookupBody(BaseModel):
+    app_id: str
+    namespace: str
+    payload: dict
+
+
+class CachePutBody(BaseModel):
+    app_id: str
+    namespace: str
+    payload: dict
+    data_b64: str
+    kind: str
+    suffix: str
+    metadata: dict = {}
+
+
 def _sdk(app_id: str) -> ForgeSDK:
     # The Forge daemon must execute jobs locally. Never recurse back into its
     # own HTTP surface even if FORGE_CORE_URL is present in the environment.
@@ -177,6 +193,28 @@ def jobs():
 @app.get("/v1/cache/status")
 def cache_status():
     return ForgeCore().cache_status()
+
+@app.post("/v1/cache/lookup")
+def cache_lookup(body: CacheLookupBody):
+    return {
+        "backend": "Forge Core",
+        "entry": _sdk(body.app_id).cache_lookup(body.namespace, body.payload),
+    }
+
+
+@app.post("/v1/cache/put")
+def cache_put(body: CachePutBody):
+    import base64
+    return _sdk(body.app_id).cache_put_bytes(
+        body.namespace,
+        body.payload,
+        base64.b64decode(body.data_b64),
+        kind=body.kind,
+        suffix=body.suffix,
+        metadata=body.metadata,
+    )
+
+
 
 
 @app.get("/v1/backup/status")
