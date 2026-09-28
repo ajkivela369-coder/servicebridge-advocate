@@ -10,7 +10,9 @@ except ImportError as exc:  # pragma: no cover - exercised only without optional
 
 from .advocate import Advocate
 from .models import AdvocacyMode, AdvocacyRequest, BenefitLane
-from .local_runtime import RuntimeMode
+from .local_runtime import RuntimeMode, RuntimePolicy
+from .local_runtime.evidence import LocalSemanticEvidenceStore
+from .local_runtime.memory import LocalEmbeddingClient, LocalVectorStore
 from .providers import provider_for_runtime
 from .store import EvidenceStore
 
@@ -74,15 +76,39 @@ def ask(body: AskBody) -> dict[str, object]:
         )
 
     database = os.getenv("SERVICEBRIDGE_DB", "./private_data/servicebridge.sqlite3")
+    request = AdvocacyRequest(
+        question=body.question,
+        lane=body.lane,
+        mode=body.mode,
+        audience=body.audience,
+        requested_output=body.requested_output,
+        top_k=body.top_k,
+    )
+
     with EvidenceStore(database) as store:
-        response = Advocate(store, provider).answer(
-            AdvocacyRequest(
-                question=body.question,
-                lane=body.lane,
-                mode=body.mode,
-                audience=body.audience,
-                requested_output=body.requested_output,
-                top_k=body.top_k,
+        if (
+            runtime_mode != RuntimeMode.CLOUD
+            and os.getenv("SERVICEBRIDGE_USE_LOCAL_SEMANTIC") == "1"
+        ):
+            vector_db = os.getenv(
+                "SERVICEBRIDGE_VECTOR_DB",
+                "./private_data/local_runtime/evidence_vectors.sqlite3",
             )
-        )
+            embedding_endpoint = os.getenv(
+                "SERVICEBRIDGE_LOCAL_EMBEDDING_ENDPOINT",
+                "http://127.0.0.1:8080/v1/embeddings",
+            )
+            embedder = LocalEmbeddingClient(
+                endpoint=embedding_endpoint,
+                model=os.getenv(
+                    "SERVICEBRIDGE_LOCAL_EMBEDDING_MODEL",
+                    "local-embedding-model",
+                ),
+                policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+            )
+            with LocalVectorStore(vector_db) as vectors:
+                retriever = LocalSemanticEvidenceStore(store, vectors, embedder)
+                response = Advocate(retriever, provider).answer(request)
+        else:
+            response = Advocate(store, provider).answer(request)
     return response.to_dict()
