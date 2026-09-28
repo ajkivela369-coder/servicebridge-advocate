@@ -21,12 +21,14 @@ def load(name, path):
 
 lessons = load("medforge_lessons_test", LAB / "lessons.py")
 med_io = load("medforge_io_lesson_test", MED / "med_io.py")
+med_masks = load("medforge_masks_lesson_test", MED / "med_masks.py")
 med_volume = load("medforge_volume_lesson_test", MED / "med_volume.py")
 med_segmentation = load("medforge_seg_lesson_test", MED / "med_segmentation.py")
 med_engine = load("medforge_engine_lesson_test", MED / "med_engine.py")
 
 MODULES = {
     "med_io": med_io,
+    "med_masks": med_masks,
     "med_volume": med_volume,
     "med_segmentation": med_segmentation,
     "med_engine": med_engine,
@@ -35,7 +37,7 @@ MODULES = {
 
 class MedForgeBuildLabTests(unittest.TestCase):
     def test_every_lesson_points_to_live_medforge_code(self):
-        self.assertGreaterEqual(len(lessons.LESSONS), 10)
+        self.assertGreaterEqual(len(lessons.LESSONS), 11)
         for lesson in lessons.LESSONS:
             self.assertIn(lesson["module"], MODULES)
             self.assertTrue(
