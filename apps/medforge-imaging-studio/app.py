@@ -10,6 +10,7 @@ import streamlit.components.v1 as components
 from PIL import Image
 
 from med_io import load_medical_image_bytes
+from med_export import build_render_bundle
 from med_masks import load_mask_upload, mask_alignment_note, mask_mpr
 from med_volume import (
     build_dicom_volume,
@@ -726,6 +727,34 @@ with tabs[7]:
         file_name="medforge-mechanism-render-manifest.json",
         mime="application/json",
         use_container_width=True,
+    )
+
+    st.markdown("**Forge handoff bundle**")
+    include_preview = st.checkbox(
+        "Include rendered source preview in bundle",
+        value=False,
+        help=(
+            "Off by default for privacy. Raw DICOM is never added. "
+            "A rendered preview may still contain burned-in identifiers, so review it before sharing."
+        ),
+        key="bundle_include_preview",
+    )
+    bundle_bytes = build_render_bundle(
+        manifest=manifest,
+        masks=st.session_state.imported_masks,
+        source_preview_data_uri=st.session_state.source_data_uri,
+        include_source_preview=include_preview,
+    )
+    st.download_button(
+        "⬇ Download MedForge → Forge render bundle",
+        data=bundle_bytes,
+        file_name="medforge-forge-render-bundle.zip",
+        mime="application/zip",
+        use_container_width=True,
+    )
+    st.caption(
+        "The bundle carries the render manifest and derived NIfTI masks with their affine geometry. "
+        "It never contains raw DICOM files or DICOM headers."
     )
     st.json({
         "stage": manifest["stage"],
