@@ -13,6 +13,7 @@ if str(MEDFORGE) not in sys.path:
     sys.path.insert(0, str(MEDFORGE))
 
 import med_engine
+import med_export
 import med_io
 import med_masks
 import med_segmentation
@@ -21,6 +22,7 @@ from lessons import LESSONS, PIPELINE
 
 
 MODULES = {
+    "med_export": med_export,
     "med_io": med_io,
     "med_masks": med_masks,
     "med_volume": med_volume,
