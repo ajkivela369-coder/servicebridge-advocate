@@ -135,31 +135,35 @@ class ForgeSDK:
 
         selection = self.select_model("reason", work_class=work_class)
         selected = selection.get("selected_model") or {}
-        model_id = str(
-            selected.get("model_id")
-            or os.getenv("FORGE_LLM_MODEL", "local-model")
-        )
-        provider = provider_for_runtime(
-            mode=RuntimeMode.CREDITLESS,
-            local_endpoint=os.getenv(
-                "FORGE_LLM_ENDPOINT",
-                "http://127.0.0.1:8080/v1/chat/completions",
-            ),
-            local_model=model_id,
-            allow_external_network=False,
-            allow_cloud_fallback=False,
-        )
-        text = provider.generate(
-            instructions=instructions,
-            input_text=input_text,
-        )
-        return {
-            "text": text,
-            "backend": "Forge Core",
-            "model_id": model_id,
-            "selection": selection,
-            "cloud_used": False,
-        }
+        reservation_id = str(selection.get("reservation_id") or "")
+        if not selected:
+            raise RuntimeError(selection.get("reason") or "Forge could not admit a reasoning model.")
+        model_id = str(selected["model_id"])
+        try:
+            provider = provider_for_runtime(
+                mode=RuntimeMode.CREDITLESS,
+                local_endpoint=os.getenv(
+                    "FORGE_LLM_ENDPOINT",
+                    "http://127.0.0.1:8080/v1/chat/completions",
+                ),
+                local_model=model_id,
+                allow_external_network=False,
+                allow_cloud_fallback=False,
+            )
+            text = provider.generate(
+                instructions=instructions,
+                input_text=input_text,
+            )
+            return {
+                "text": text,
+                "backend": "Forge Core",
+                "model_id": model_id,
+                "selection": selection,
+                "cloud_used": False,
+            }
+        finally:
+            if reservation_id:
+                self.unload(reservation_id)
 
     def vision(
         self,
@@ -173,30 +177,34 @@ class ForgeSDK:
 
         selection = self.select_model("vision", work_class=work_class)
         selected = selection.get("selected_model") or {}
-        model_id = str(
-            selected.get("model_id")
-            or os.getenv("FORGE_VLM_MODEL", "local-vision-model")
-        )
-        client = LocalVisionClient(
-            endpoint=os.getenv(
-                "FORGE_VLM_ENDPOINT",
-                "http://127.0.0.1:8080/v1/chat/completions",
-            ),
-            model=model_id,
-            policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
-        )
-        text = client.analyze(
-            image_data_uri=image_data_uri,
-            instructions=instructions,
-            question=question,
-        )
-        return {
-            "text": text,
-            "backend": "Forge Core",
-            "model_id": model_id,
-            "selection": selection,
-            "cloud_used": False,
-        }
+        reservation_id = str(selection.get("reservation_id") or "")
+        if not selected:
+            raise RuntimeError(selection.get("reason") or "Forge could not admit a vision model.")
+        model_id = str(selected["model_id"])
+        try:
+            client = LocalVisionClient(
+                endpoint=os.getenv(
+                    "FORGE_VLM_ENDPOINT",
+                    "http://127.0.0.1:8080/v1/chat/completions",
+                ),
+                model=model_id,
+                policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+            )
+            text = client.analyze(
+                image_data_uri=image_data_uri,
+                instructions=instructions,
+                question=question,
+            )
+            return {
+                "text": text,
+                "backend": "Forge Core",
+                "model_id": model_id,
+                "selection": selection,
+                "cloud_used": False,
+            }
+        finally:
+            if reservation_id:
+                self.unload(reservation_id)
 
     def transcribe(
         self,
@@ -245,25 +253,29 @@ class ForgeSDK:
 
         selection = self.select_model("embed", work_class=WorkClass.TINY)
         selected = selection.get("selected_model") or {}
-        model_id = str(
-            selected.get("model_id")
-            or os.getenv("FORGE_EMBEDDING_MODEL", "local-embedding-model")
-        )
-        client = LocalEmbeddingClient(
-            endpoint=os.getenv(
-                "FORGE_EMBEDDING_ENDPOINT",
-                "http://127.0.0.1:8080/v1/embeddings",
-            ),
-            model=model_id,
-            policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
-        )
-        return {
-            "vectors": client.embed(texts),
-            "backend": "Forge Core",
-            "model_id": model_id,
-            "selection": selection,
-            "cloud_used": False,
-        }
+        reservation_id = str(selection.get("reservation_id") or "")
+        if not selected:
+            raise RuntimeError(selection.get("reason") or "Forge could not admit an embedding model.")
+        model_id = str(selected["model_id"])
+        try:
+            client = LocalEmbeddingClient(
+                endpoint=os.getenv(
+                    "FORGE_EMBEDDING_ENDPOINT",
+                    "http://127.0.0.1:8080/v1/embeddings",
+                ),
+                model=model_id,
+                policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+            )
+            return {
+                "vectors": client.embed(texts),
+                "backend": "Forge Core",
+                "model_id": model_id,
+                "selection": selection,
+                "cloud_used": False,
+            }
+        finally:
+            if reservation_id:
+                self.unload(reservation_id)
 
     def ocr(self, path: str) -> dict[str, Any]:
         from pathlib import Path
