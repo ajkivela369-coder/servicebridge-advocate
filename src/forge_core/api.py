@@ -9,6 +9,7 @@ except ImportError as exc:
     ) from exc
 
 from .core import FORGE_VERSION, ForgeCore
+from .sdk import ForgeSDK
 from .scheduler import WorkClass
 
 
@@ -20,6 +21,61 @@ class SelectModelBody(BaseModel):
 
 class UnloadModelBody(BaseModel):
     reservation_id: str
+
+
+class ReasonBody(BaseModel):
+    app_id: str
+    instructions: str
+    input: str
+    work_class: WorkClass = WorkClass.STANDARD
+
+
+class VisionBody(BaseModel):
+    app_id: str
+    image_data_uri: str
+    instructions: str
+    question: str
+    work_class: WorkClass = WorkClass.STANDARD
+
+
+class EmbedBody(BaseModel):
+    app_id: str
+    texts: list[str]
+
+
+class TTSBody(BaseModel):
+    app_id: str
+    text: str
+    output_wav: str
+    piper_model: str | None = None
+    kokoro_voice: str = "af_heart"
+
+
+class TranscribeBody(BaseModel):
+    app_id: str
+    media_path: str
+    model_size: str = "small"
+    device: str = "cpu"
+    compute_type: str = "int8"
+    language: str | None = None
+
+
+class OCRBody(BaseModel):
+    app_id: str
+    path: str
+
+
+class VideoBody(BaseModel):
+    app_id: str
+    plan: dict
+
+
+class VaultBytesBody(BaseModel):
+    app_id: str
+    original_name: str
+    data_b64: str
+    mime_type: str = ""
+    metadata: dict = {}
 
 
 app = FastAPI(
@@ -113,4 +169,100 @@ def recovery_drill():
     return {
         "started": False,
         "detail": "Use the Forge disaster-recovery runner; destructive environment changes are not triggered from the API.",
+    }
+
+
+
+@app.post("/v1/reason")
+def reason(body: ReasonBody):
+    return ForgeSDK.for_app(body.app_id).reason(
+        body.instructions,
+        body.input,
+        work_class=body.work_class,
+    )
+
+
+@app.post("/v1/vision")
+def vision(body: VisionBody):
+    return ForgeSDK.for_app(body.app_id).vision(
+        image_data_uri=body.image_data_uri,
+        instructions=body.instructions,
+        question=body.question,
+        work_class=body.work_class,
+    )
+
+
+@app.post("/v1/embed")
+def embed(body: EmbedBody):
+    return ForgeSDK.for_app(body.app_id).embed(body.texts)
+
+
+@app.post("/v1/transcribe")
+def transcribe(body: TranscribeBody):
+    return ForgeSDK.for_app(body.app_id).transcribe(
+        body.media_path,
+        model_size=body.model_size,
+        device=body.device,
+        compute_type=body.compute_type,
+        language=body.language,
+    )
+
+
+@app.post("/v1/tts")
+def tts(body: TTSBody):
+    return ForgeSDK.for_app(body.app_id).tts(
+        body.text,
+        output_wav=body.output_wav,
+        piper_model=body.piper_model,
+        kokoro_voice=body.kokoro_voice,
+    )
+
+
+@app.post("/v1/ocr")
+def ocr(body: OCRBody):
+    return ForgeSDK.for_app(body.app_id).ocr(body.path)
+
+
+@app.post("/v1/video")
+def video(body: VideoBody):
+    return ForgeSDK.for_app(body.app_id).render_video(body.plan)
+
+
+@app.post("/v1/vault/source")
+def vault_source(body: VaultBytesBody):
+    import base64
+    return ForgeSDK.for_app(body.app_id).vault_add_bytes(
+        base64.b64decode(body.data_b64),
+        original_name=body.original_name,
+        mime_type=body.mime_type,
+        metadata=body.metadata,
+    )
+
+
+@app.post("/v1/diagram")
+def diagram(payload: dict):
+    return {
+        "backend": "Forge Core",
+        "mode": "deterministic-manifest",
+        "scene": payload,
+        "cloud_used": False,
+    }
+
+
+@app.post("/v1/export")
+def export(payload: dict):
+    return {
+        "backend": "Forge Core",
+        "accepted": True,
+        "export_manifest": payload,
+        "cloud_used": False,
+    }
+
+
+@app.post("/v1/provenance")
+def provenance(payload: dict):
+    return {
+        "backend": "Forge Core",
+        "provenance": payload,
+        "rule": "Every derived asset must reference its source_id or parent asset.",
     }
