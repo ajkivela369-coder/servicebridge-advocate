@@ -10,6 +10,7 @@ import streamlit.components.v1 as components
 from PIL import Image
 
 from med_io import load_medical_image_bytes
+from med_masks import load_mask_upload, mask_alignment_note, mask_mpr
 from med_volume import (
     build_dicom_volume,
     downsample_volume,
@@ -102,6 +103,8 @@ for key, value in {
     "dicom_series_infos": [],
     "selected_series_uid": "",
     "volume_study": None,
+    "imported_masks": [],
+    "selected_mask_name": "",
 }.items():
     init(key, value)
 
@@ -155,6 +158,9 @@ def project_payload():
             "question": st.session_state.analysis_question,
         },
         "volume": st.session_state.volume_study.safe_summary() if st.session_state.volume_study else None,
+        "imported_masks": [
+            m.safe_summary() for m in st.session_state.imported_masks
+        ],
     }
 
 
@@ -428,6 +434,89 @@ with tabs[2]:
                 "MONAI Label job contract": monai_label_job_spec(),
             })
 
+        st.markdown("**Import reviewed/generated anatomy masks**")
+        st.caption(
+            "Bring back .nii/.nii.gz masks—or the ZIP produced by the free TotalSegmentator Colab worker. "
+            "MedForge keeps these as DERIVED segmentation data, separate from the source scan."
+        )
+        mask_upload = st.file_uploader(
+            "NIfTI mask or segmentation ZIP",
+            type=["nii", "gz", "zip"],
+            key="segmentation_mask_upload",
+            help="For .nii.gz, select the file even if your browser labels it as .gz.",
+        )
+        if mask_upload is not None and st.button("Import segmentation masks", key="import_masks"):
+            try:
+                loaded_masks = load_mask_upload(
+                    mask_upload.getvalue(),
+                    mask_upload.name,
+                    provenance="Imported segmentation output",
+                )
+                st.session_state.imported_masks = loaded_masks
+                st.session_state.selected_mask_name = loaded_masks[0].name if loaded_masks else ""
+                st.success(f"Imported {len(loaded_masks)} mask volume(s).")
+            except Exception as exc:
+                st.error(f"Could not import masks: {exc}")
+
+        if st.session_state.imported_masks:
+            names = [m.name for m in st.session_state.imported_masks]
+            selected_mask_name = st.selectbox(
+                "Segmentation mask",
+                names,
+                index=names.index(st.session_state.selected_mask_name)
+                if st.session_state.selected_mask_name in names else 0,
+                key="selected_mask_control",
+            )
+            st.session_state.selected_mask_name = selected_mask_name
+            selected_mask = next(m for m in st.session_state.imported_masks if m.name == selected_mask_name)
+            st.json(selected_mask.safe_summary())
+
+            mz, my, mx = [s // 2 for s in selected_mask.shape]
+            ma, mc, ms = mask_mpr(selected_mask.data, mz, my, mx)
+            q1, q2, q3 = st.columns(3)
+            q1.image(Image.fromarray((ma.astype(np.uint8) * 255)).convert("RGB"), caption="Mask axial", use_container_width=True)
+            q2.image(Image.fromarray((mc.astype(np.uint8) * 255)).convert("RGB"), caption="Mask coronal", use_container_width=True)
+            q3.image(Image.fromarray((ms.astype(np.uint8) * 255)).convert("RGB"), caption="Mask sagittal", use_container_width=True)
+
+            alignment = mask_alignment_note(
+                selected_mask,
+                study.volume.shape if study is not None else None,
+            )
+            st.json(alignment)
+            st.warning(
+                "MedForge does not overlay an imported NIfTI mask on the DICOM source until spatial affine/orientation "
+                "validation is implemented. Matching array dimensions alone are not enough to prove alignment."
+            )
+
+            mask_preview = downsample_volume(selected_mask.data.astype(np.float32), max_axis=42)
+            zz2, yy2, xx2 = np.mgrid[
+                0:mask_preview.shape[0],
+                0:mask_preview.shape[1],
+                0:mask_preview.shape[2],
+            ]
+            fig_mask = go.Figure(
+                data=go.Isosurface(
+                    x=xx2.flatten(),
+                    y=yy2.flatten(),
+                    z=zz2.flatten(),
+                    value=mask_preview.flatten(),
+                    isomin=0.5,
+                    isomax=1.0,
+                    surface_count=1,
+                    caps=dict(x_show=False, y_show=False, z_show=False),
+                )
+            )
+            fig_mask.update_layout(
+                height=560,
+                margin=dict(l=0, r=0, t=30, b=0),
+                scene=dict(aspectmode="data"),
+            )
+            st.plotly_chart(fig_mask, use_container_width=True)
+            st.caption(
+                "This 3D surface is generated from the imported mask. Its anatomical label still depends on the "
+                "segmentation source and human review; MedForge does not promote the filename into a diagnosis."
+            )
+
 
 with tabs[3]:
     st.subheader("Evidence lanes and labels")
@@ -628,6 +717,9 @@ with tabs[7]:
         "TotalSegmentator": totalsegmentator_job_spec(),
         "MONAI Label": monai_label_job_spec(),
     }
+    manifest["imported_masks"] = [
+        m.safe_summary() for m in st.session_state.imported_masks
+    ]
     st.download_button(
         "⬇ Download mechanism render manifest",
         data=json.dumps(manifest, indent=2),
