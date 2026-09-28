@@ -179,3 +179,58 @@ def scene_video_command(
         str(Path(output_path)),
     ]
     return cmd
+
+
+
+def video_clip_scene_command(
+    video_path: str | Path,
+    output_path: str | Path,
+    *,
+    duration: float,
+    audio_path: str | Path | None = None,
+    width: int = 1920,
+    height: int = 1080,
+    fps: int = 30,
+    audio_lufs: int = -16,
+) -> list[str]:
+    """
+    Normalize an existing local video clip into a Forge scene segment.
+
+    This is the handoff used for Blender-rendered anatomy/mechanism clips and
+    other locally generated video. Existing clip audio is intentionally ignored;
+    the render plan supplies narration/audio explicitly or receives silence.
+    """
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-stream_loop", "-1",
+        "-i", str(Path(video_path)),
+    ]
+    if audio_path:
+        cmd += ["-i", str(Path(audio_path))]
+    else:
+        cmd += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]
+
+    video_filter = (
+        f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,format=yuv420p"
+    )
+    cmd += [
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-vf", video_filter,
+        "-filter:a", f"loudnorm=I={int(audio_lufs)}:TP=-1.5:LRA=11",
+        "-r", str(int(fps)),
+        "-t", f"{float(duration):.3f}",
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "20",
+        "-c:a", "aac",
+        "-ar", "48000",
+        "-ac", "2",
+        "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        "-shortest",
+        str(Path(output_path)),
+    ]
+    return cmd
