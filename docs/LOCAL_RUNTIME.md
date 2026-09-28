@@ -74,3 +74,54 @@ Creditless Mode permits only localhost/loopback HTTP endpoints. External network
 5. Blender scene/export bridge
 6. local image workflows
 7. optional local video generation when hardware allows
+
+
+## Added autonomy layers
+
+### Local semantic memory
+- llama.cpp-compatible local embedding client
+- SQLite vector store with cosine scoring
+- hybrid evidence retrieval that fuses local full-text and semantic ranks
+- one-command local semantic evidence indexing
+
+### Local documents
+- pypdf embedded-text extraction
+- opt-in PaddleOCR for scans and image-only evidence
+- OCR results pass through the normal ServiceBridge redaction, chunking, provenance, and evidence-store pipeline
+
+### Offline model catalog
+Model files are registered explicitly with local paths, optional hashes, minimum RAM/VRAM, and quality rank. Creditless Mode never downloads missing model weights automatically.
+
+### Direct local image generation
+A Diffusers worker can load a model from an existing local directory with `local_files_only=True`. ComfyUI remains an optional workflow engine rather than a required UI/server.
+
+### Deterministic local media
+The runtime can:
+- create scene videos from still images
+- add local narration or generated silence
+- normalize audio loudness
+- mix/duck local music beneath narration
+- generate SRT captions directly from known scene narration
+- concatenate scenes
+- burn captions
+- render a final H.264/AAC MP4
+
+### Local workflow registry
+Saved JSON workflows can be registered, verified, hashed, and parameterized locally. This is intended for optional ComfyUI image/video workflows.
+
+### Localhost gateway
+`scripts/local_runtime_server.py` exposes loopback-only status, local text generation, and local embeddings. It does not expose a cloud fallback in Creditless Mode.
+
+## App integration
+
+The current branch adds Runtime Mode to:
+- GrimForge War Theater
+- MedForge Imaging Studio
+- WildTake Studio
+- ServiceBridge/Elias API
+
+Creditless is the default runtime mode.
+
+## Teaching surface
+
+`apps/forge-systems-lab/` is the parallel learning/control app. It reads the real local-runtime modules and teaches the same code paths used by the apps.
