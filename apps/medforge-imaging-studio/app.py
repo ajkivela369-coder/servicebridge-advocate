@@ -1041,16 +1041,22 @@ with tabs[7]:
                     f'Minimum occurs at sampled frame {prox["minimum_frame"]}. '
                     + prox["interpretation"]
                 )
-                st.line_chart(
-                    {
-                        "distance_mm": [
-                            float(x["distance_mm"]) for x in prox["samples"]
-                        ]
-                    },
-                    x=[
-                        int(x["frame"]) for x in prox["samples"]
-                    ],
+                prox_fig = go.Figure()
+                prox_fig.add_trace(
+                    go.Scatter(
+                        x=[int(x["frame"]) for x in prox["samples"]],
+                        y=[float(x["distance_mm"]) for x in prox["samples"]],
+                        mode="lines+markers",
+                        name="Nearest surface distance",
+                    )
                 )
+                prox_fig.update_layout(
+                    height=320,
+                    margin=dict(l=10, r=10, t=30, b=10),
+                    xaxis_title="Animation frame",
+                    yaxis_title="Distance (mm)",
+                )
+                st.plotly_chart(prox_fig, use_container_width=True)
                 st.download_button(
                     "⬇ Download proximity measurements",
                     data=json.dumps(prox, indent=2),
