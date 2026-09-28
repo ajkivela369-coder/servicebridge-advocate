@@ -28,6 +28,7 @@ mesh_mod = load("med_mesh_test", "med_mesh.py")
 masks_mod = load("med_masks_mesh_test", "med_masks.py")
 motion_mod = load("med_motion_test", "med_motion.py")
 blender_mod = load("med_blender_test", "med_blender.py")
+native_mod = load("med_native3d_test", "med_native3d.py")
 
 
 class MedForgeSpatialTests(unittest.TestCase):
@@ -118,6 +119,18 @@ class MedForgeMeshBlenderTests(unittest.TestCase):
         self.assertIn("\nv ", "\n" + obj)
         self.assertIn("\nf ", "\n" + obj)
 
+    def test_singular_affine_is_rejected_before_mesh_export(self):
+        mask = self.make_mask()
+        singular = mask.affine.copy()
+        singular[:3, 2] = 0.0
+        with self.assertRaises(ValueError):
+            mesh_mod.mask_to_mesh(
+                mask.data,
+                singular,
+                name=mask.name,
+                provenance=mask.provenance,
+            )
+
     def test_motion_is_explicitly_illustrative(self):
         motion = motion_mod.build_motion(
             "vertebra",
@@ -153,6 +166,44 @@ class MedForgeMeshBlenderTests(unittest.TestCase):
             self.assertFalse(scene["evidence_rules"]["source_dicom_included"])
             self.assertFalse(scene["evidence_rules"]["motion_is_inferred_by_software"])
             self.assertEqual(scene["motions"][0]["structure_id"], object_id)
+            blender_script = zf.read("blender_medforge_scene.py").decode("utf-8")
+            self.assertIn("ILLUSTRATIVE / DERIVED", blender_script)
+            self.assertIn("use_stamp_note", blender_script)
+
+    def test_native_motion_math_uses_same_explicit_track(self):
+        vertices = np.array([
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+        ])
+        motion = motion_mod.build_motion(
+            "vertebra",
+            translation_mm_xyz=(4.0, 0.0, 0.0),
+            rotation_deg_xyz=(0.0, 0.0, 0.0),
+            start_frame=1,
+            end_frame=5,
+        )
+        halfway = native_mod.transform_vertices(vertices, motion, 3)
+        np.testing.assert_allclose(halfway, vertices + np.array([2.0, 0.0, 0.0]))
+        final = native_mod.transform_vertices(vertices, motion, 5)
+        np.testing.assert_allclose(final, vertices + np.array([4.0, 0.0, 0.0]))
+
+    def test_native_rotation_occurs_about_mesh_center(self):
+        vertices = np.array([
+            [-1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ])
+        motion = motion_mod.build_motion(
+            "vertebra",
+            rotation_deg_xyz=(0.0, 0.0, 90.0),
+            start_frame=1,
+            end_frame=2,
+        )
+        rotated = native_mod.transform_vertices(vertices, motion, 2)
+        np.testing.assert_allclose(
+            rotated,
+            np.array([[0.0, -1.0, 0.0], [0.0, 1.0, 0.0]]),
+            atol=1e-6,
+        )
 
     def test_blender_command_is_background_local(self):
         command = blender_mod.blender_bundle_command(
