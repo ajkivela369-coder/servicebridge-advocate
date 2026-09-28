@@ -193,8 +193,40 @@ def render_grimforge_local(
     width: int = 1280,
     height: int = 720,
 ) -> dict[str, Any]:
-    """Always-available local episode renderer: cards/source + TTS/silence + captions + FFmpeg."""
+    """Always-available local episode renderer with Forge project caching."""
     out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    final = out / "grimforge-creditless.mp4"
+    forge = ForgeSDK.for_app("grimforge")
+    cache_payload = {
+        "schema": 1,
+        "episode": episode,
+        "source_media": source_media or {},
+        "use_local_tts": bool(use_local_tts),
+        "piper_model": str(piper_model or ""),
+        "scene_duration_cap": scene_duration_cap,
+        "fps": int(fps),
+        "width": int(width),
+        "height": int(height),
+    }
+    cached = forge.cache_lookup("grimforge-local-render", cache_payload)
+    if cached:
+        cached_path = Path(cached["asset"]["path"])
+        if cached_path.is_file():
+            final.write_bytes(cached_path.read_bytes())
+            return {
+                "output_path": str(final),
+                "scene_count": len(episode.get("scenes", [])),
+                "tts_errors": [],
+                "source_locked_image_used": _source_image_from_payload(source_media) is not None,
+                "used_cloud": False,
+                "render_mode": "Forge Cache",
+                "timing_mode": "story-runtime" if scene_duration_cap is None else "animatic-capped",
+                "scene_duration_cap": scene_duration_cap,
+                "cache_hit": True,
+                "cache_key": cached["cache_key"],
+            }
+
     prepared = prepare_grimforge_local_assets(
         episode,
         output_dir=out,
@@ -203,7 +235,6 @@ def render_grimforge_local(
         piper_model=piper_model,
         scene_duration_cap=scene_duration_cap,
     )
-    final = out / "grimforge-creditless.mp4"
     plan = LocalRenderPlan(
         title=str(episode.get("title", "GrimForge local episode")),
         output_path=str(final),
@@ -214,7 +245,18 @@ def render_grimforge_local(
         fps=int(fps),
         audio_lufs=-16,
     )
-    ForgeSDK.for_app("grimforge").render_video(plan)
+    forge.render_video(plan)
+    cached_entry = forge.cache_put_bytes(
+        "grimforge-local-render",
+        cache_payload,
+        final.read_bytes(),
+        kind="grimforge-render",
+        suffix=".mp4",
+        metadata={
+            "scene_count": len(prepared["scenes"]),
+            "render_mode": "Deterministic Forge",
+        },
+    )
     return {
         "output_path": str(final),
         "scene_count": len(prepared["scenes"]),
@@ -224,4 +266,6 @@ def render_grimforge_local(
         "render_mode": "Deterministic Forge",
         "timing_mode": "story-runtime" if scene_duration_cap is None else "animatic-capped",
         "scene_duration_cap": scene_duration_cap,
+        "cache_hit": False,
+        "cache_key": cached_entry["cache_key"],
     }
