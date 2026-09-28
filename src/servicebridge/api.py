@@ -8,12 +8,14 @@ try:
 except ImportError as exc:  # pragma: no cover - exercised only without optional dependency
     raise RuntimeError("API support requires: pip install 'servicebridge-advocate[api]'") from exc
 
+from forge_core.adapters import ForgeEmbeddingProvider, ForgeTextProvider
+from forge_core.sdk import ForgeSDK
+
 from .advocate import Advocate
 from .models import AdvocacyMode, AdvocacyRequest, BenefitLane
-from .local_runtime import RuntimeMode, RuntimePolicy
+from .local_runtime import RuntimeMode
 from .local_runtime.evidence import LocalSemanticEvidenceStore
-from .local_runtime.memory import LocalEmbeddingClient, LocalVectorStore
-from .providers import provider_for_runtime
+from .local_runtime.memory import LocalVectorStore
 from .store import EvidenceStore
 
 
@@ -42,38 +44,17 @@ def health() -> dict[str, str]:
 
 @app.post("/v1/ask")
 def ask(body: AskBody) -> dict[str, object]:
-    runtime_mode = body.runtime_mode
-    if body.use_openai and runtime_mode != RuntimeMode.CLOUD:
+    if body.runtime_mode == RuntimeMode.CLOUD or body.use_openai:
         raise HTTPException(
             status_code=400,
-            detail="Legacy use_openai=true now requires runtime_mode='cloud'.",
+            detail=(
+                "Elias no longer selects cloud/model providers directly. "
+                "Set Forge Core to Hybrid mode instead."
+            ),
         )
 
-    if runtime_mode == RuntimeMode.CLOUD:
-        if os.getenv("SERVICEBRIDGE_ALLOW_CLOUD") != "1":
-            raise HTTPException(
-                status_code=403,
-                detail="Cloud runtime is disabled. Set SERVICEBRIDGE_ALLOW_CLOUD=1 to opt in.",
-            )
-        if not os.getenv("OPENAI_API_KEY"):
-            raise HTTPException(status_code=400, detail="OPENAI_API_KEY is not configured")
-        provider = provider_for_runtime(
-            mode=RuntimeMode.CLOUD,
-            cloud_model=os.getenv("SERVICEBRIDGE_MODEL"),
-            allow_external_network=True,
-            allow_cloud_fallback=True,
-        )
-    else:
-        provider = provider_for_runtime(
-            mode=runtime_mode,
-            local_endpoint=os.getenv(
-                "SERVICEBRIDGE_LOCAL_LLM_ENDPOINT",
-                "http://127.0.0.1:8080/v1/chat/completions",
-            ),
-            local_model=os.getenv("SERVICEBRIDGE_LOCAL_MODEL", "local-model"),
-            allow_external_network=False,
-            allow_cloud_fallback=False,
-        )
+    forge = ForgeSDK.for_app("elias")
+    provider = ForgeTextProvider(forge)
 
     database = os.getenv("SERVICEBRIDGE_DB", "./private_data/servicebridge.sqlite3")
     request = AdvocacyRequest(
@@ -86,26 +67,12 @@ def ask(body: AskBody) -> dict[str, object]:
     )
 
     with EvidenceStore(database) as store:
-        if (
-            runtime_mode != RuntimeMode.CLOUD
-            and os.getenv("SERVICEBRIDGE_USE_LOCAL_SEMANTIC") == "1"
-        ):
+        if os.getenv("SERVICEBRIDGE_USE_LOCAL_SEMANTIC") == "1":
             vector_db = os.getenv(
                 "SERVICEBRIDGE_VECTOR_DB",
                 "./private_data/local_runtime/evidence_vectors.sqlite3",
             )
-            embedding_endpoint = os.getenv(
-                "SERVICEBRIDGE_LOCAL_EMBEDDING_ENDPOINT",
-                "http://127.0.0.1:8080/v1/embeddings",
-            )
-            embedder = LocalEmbeddingClient(
-                endpoint=embedding_endpoint,
-                model=os.getenv(
-                    "SERVICEBRIDGE_LOCAL_EMBEDDING_MODEL",
-                    "local-embedding-model",
-                ),
-                policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
-            )
+            embedder = ForgeEmbeddingProvider(forge)
             with LocalVectorStore(vector_db) as vectors:
                 retriever = LocalSemanticEvidenceStore(store, vectors, embedder)
                 response = Advocate(retriever, provider).answer(request)
