@@ -4,8 +4,15 @@ import argparse
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import zipfile
+
+REPO = Path(__file__).resolve().parents[1]
+if str(REPO / "src") not in sys.path:
+    sys.path.insert(0, str(REPO / "src"))
+
+from servicebridge.local_runtime.archive import safe_extract_zip
 
 
 def main():
@@ -31,7 +38,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="medforge-blender-") as tmp:
         root = Path(tmp)
         with zipfile.ZipFile(bundle) as zf:
-            zf.extractall(root)
+            safe_extract_zip(zf, root)
 
         script = root / "blender_medforge_scene.py"
         scene = root / "scene.json"
