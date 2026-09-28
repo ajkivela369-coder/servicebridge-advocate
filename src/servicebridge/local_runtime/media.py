@@ -132,3 +132,50 @@ def image_sequence_command(
         "-pix_fmt", "yuv420p",
         str(Path(output_path)),
     ]
+
+
+
+def scene_video_command(
+    image_path: str | Path,
+    output_path: str | Path,
+    *,
+    duration: float,
+    audio_path: str | Path | None = None,
+    width: int = 1920,
+    height: int = 1080,
+    fps: int = 30,
+    audio_lufs: int = -16,
+) -> list[str]:
+    """
+    Build one scene segment with an audio stream every time.
+
+    If narration/audio is absent, FFmpeg generates silence so every segment has
+    compatible video+audio streams for deterministic concatenation.
+    """
+    cmd = ["ffmpeg", "-y", "-loop", "1", "-i", str(Path(image_path))]
+    if audio_path:
+        cmd += ["-i", str(Path(audio_path))]
+    else:
+        cmd += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]
+
+    video_filter = (
+        f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,format=yuv420p"
+    )
+    cmd += [
+        "-vf", video_filter,
+        "-filter:a", f"loudnorm=I={int(audio_lufs)}:TP=-1.5:LRA=11",
+        "-r", str(int(fps)),
+        "-t", f"{float(duration):.3f}",
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "20",
+        "-c:a", "aac",
+        "-ar", "48000",
+        "-ac", "2",
+        "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        "-shortest",
+        str(Path(output_path)),
+    ]
+    return cmd
