@@ -16,9 +16,8 @@ _SRC = _REPO_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from servicebridge.local_runtime import RuntimeMode, RuntimePolicy, discover_services
-from servicebridge.local_runtime.media import ffmpeg_available
-from servicebridge.local_runtime.vision import LocalVisionClient
+from forge_core.contracts import FORGE_RUNTIME_MODES, RuntimeMode, ffmpeg_available
+from forge_core.sdk import ForgeSDK
 
 from med_io import load_medical_image_bytes
 from med_export import build_render_bundle
@@ -235,11 +234,11 @@ def load_project(data):
 
 with st.sidebar:
     st.markdown('<div class="mf-eyebrow">SOURCE-FAITHFUL MEDICAL VISUALIZATION</div><div class="mf-title">MedForge</div>', unsafe_allow_html=True)
-    st.caption("Imaging Studio · forked from the Forge engine")
+    st.caption("Imaging Studio · Backend: Forge Core")
     st.session_state.project_title = st.text_input("Project title", st.session_state.project_title)
 
     st.markdown("**Runtime**")
-    runtime_options = [x.value for x in RuntimeMode]
+    runtime_options = list(FORGE_RUNTIME_MODES)
     st.session_state.runtime_mode = st.selectbox(
         "Execution policy",
         runtime_options,
@@ -248,8 +247,13 @@ with st.sidebar:
         key="medforge_runtime_mode",
         help="Creditless prevents external AI fallback. Sensitive imaging can stay on the local machine.",
     )
-    if st.button("Scan local engines", use_container_width=True, key="medforge_scan_local"):
-        st.session_state.local_runtime_status = [x.to_dict() for x in discover_services()]
+    if st.button("Scan Forge Core", use_container_width=True, key="medforge_scan_local"):
+        try:
+            forge_state = ForgeSDK.for_app("medforge").status()
+            st.session_state.local_runtime_status = list(forge_state.get("services", []))
+            st.session_state["forge_memory_budget"] = forge_state.get("memory_budget", {})
+        except Exception as exc:
+            st.error(f"Forge Core status failed: {exc}")
     if st.session_state.runtime_mode == RuntimeMode.CREDITLESS.value:
         st.caption("Creditless: use local/manual imaging tools, local workers, and deterministic exports only.")
     if st.session_state.local_runtime_status:
@@ -740,30 +744,19 @@ with tabs[4]:
     )
 
     if st.session_state.analysis_engine == "Local VLM / Creditless":
-        st.markdown("**Local VLM connection**")
-        v1, v2 = st.columns([0.66, 0.34])
-        st.session_state.local_vlm_endpoint = v1.text_input(
-            "Local endpoint",
-            st.session_state.local_vlm_endpoint,
-            help="Creditless Mode only permits localhost/loopback endpoints.",
-        )
-        st.session_state.local_vlm_model = v2.text_input(
-            "Local model",
-            st.session_state.local_vlm_model,
+        st.markdown("**Forge Vision**")
+        st.caption(
+            "MedForge does not choose a VLM or endpoint. Forge Core owns model selection, "
+            "memory admission, and fallback policy."
         )
         if st.button(
-            "Analyze source with local VLM",
+            "Analyze source through Forge",
             type="primary",
             key="run_local_medforge_vlm",
             disabled=not bool(st.session_state.source_data_uri),
         ):
             try:
-                client = LocalVisionClient(
-                    endpoint=st.session_state.local_vlm_endpoint,
-                    model=st.session_state.local_vlm_model,
-                    policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
-                )
-                st.session_state.local_vlm_answer = client.analyze(
+                result = ForgeSDK.for_app("medforge").vision(
                     image_data_uri=st.session_state.source_data_uri,
                     instructions=prompt,
                     question=(
@@ -771,12 +764,15 @@ with tabs[4]:
                         or "Review this image using the required evidence-separated sections."
                     ),
                 )
-                st.success("Local VLM response received. No cloud fallback was permitted.")
+                st.session_state.local_vlm_answer = result["text"]
+                st.success(
+                    f'Forge Vision response received · model {result.get("model_id", "local")}.'
+                )
             except Exception as exc:
-                st.error(f"Local VLM analysis failed: {exc}")
+                st.error(f"Forge Vision failed: {exc}")
         if st.session_state.local_vlm_answer:
             st.text_area(
-                "Local VLM output",
+                "Forge Vision output",
                 st.session_state.local_vlm_answer,
                 height=360,
             )
