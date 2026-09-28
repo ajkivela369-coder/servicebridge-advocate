@@ -100,6 +100,26 @@ LESSONS = [
         "why": "Even when no generative model fits the machine, Forge can still make a useful narrated video.",
         "failure": "The app equates 'AI video unavailable' with 'video unavailable.'",
         "fix": "Separate generative shot creation from deterministic video assembly.",
+    },,
+    {
+        "id": "11",
+        "title": "Keep semantic memory local",
+        "module": "servicebridge.local_runtime.memory",
+        "function": "LocalVectorStore",
+        "plain": "Store embeddings and metadata in SQLite, then score similarity on the local machine.",
+        "why": "Elias should not require Pinecone, a hosted vector database, or a paid embedding provider to search evidence semantically.",
+        "failure": "Evidence search stops working when a cloud vector service is unavailable.",
+        "fix": "Use local embeddings plus SQLite; keep full-text search as a no-model fallback.",
+    },
+    {
+        "id": "12",
+        "title": "Read scanned documents locally",
+        "module": "servicebridge.local_runtime.documents",
+        "function": "paddle_ocr",
+        "plain": "Run OCR on local images/PDF pages when embedded PDF text is missing.",
+        "why": "Evidence ingestion should not upload private scans to an OCR API just to make them searchable.",
+        "failure": "A scanned PDF has almost no extractable text and disappears from retrieval.",
+        "fix": "Detect low-text pages, send only those pages through the local OCR worker, and cache the result.",
     },
 ]
 
@@ -114,4 +134,6 @@ PIPELINE = [
     "Voice",
     "Image/Video AI",
     "FFmpeg Render",
+    "Local Memory",
+    "OCR",
 ]
