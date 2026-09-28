@@ -7,7 +7,13 @@ import shutil
 import tempfile
 from typing import Any
 
-from .media import burn_subtitles_command, concat_command, run_command, scene_video_command
+from .media import (
+    burn_subtitles_command,
+    concat_command,
+    run_command,
+    scene_video_command,
+    video_clip_scene_command,
+)
 
 
 @dataclass(frozen=True)
@@ -16,14 +22,16 @@ class LocalSceneAsset:
     image_path: str
     duration: float
     audio_path: str = ""
+    video_path: str = ""
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LocalSceneAsset":
         return cls(
             scene_id=str(data["scene_id"]),
-            image_path=str(data["image_path"]),
+            image_path=str(data.get("image_path", "") or ""),
             duration=float(data["duration"]),
             audio_path=str(data.get("audio_path", "") or ""),
+            video_path=str(data.get("video_path", "") or ""),
         )
 
 
@@ -60,8 +68,15 @@ class LocalRenderPlan:
         for scene in self.scenes:
             if scene.duration <= 0:
                 problems.append(f"{scene.scene_id}: duration must be positive.")
-            if not Path(scene.image_path).is_file():
+            source_count = int(bool(scene.image_path)) + int(bool(scene.video_path))
+            if source_count != 1:
+                problems.append(
+                    f"{scene.scene_id}: configure exactly one image_path or video_path."
+                )
+            if scene.image_path and not Path(scene.image_path).is_file():
                 problems.append(f"{scene.scene_id}: image not found: {scene.image_path}")
+            if scene.video_path and not Path(scene.video_path).is_file():
+                problems.append(f"{scene.scene_id}: video not found: {scene.video_path}")
             if scene.audio_path and not Path(scene.audio_path).is_file():
                 problems.append(f"{scene.scene_id}: audio not found: {scene.audio_path}")
         if self.subtitles_path and not Path(self.subtitles_path).is_file():
@@ -92,8 +107,19 @@ def build_render_commands(
 
     for index, scene in enumerate(plan.scenes, start=1):
         segment = work / f"segment_{index:04d}.mp4"
-        commands.append(
-            scene_video_command(
+        if scene.video_path:
+            command = video_clip_scene_command(
+                scene.video_path,
+                segment,
+                duration=scene.duration,
+                audio_path=scene.audio_path or None,
+                width=plan.width,
+                height=plan.height,
+                fps=plan.fps,
+                audio_lufs=plan.audio_lufs,
+            )
+        else:
+            command = scene_video_command(
                 scene.image_path,
                 segment,
                 duration=scene.duration,
@@ -103,7 +129,7 @@ def build_render_commands(
                 fps=plan.fps,
                 audio_lufs=plan.audio_lufs,
             )
-        )
+        commands.append(command)
         segments.append(segment)
 
     concat_file = work / "concat.txt"
