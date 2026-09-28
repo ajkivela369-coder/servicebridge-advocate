@@ -108,6 +108,8 @@ for key, value in {
     "source_name": "",
     "source_data_uri": "",
     "source_mime": "",
+    "source_id": "",
+    "source_sha256": "",
     "source_modality": "Unknown / image",
     "source_region": "",
     "labels": [],
@@ -159,11 +161,21 @@ def overlay_plane(base_plane, mask_plane, alpha=0.42):
 def load_source(uploaded):
     if uploaded is None:
         return
+    raw = uploaded.getvalue()
     try:
-        loaded = load_medical_image_bytes(uploaded.getvalue(), uploaded.name)
+        source = ForgeSDK.for_app("medforge").vault_add_bytes(
+            raw,
+            original_name=uploaded.name,
+            mime_type=str(getattr(uploaded, "type", "") or ""),
+            metadata={"surface": "medforge", "source_kind": "medical-image"},
+            role="medical-source",
+        )
+        loaded = load_medical_image_bytes(raw, uploaded.name)
     except Exception as exc:
-        st.error(f"Could not read this medical image: {exc}")
+        st.error(f"Could not ingest/read this medical image through Forge: {exc}")
         return
+    st.session_state.source_id = source["source_id"]
+    st.session_state.source_sha256 = source["sha256"]
     st.session_state.source_data_uri = pil_to_data_uri(loaded.image)
     st.session_state.source_mime = "image/png"
     st.session_state.source_name = loaded.source_name
@@ -178,6 +190,8 @@ def project_payload():
         "title": st.session_state.project_title,
         "runtime_mode": st.session_state.runtime_mode,
         "source": {
+            "source_id": st.session_state.source_id,
+            "sha256": st.session_state.source_sha256,
             "name": st.session_state.source_name,
             "data_uri": st.session_state.source_data_uri,
             "mime": st.session_state.source_mime,
