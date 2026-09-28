@@ -140,7 +140,7 @@ LESSONS = [
         "why": "Exact terms are excellent for citations while semantic retrieval can recover differently worded evidence. Both can stay on-device.",
         "failure": "A hosted vector database outage removes semantic search, or semantic ranking hides exact record language.",
         "fix": "Keep FTS as the baseline, run embeddings locally, and fuse both ranked lists rather than replacing one with the other.",
-    },,
+    },
     {
         "id": "15",
         "title": "Generate still images without a separate app",
