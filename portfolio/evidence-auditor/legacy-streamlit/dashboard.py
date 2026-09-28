@@ -9,8 +9,13 @@ import streamlit as st
 from pypdf import PdfReader
 
 APP_DIR = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SRC_DIR = REPO_ROOT / "src"
 sys.path.insert(0, str(APP_DIR))
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
+from forge_core.sdk import ForgeSDK
 from auditor import audit_sources
 from elias_memory import default_memory, export_memory, import_memory, memory_context, summarize_workspace
 from elias_plugins import PLUGIN_CATALOG, default_plugin_state, respond
@@ -43,20 +48,30 @@ st.markdown(
 
 
 def _extract_sources(uploaded_files) -> list[dict]:
+    """Ingest originals through Forge Vault, then audit source/page records."""
+    forge = ForgeSDK.for_app("evidence_auditor")
     sources: list[dict] = []
     for uploaded in uploaded_files or []:
         try:
-            uploaded.seek(0)
-            if uploaded.name.lower().endswith(".pdf"):
-                reader = PdfReader(uploaded)
-                for page_no, page in enumerate(reader.pages, 1):
-                    text = (page.extract_text() or "").strip()
-                    sources.append({"source_name": uploaded.name, "page": page_no, "text": text})
-            else:
-                raw = uploaded.getvalue().decode("utf-8", errors="replace")
-                sources.append({"source_name": uploaded.name, "page": 1, "text": raw.strip()})
+            raw = uploaded.getvalue()
+            ingested = forge.ingest_document_bytes(
+                raw,
+                original_name=uploaded.name,
+                mime_type=str(getattr(uploaded, "type", "") or ""),
+                metadata={"surface": "evidence-auditor"},
+            )
+            for page in ingested.get("pages", []):
+                sources.append(
+                    {
+                        "source_id": page.get("source_id"),
+                        "sha256": page.get("sha256"),
+                        "source_name": uploaded.name,
+                        "page": page.get("page", 1),
+                        "text": str(page.get("text", "") or "").strip(),
+                    }
+                )
         except Exception as exc:
-            st.warning(f"Could not read {uploaded.name}: {exc}")
+            st.warning(f"Forge could not ingest {uploaded.name}: {exc}")
     return sources
 
 
@@ -204,7 +219,7 @@ st.markdown(
     """
     <div class="elias-top">
       <div class="elias-title">Elias</div>
-      <div class="elias-pill"><span class="elias-dot"></span> Evidence-grounded assistant</div>
+      <div class="elias-pill"><span class="elias-dot"></span> Backend: Forge Core</div>
     </div>
     """,
     unsafe_allow_html=True,
