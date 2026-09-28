@@ -71,18 +71,47 @@ def ingest_file(
     title: str | None = None,
     document_date: str | None = None,
     author: str | None = None,
+    local_ocr: bool = False,
 ) -> tuple[SourceDocument, list[EvidenceChunk]]:
     file_path = Path(path).resolve()
     if not file_path.is_file():
         raise FileNotFoundError(file_path)
-    extractor = EXTRACTORS.get(file_path.suffix.lower())
-    if extractor is None:
+    suffix = file_path.suffix.lower()
+    extractor = EXTRACTORS.get(suffix)
+    image_suffixes = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
+
+    if extractor is None and not (local_ocr and suffix in image_suffixes):
         raise ValueError(f"Unsupported file type: {file_path.suffix or '(none)'}")
 
     raw = file_path.read_bytes()
     sha256 = hashlib.sha256(raw).hexdigest()
     source_id = f"src_{sha256[:16]}"
-    extracted = extractor(file_path)
+
+    local_ocr_used = False
+    if extractor is None and local_ocr and suffix in image_suffixes:
+        from .local_runtime.documents import paddle_ocr
+
+        ocr_result = paddle_ocr(file_path)
+        extracted = ExtractedDocument(str(ocr_result.get("text", "")), page_count=1)
+        local_ocr_used = True
+    else:
+        assert extractor is not None
+        extracted = extractor(file_path)
+
+    # For image-only/scanned PDFs, use local OCR only when explicitly enabled.
+    if (
+        local_ocr
+        and suffix == ".pdf"
+        and len(extracted.text.strip()) < max(20, int(extracted.page_count or 1) * 10)
+    ):
+        from .local_runtime.documents import paddle_ocr
+
+        ocr_result = paddle_ocr(file_path)
+        ocr_text = str(ocr_result.get("text", "")).strip()
+        if ocr_text:
+            extracted = ExtractedDocument(ocr_text, page_count=extracted.page_count)
+            local_ocr_used = True
+
     text = normalize_whitespace(extracted.text)
     counts: dict[str, int] = {}
     if redact:
@@ -98,7 +127,11 @@ def ingest_file(
         page_count=extracted.page_count,
         sha256=sha256,
         redacted=redact,
-        metadata={"redaction_counts": counts, "original_suffix": file_path.suffix.lower()},
+        metadata={
+            "redaction_counts": counts,
+            "original_suffix": file_path.suffix.lower(),
+            "local_ocr_used": local_ocr_used,
+        },
     )
     chunks = [
         EvidenceChunk(
