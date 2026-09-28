@@ -22,7 +22,7 @@ spec.loader.exec_module(lessons)
 
 class ForgeSystemsLabTests(unittest.TestCase):
     def test_lessons_point_to_live_runtime_code(self):
-        self.assertGreaterEqual(len(lessons.LESSONS), 10)
+        self.assertGreaterEqual(len(lessons.LESSONS), 12)
         for lesson in lessons.LESSONS:
             module = importlib.import_module(lesson["module"])
             self.assertTrue(
@@ -34,7 +34,9 @@ class ForgeSystemsLabTests(unittest.TestCase):
         self.assertEqual(lessons.PIPELINE[0], "Policy")
         self.assertIn("Asset Vault", lessons.PIPELINE)
         self.assertIn("Job Queue", lessons.PIPELINE)
-        self.assertEqual(lessons.PIPELINE[-1], "FFmpeg Render")
+        self.assertIn("FFmpeg Render", lessons.PIPELINE)
+        self.assertIn("Local Memory", lessons.PIPELINE)
+        self.assertEqual(lessons.PIPELINE[-1], "OCR")
 
 
 if __name__ == "__main__":
