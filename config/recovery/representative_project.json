@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "project_id": "forge-recovery-smoke",
+  "title": "Forge Recovery Verification Project",
+  "duration_seconds": 1.5,
+  "width": 640,
+  "height": 360,
+  "fps": 15,
+  "acceptance": "Restored Forge code must rebuild this synthetic project and produce a non-empty H.264 MP4."
+}
