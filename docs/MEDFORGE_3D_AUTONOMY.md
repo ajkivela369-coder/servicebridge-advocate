@@ -155,3 +155,36 @@ The software must preserve:
 - OBSERVATION / INTERPRETATION distinction
 - MEASURED / ILLUSTRATIVE motion distinction
 - uncertainty and provenance
+
+
+## Geometric Proximity Lab
+
+MedForge can compare two patient-space meshes across the same explicit motion tracks used by Blender/native rendering.
+
+The Proximity Lab:
+- samples selected animation frames
+- applies the explicit rigid-body motion
+- measures nearest surface-to-surface distance in millimeters
+- records the two nearest RAS points
+- exports the measurement series as JSON
+
+This is intentionally called **geometric proximity**, not compression.
+
+A small distance does not establish:
+- tissue force
+- deformation
+- vascular flow change
+- nerve irritation
+- pathology
+- causation
+
+Those require independent evidence/interpretation.
+
+## Runtime capability reporting
+
+Forge Systems Lab / the Local Runtime now detects:
+- Blender as the optional advanced 3D renderer
+- TotalSegmentator as an optional local medical-segmentation worker
+- MedForge native 3D readiness from the Python scientific stack + FFmpeg
+
+This makes the fallback ladder visible from one runtime dashboard.
