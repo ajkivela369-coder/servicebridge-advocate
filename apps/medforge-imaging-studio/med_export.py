@@ -19,7 +19,8 @@ def nifti_mask_bytes(mask) -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".nii.gz") as tmp:
         nib.save(img, tmp.name)
         tmp.flush()
-        return open(tmp.name, "rb").read()
+        with open(tmp.name, "rb") as fh:
+            return fh.read()
 
 
 def build_render_bundle(
