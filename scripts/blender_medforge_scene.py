@@ -150,6 +150,26 @@ def configure_scene(scene_spec):
     scene.render.ffmpeg.codec = "H264"
     scene.render.ffmpeg.constant_rate_factor = "MEDIUM"
 
+    # Burn the evidence class into rendered frames so an exported MP4 cannot
+    # lose the reconstruction boundary when separated from its manifest.
+    scene.render.use_stamp = True
+    scene.render.use_stamp_note = True
+    scene.render.stamp_note_text = (
+        "ILLUSTRATIVE / DERIVED · segmentation geometry + explicit motion · "
+        "not proof of diagnosis or causation"
+    )
+    scene.render.use_stamp_date = False
+    scene.render.use_stamp_time = False
+    scene.render.use_stamp_render_time = False
+    scene.render.use_stamp_frame = True
+    scene.render.use_stamp_frame_range = False
+    scene.render.use_stamp_camera = False
+    scene.render.use_stamp_scene = False
+    scene.render.use_stamp_filename = False
+    scene.render.use_stamp_marker = False
+    scene.render.use_stamp_sequencer_strip = False
+    scene.render.stamp_font_size = 14
+
     world = scene.world or bpy.data.worlds.new("World")
     scene.world = world
     world.color = (0.025, 0.03, 0.035)
