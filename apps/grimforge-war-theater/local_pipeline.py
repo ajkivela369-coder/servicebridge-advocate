@@ -8,9 +8,13 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-from servicebridge.local_runtime.captions import scene_narration_to_cues, write_srt
-from servicebridge.local_runtime.render import LocalRenderPlan, LocalSceneAsset, render_plan
-from servicebridge.local_runtime.speech import generate_speech_local_auto
+from forge_core.contracts import (
+    LocalRenderPlan,
+    LocalSceneAsset,
+    scene_narration_to_cues,
+    write_srt,
+)
+from forge_core.sdk import ForgeSDK
 
 
 def _source_image_from_payload(source_media: dict[str, Any] | None) -> Image.Image | None:
@@ -99,6 +103,7 @@ def prepare_grimforge_local_assets(
 ) -> dict[str, Any]:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
+    forge = ForgeSDK.for_app("grimforge")
     source_image = _source_image_from_payload(source_media)
     scenes = list(episode.get("scenes", []))
     if not scenes:
@@ -123,10 +128,10 @@ def prepare_grimforge_local_assets(
         if use_local_tts and narration:
             wav = out / f"scene_{index:03d}.wav"
             try:
-                generate_speech_local_auto(
+                forge.tts(
                     narration,
-                    output_wav=wav,
-                    piper_model=piper_model,
+                    output_wav=str(wav),
+                    piper_model=str(piper_model) if piper_model else None,
                 )
                 audio = str(wav)
             except Exception as exc:
@@ -209,7 +214,7 @@ def render_grimforge_local(
         fps=int(fps),
         audio_lufs=-16,
     )
-    render_plan(plan)
+    ForgeSDK.for_app("grimforge").render_video(plan)
     return {
         "output_path": str(final),
         "scene_count": len(prepared["scenes"]),
