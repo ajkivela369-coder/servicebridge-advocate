@@ -1,6 +1,15 @@
 import streamlit as st
 from dataclasses import dataclass
+from pathlib import Path
 import subprocess
+import sys
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from servicebridge.local_runtime import RuntimeMode, discover_services
 
 st.set_page_config(page_title="WildTake Studio", page_icon="🦘", layout="wide")
 
@@ -53,6 +62,10 @@ if "beats" not in st.session_state:
     ]
 if "queue" not in st.session_state:
     st.session_state.queue = []
+if "runtime_mode" not in st.session_state:
+    st.session_state.runtime_mode = RuntimeMode.CREDITLESS.value
+if "local_runtime_status" not in st.session_state:
+    st.session_state.local_runtime_status = []
 
 st.title("WildTake Studio")
 st.caption("Original animal-commentary Shorts. Upload → analyze → script → narrate → caption → mix → export.")
@@ -60,11 +73,35 @@ st.caption("Original animal-commentary Shorts. Upload → analyze → script →
 with st.sidebar:
     st.subheader("Mode")
     mode = st.radio("Workflow", ["Simple", "Pro"], horizontal=True)
+    st.markdown("**Runtime**")
+    runtime_options = [x.value for x in RuntimeMode]
+    st.session_state.runtime_mode = st.selectbox(
+        "Execution policy",
+        runtime_options,
+        index=runtime_options.index(st.session_state.runtime_mode)
+        if st.session_state.runtime_mode in runtime_options else 0,
+        help="Creditless uses only local engines and blocks automatic paid/cloud fallback.",
+    )
+    if st.button("Scan local engines", use_container_width=True, key="wildtake_scan_local"):
+        st.session_state.local_runtime_status = [x.to_dict() for x in discover_services()]
+    if st.session_state.runtime_mode == RuntimeMode.CREDITLESS.value:
+        st.caption("Creditless: manual/local analysis + local voice/render workers only.")
     st.divider()
     st.subheader("Providers")
-    provider_badge("Vision analysis", False, "Connect a vision model to auto-detect timestamped action beats.")
-    provider_badge("Premium TTS", False, "Connect a licensed high-quality speech provider for natural narration.")
-    provider_badge("Render engine", ffmpeg_available(), "FFmpeg is used only when actually available.")
+    local_by_id = {x["service_id"]: x for x in st.session_state.local_runtime_status}
+    local_llm_ready = bool(local_by_id.get("llama_cpp", {}).get("healthy") or local_by_id.get("ollama", {}).get("healthy"))
+    local_piper_ready = bool(local_by_id.get("piper", {}).get("healthy"))
+    provider_badge(
+        "Local vision / analysis",
+        local_llm_ready,
+        "llama.cpp/Ollama can become the local analysis lane when a compatible VLM is loaded.",
+    )
+    provider_badge(
+        "Local TTS",
+        local_piper_ready,
+        "Piper provides local narration once a voice model is installed.",
+    )
+    provider_badge("Render engine", ffmpeg_available(), "FFmpeg is the always-local deterministic renderer.")
     st.caption("WildTake never labels preview/demo content as a completed AI render.")
 
 left, right = st.columns([1.08, 0.92], gap="large")
@@ -139,7 +176,7 @@ with right:
 
     st.subheader("Audio lanes")
     for lane, state in [
-        ("Narration", "Premium TTS not connected"),
+        ("Narration", "Local Piper detected" if local_piper_ready else "Local Piper not detected"),
         ("Source ambience", "Preserve / duck under voice"),
         ("Music", "Optional"),
         ("SFX", "Optional"),
@@ -159,7 +196,7 @@ with right:
     qc = [
         ("Rights preflight", rights != "Other / Unknown"),
         ("Source clip", uploaded is not None),
-        ("Narration provider", False),
+        ("Narration provider", local_piper_ready),
         ("Render engine", ffmpeg_available()),
         ("Caption overflow", None),
         ("Audio clipping", None),
@@ -176,7 +213,7 @@ if st.button("MAKE MY VIDEO", type="primary", use_container_width=True, disabled
         ("Rights Preflight", "passed"),
         ("Analyze action beats", "manual / provider not connected"),
         ("Write commentary", "script ready for review"),
-        ("Generate narration", "blocked — premium TTS not connected"),
+        ("Generate narration", "local Piper ready" if local_piper_ready else "blocked — local Piper/voice not configured"),
         ("Mix sound", "waiting"),
         ("Render 1080×1920", "waiting"),
         ("Final QC", "waiting"),
