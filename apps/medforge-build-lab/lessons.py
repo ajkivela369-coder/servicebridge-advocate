@@ -130,7 +130,7 @@ LESSONS = [
         "failure": "A downstream renderer redraws the source, removes uncertainty labels, or presents a hypothesis as observed anatomy.",
         "fix": "Carry explicit source-fidelity and hypothesis-separation rules inside the manifest itself.",
         "check": "Manifest tests assert source pixels are preserved and hypothesis cannot be relabeled as observation.",
-    },,
+    },
     {
         "id": "11",
         "title": "Bring free segmentation back into MedForge",
