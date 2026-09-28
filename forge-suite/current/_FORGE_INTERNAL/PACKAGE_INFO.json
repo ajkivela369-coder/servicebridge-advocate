@@ -1,0 +1,33 @@
+{
+  "name": "Forge Easy Installer",
+  "version": "0.5.6-workflow-recovery",
+  "architecture": "Forge Core + distinct production apps + synchronized Forge Learn",
+  "release_name": "Workflow Recovery + Defense PDF Restoration",
+  "normal_entry_point": "INSTALL_FORGE.cmd",
+  "changes": [
+    "Shared role-aware local copilot and installed-model selection",
+    "Standalone Elias document attachments",
+    "Batch ingestion and actual source-preserving PDF packets",
+    "Shared ComfyUI image/video adapter and persistent jobs",
+    "Generated episode assembly with explicit render modes",
+    "British Kokoro voice selection without silent basic fallback",
+    "Canonical icons and product colors",
+    "Shared Blender 3D detection/install through Setup & Repair",
+    "MedForge genuine editable 3D mechanism teaching render",
+    "GrimForge genuine editable Blender previs/blockout render",
+    "One shared Media / 3D Tools pack instead of per-app installs",
+    "Premium six-product UI/UX design system tied to approved visual references",
+    "GrimForge Simple one-click full episode with 3D / 2.5D / 2D animation selector",
+    "Evidence Auditor prominent multi-file upload \u2192 real PDF packet fast lane",
+    "Richer app-specific Copilot action surfaces",
+    "Polished Forge Workspace and Forge Learn dashboards",
+    "Expanded structural regression gate and 25/25 learning coverage",
+    "GrimForge render preflight and one-click visual fallback ladder",
+    "2.5D can use Blender-rendered stills + cinematic depth motion when ComfyUI is unavailable",
+    "MedForge full teaching package: inspect \u2192 explain \u2192 visual \u2192 Blender 3D \u2192 PDF",
+    "Evidence Auditor defense-style PDF front matter with evidence hierarchy, chronology, reviewer questions, bookmarks, source index and intact exhibits",
+    "28/28 synchronized Forge Learn coverage"
+  ],
+  "notes": "Restores end-to-end primary workflows after product-polish regressions. Primary actions now preflight engines or use explicit source-safe/render-safe fallbacks instead of becoming decorative or dead-ending.",
+  "release_gate": "CANDIDATE: structural/workflow fixture tests pass; real Windows/Blender/ComfyUI/voice/visual quality still require live acceptance"
+}

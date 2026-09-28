@@ -1,0 +1,1632 @@
+{
+  "schema_version": 2,
+  "release": "0.5.6-workflow-recovery",
+  "name": "Forge Learning Manifest",
+  "relationship": {
+    "workspace": "Forge Workspace",
+    "learning": "Forge Learn",
+    "shared_backend": "Forge Core",
+    "rule": "A production capability is not release-complete until its learning entry exists and passes the learning sync gate."
+  },
+  "project_journey": [
+    {
+      "step": 1,
+      "title": "Separate app stacks",
+      "problem": "Each app could accumulate its own models, packages and recovery logic.",
+      "change": "Identify reusable local services instead of duplicating them.",
+      "result": "The need for a shared foundation became explicit."
+    },
+    {
+      "step": 2,
+      "title": "Forge Base",
+      "problem": "A missing executable or hosted helper could stop a workflow.",
+      "change": "Add Doctor checks, fallback routing, caches and offline recovery rules.",
+      "result": "Failures became routable instead of terminal."
+    },
+    {
+      "step": 3,
+      "title": "Forge Core",
+      "problem": "Elias, MedForge and GrimForge still needed a common runtime contract.",
+      "change": "Expose reasoning, search, vision, speech, transcription, diagrams, video and provenance through one local API.",
+      "result": "One backend can serve multiple working apps."
+    },
+    {
+      "step": 4,
+      "title": "Forge Bridge",
+      "problem": "Hosted HTTPS apps cannot always call local HTTP safely.",
+      "change": "Add loopback SDK support plus export/import fallback rather than weakening browser security.",
+      "result": "Hosted UIs can remain optional companions to the local node."
+    },
+    {
+      "step": 5,
+      "title": "Vault + provenance",
+      "problem": "Evidence work needs preserved originals and source-linked claims.",
+      "change": "Add SHA-256 storage, SQLite metadata, local search and provenance-aware outputs.",
+      "result": "Elias can reason from retained sources instead of loose uploads."
+    },
+    {
+      "step": 6,
+      "title": "Shared app integrations",
+      "problem": "The backend only pays off when real apps actually depend on it.",
+      "change": "Connect Elias, MedForge and GrimForge to standard Forge endpoints and local fallbacks.",
+      "result": "The production apps share infrastructure instead of cloning it."
+    },
+    {
+      "step": 7,
+      "title": "Workspace / Learn split",
+      "problem": "The teaching UI and working UI were becoming one confusing product.",
+      "change": "Keep Forge Workspace production-focused and move lessons, history, glossary, simulation and testing into Forge Learn.",
+      "result": "Two sibling products stay synchronized through one learning manifest and release gate."
+    },
+    {
+      "step": 8,
+      "title": "UI/UX restoration",
+      "problem": "The Workspace/Learn split accidentally replaced mature product surfaces with thin diagnostic pages.",
+      "change": "Keep the split architecture but restore rich working interfaces for Workspace, Elias, MedForge and GrimForge, exposing the existing Core capabilities instead of hiding them.",
+      "result": "Teaching stays separate without sacrificing the production experience."
+    },
+    {
+      "step": 9,
+      "title": "Product polish and real workflow parity",
+      "problem": "The apps shared a strong Core but still looked and behaved like uneven prototypes.",
+      "change": "Added a premium six-product design system, primary-action hierarchy, richer progress states, deeper app Copilots, and explicit GrimForge animation modes.",
+      "result": "The suite can evolve its backend without sacrificing product identity or hiding what a workflow actually does."
+    },
+    {
+      "step": 10,
+      "title": "Workflow regression recovery",
+      "problem": "Product-polish wiring exposed advanced controls but allowed one-click workflows to dead-end or regress to thinner outputs.",
+      "change": "Added renderer preflight/fallback routing, restored a full MedForge teaching-package workflow, and upgraded Evidence Auditor to source-controlled defense-style PDFs with intact exhibits.",
+      "result": "The visible primary action is again tied to an end-to-end working workflow, with fallbacks disclosed rather than silently failing or substituting evidence."
+    }
+  ],
+  "vocabulary": {
+    "frontend": {
+      "definition": "The part of an app a person sees and clicks.",
+      "forge_example": "The Elias, MedForge and GrimForge local pages are frontends."
+    },
+    "backend": {
+      "definition": "The hidden services that perform the work.",
+      "forge_example": "Forge Core is the shared backend."
+    },
+    "API": {
+      "definition": "A defined way for software to ask other software to do work.",
+      "forge_example": "Elias calls Forge endpoints for evidence search."
+    },
+    "endpoint": {
+      "definition": "One specific API address for one kind of action.",
+      "forge_example": "/api/evidence/query is an endpoint."
+    },
+    "JSON": {
+      "definition": "Structured text used to exchange named values and lists.",
+      "forge_example": "Forge returns job results and status as JSON."
+    },
+    "dependency": {
+      "definition": "Software another piece of software needs in order to work.",
+      "forge_example": "FFmpeg is a rendering dependency."
+    },
+    "fallback": {
+      "definition": "The next safe route when the preferred route is unavailable.",
+      "forge_example": "llama.cpp can follow Ollama in the reasoning chain."
+    },
+    "SDK": {
+      "definition": "Helper code that makes an API easier for another app to use.",
+      "forge_example": "Forge ships TypeScript and Python SDKs."
+    },
+    "localhost": {
+      "definition": "Your own computer acting as a server.",
+      "forge_example": "Forge Core listens on 127.0.0.1:8787."
+    },
+    "database": {
+      "definition": "Persistent structured storage that can be queried later.",
+      "forge_example": "The Vault uses SQLite metadata."
+    },
+    "schema": {
+      "definition": "Rules describing the fields and shape data should follow.",
+      "forge_example": "The learning manifest itself has a schema version."
+    },
+    "provenance": {
+      "definition": "A record of where information or an output came from.",
+      "forge_example": "Evidence claims keep links to their retained sources."
+    },
+    "2.5D": {
+      "definition": "A 2D image is animated with camera/depth-style motion so it feels spatial without becoming a full 3D scene.",
+      "forge_example": "GrimForge generates an illustrated shot, then FFmpeg adds controlled cinematic depth motion."
+    },
+    "Render pipeline": {
+      "definition": "The ordered stages that turn source material into a finished media file.",
+      "forge_example": "GrimForge: script \u2192 images/sets \u2192 animation \u2192 voice \u2192 captions \u2192 final MP4."
+    },
+    "Visual regression": {
+      "definition": "Checking that a new build still matches an approved design instead of slowly drifting or losing UI features.",
+      "forge_example": "Forge v0.5.5 treats the six-app showcase and GrimForge Simple concept as design acceptance references."
+    }
+  },
+  "features": [
+    {
+      "id": "reasoning",
+      "name": "Reasoning Router",
+      "product": "Forge Core",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "API",
+        "router",
+        "fallback",
+        "local model"
+      ],
+      "lesson": {
+        "title": "How Reasoning Router works",
+        "summary": "How one request moves through the local reasoning routes and why a preferred model is not the same thing as a required model.",
+        "why_it_exists": "This capability is shared so Forge Core does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Reasoning Router was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/router",
+        "service": "forge_core/services/router.py",
+        "working_screen": "/"
+      },
+      "tester_check": "Inspect the routing summary and confirm a local fallback remains after the preferred model."
+    },
+    {
+      "id": "coding",
+      "name": "Coding Model Route",
+      "product": "Forge Core",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "model",
+        "runtime",
+        "dependency",
+        "fallback"
+      ],
+      "lesson": {
+        "title": "How Coding Model Route works",
+        "summary": "How Forge selects a smaller coding model on the 16 GB laptop while keeping larger routes optional.",
+        "why_it_exists": "This capability is shared so Forge Core does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Coding Model Route was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/models",
+        "service": "forge_base/model_manager.py",
+        "working_screen": "/"
+      },
+      "tester_check": "Confirm the 3B coding route is preferred on the 16 GB profile and larger models stay optional."
+    },
+    {
+      "id": "embeddings_search",
+      "name": "Embeddings & Search",
+      "product": "Evidence Auditor",
+      "status": "production",
+      "workspace_url": "/static/apps/evidence.html",
+      "concepts": [
+        "embedding",
+        "vector",
+        "JSON",
+        "API"
+      ],
+      "lesson": {
+        "title": "How Embeddings & Search works",
+        "summary": "How text becomes numeric vectors so Elias can retrieve related evidence even when the wording differs.",
+        "why_it_exists": "This capability is shared so Elias does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Embeddings & Search was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/embeddings",
+        "service": "forge_core/services/embeddings.py + vector_store.py",
+        "working_screen": "/static/apps/evidence.html"
+      },
+      "tester_check": "Search for semantically related text using wording that is not an exact phrase match."
+    },
+    {
+      "id": "vision",
+      "name": "Local Vision",
+      "product": "MedForge",
+      "status": "production",
+      "workspace_url": "/static/apps/medforge.html",
+      "concepts": [
+        "vision model",
+        "upload",
+        "API",
+        "fallback"
+      ],
+      "lesson": {
+        "title": "How Local Vision works",
+        "summary": "How MedForge sends an image to a local vision route while keeping observation separate from interpretation.",
+        "why_it_exists": "This capability is shared so MedForge does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Local Vision was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/vision",
+        "service": "forge_core/services/vision.py",
+        "working_screen": "/static/apps/medforge.html"
+      },
+      "tester_check": "Upload a test image and verify the output identifies the route used and separates visible content from interpretation."
+    },
+    {
+      "id": "transcription",
+      "name": "Transcription",
+      "product": "Forge Core",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "Whisper",
+        "endpoint",
+        "upload",
+        "fallback"
+      ],
+      "lesson": {
+        "title": "How Transcription works",
+        "summary": "How audio reaches Whisper through one endpoint instead of every app installing its own speech stack.",
+        "why_it_exists": "This capability is shared so Forge Core does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Transcription was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/transcribe",
+        "service": "forge_core/services/transcribe.py",
+        "working_screen": "/"
+      },
+      "tester_check": "Submit a short audio sample and confirm the selected transcription route is reported."
+    },
+    {
+      "id": "speech",
+      "name": "Local Speech",
+      "product": "Forge Core",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "TTS",
+        "model",
+        "fallback",
+        "cache"
+      ],
+      "lesson": {
+        "title": "How Local Speech works",
+        "summary": "How narration is generated locally and how Forge falls back when the preferred voice engine is unavailable.",
+        "why_it_exists": "This capability is shared so Forge Core does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Local Speech was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/teach/render",
+        "service": "forge_core/services/tts.py + render.py",
+        "working_screen": "/"
+      },
+      "tester_check": "Generate a lesson and confirm narration can fall back without losing captions/output."
+    },
+    {
+      "id": "video",
+      "name": "Video / Animatic Pipeline",
+      "product": "GrimForge",
+      "status": "production",
+      "workspace_url": "/static/apps/grimforge.html",
+      "concepts": [
+        "FFmpeg",
+        "render",
+        "cache",
+        "fallback"
+      ],
+      "lesson": {
+        "title": "How Video / Animatic Pipeline works",
+        "summary": "How GrimForge turns structured scenes, narration and retained media tools into a local animatic.",
+        "why_it_exists": "This capability is shared so GrimForge does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Video / Animatic Pipeline was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/grimforge/animatic",
+        "service": "forge_core/services/grimforge.py + render.py",
+        "working_screen": "/static/apps/grimforge.html"
+      },
+      "tester_check": "Generate a short animatic and verify the retained local render path produces an output file."
+    },
+    {
+      "id": "diagrams",
+      "name": "Diagram Renderer",
+      "product": "Forge Core",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "SVG",
+        "render",
+        "endpoint",
+        "fallback"
+      ],
+      "lesson": {
+        "title": "How Diagram Renderer works",
+        "summary": "How Forge creates explanatory visuals locally without making cloud rendering a requirement.",
+        "why_it_exists": "This capability is shared so Forge Core does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Diagram Renderer was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/diagram/animate",
+        "service": "forge_core/services/flow.py",
+        "working_screen": "/"
+      },
+      "tester_check": "Render a short flow and verify the MP4 exists even without a cloud video generator."
+    },
+    {
+      "id": "recovery",
+      "name": "Backup & Recovery",
+      "product": "Forge Workspace",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "backup",
+        "restore",
+        "offline bundle",
+        "manifest"
+      ],
+      "lesson": {
+        "title": "How Backup & Recovery works",
+        "summary": "How the runtime, projects, Vault, models and manifests are preserved so a broken install is recoverable.",
+        "why_it_exists": "This capability is shared so Forge Workspace does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Backup & Recovery was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/resilience",
+        "service": "forge_base/bundle.py + project_backup.py",
+        "working_screen": "/"
+      },
+      "tester_check": "Verify projects and Vault are included in recovery coverage, not only tools/models."
+    },
+    {
+      "id": "ui_design",
+      "name": "UI Design Resilience",
+      "product": "Forge Workspace",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "frontend",
+        "CSS",
+        "dependency",
+        "fallback"
+      ],
+      "lesson": {
+        "title": "How UI Design Resilience works",
+        "summary": "How design accelerators remain optional while a deterministic local interface path remains available.",
+        "why_it_exists": "This capability is shared so Forge Workspace does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "UI Design Resilience was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/design/status",
+        "service": "forge_core/services/design.py",
+        "working_screen": "/"
+      },
+      "tester_check": "Disable the preferred design helper and confirm the deterministic local design route remains available."
+    },
+    {
+      "id": "forge_bridge",
+      "name": "Forge Bridge",
+      "product": "Forge Workspace",
+      "status": "production",
+      "workspace_url": "/",
+      "concepts": [
+        "SDK",
+        "API",
+        "localhost",
+        "JSON"
+      ],
+      "lesson": {
+        "title": "How Forge Bridge works",
+        "summary": "How a working app talks to Forge Core, and why browser security sometimes requires export/import instead of direct loopback calls.",
+        "why_it_exists": "This capability is shared so Forge Workspace does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Forge Bridge was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/bridge/config",
+        "service": "forge_core/services/bridge.py + sdk/",
+        "working_screen": "/"
+      },
+      "tester_check": "Confirm the contract never requires weakening browser security to reach loopback."
+    },
+    {
+      "id": "vault",
+      "name": "Forge Vault",
+      "product": "Evidence Auditor",
+      "status": "production",
+      "workspace_url": "/static/apps/evidence.html",
+      "concepts": [
+        "database",
+        "hash",
+        "metadata",
+        "provenance"
+      ],
+      "lesson": {
+        "title": "How Forge Vault works",
+        "summary": "How originals are hashed, preserved and indexed so later claims can point back to stable sources.",
+        "why_it_exists": "This capability is shared so Elias does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Forge Vault was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/vault/items",
+        "service": "forge_core/services/vault.py",
+        "working_screen": "/static/apps/evidence.html"
+      },
+      "tester_check": "Import the same source twice and verify hashing/deduplication keeps provenance stable."
+    },
+    {
+      "id": "evidence_auditor",
+      "name": "Evidence Auditor",
+      "product": "Evidence Auditor",
+      "status": "production",
+      "workspace_url": "/static/apps/evidence.html",
+      "concepts": [
+        "retrieval",
+        "provenance",
+        "schema",
+        "JSON"
+      ],
+      "lesson": {
+        "title": "How Evidence Auditor works",
+        "summary": "How evidence retrieval, chronology and packet scaffolding are built on top of the Vault instead of free-floating model output.",
+        "why_it_exists": "Evidence-heavy workflows need their own source-first workspace instead of being mixed into general chat.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Evidence Auditor was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/evidence/query",
+        "service": "forge_core/services/evidence.py",
+        "working_screen": "/static/apps/evidence.html"
+      },
+      "tester_check": "Ask an evidence question and verify returned material stays linked to stored source identifiers."
+    },
+    {
+      "id": "medforge",
+      "name": "MedForge",
+      "product": "MedForge",
+      "status": "production",
+      "workspace_url": "/static/apps/medforge.html",
+      "concepts": [
+        "frontend",
+        "backend",
+        "vision",
+        "API"
+      ],
+      "lesson": {
+        "title": "How MedForge works",
+        "summary": "How the production MedForge screen uses shared Forge services without turning the production screen into a tutorial.",
+        "why_it_exists": "This capability is shared so MedForge does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "MedForge was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/medforge/lesson",
+        "service": "forge_core/services/medforge.py",
+        "working_screen": "/static/apps/medforge.html"
+      },
+      "tester_check": "Build a lesson and verify observations, interpretations, limits and next verification steps remain distinct."
+    },
+    {
+      "id": "grimforge",
+      "name": "GrimForge",
+      "product": "GrimForge",
+      "status": "production",
+      "workspace_url": "/static/apps/grimforge.html",
+      "concepts": [
+        "frontend",
+        "backend",
+        "render",
+        "API"
+      ],
+      "lesson": {
+        "title": "How GrimForge works",
+        "summary": "How the production GrimForge screen uses shared planning and render services while Forge Learn explains each stage separately.",
+        "why_it_exists": "This capability is shared so GrimForge does not need a separate duplicate infrastructure stack.",
+        "walkthrough": [
+          "Start with the user action in the working app.",
+          "Follow the request into the Forge API or local service.",
+          "See the preferred local route and the fallback route.",
+          "Inspect the structured result returned to the working app.",
+          "Connect the implementation back to the design decision that created it."
+        ],
+        "example": {
+          "request": "working app action",
+          "transport": "Forge API / local service",
+          "response": "structured JSON or retained output"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "GrimForge was needed by one or more working apps."
+        },
+        {
+          "stage": "First pass",
+          "text": "The capability could be implemented directly inside an app, but that would duplicate dependencies and recovery work."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "The capability moved behind Forge Core so multiple apps can call the same implementation."
+        },
+        {
+          "stage": "Resilience",
+          "text": "A fallback and offline/restore path became part of the release requirement."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn now explains the exact production path and links back to the real working surface."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/grimforge/storyboard",
+        "service": "forge_core/services/grimforge.py",
+        "working_screen": "/static/apps/grimforge.html"
+      },
+      "tester_check": "Generate a storyboard and confirm scene structure comes from the shared Forge route, not a separate app-only stack."
+    },
+    {
+      "id": "elias_chat",
+      "name": "Elias conversational assistant",
+      "product": "Elias",
+      "status": "production",
+      "workspace_url": "/static/apps/elias.html",
+      "lesson": {
+        "summary": "How Elias runs as its own local conversational assistant while optionally retrieving context from Evidence Auditor.",
+        "why_it_exists": "Elias should feel like a focused AI assistant, while evidence workflows remain in the dedicated Evidence Auditor app.",
+        "concepts": [
+          "frontend",
+          "chat history",
+          "API",
+          "local model",
+          "retrieval context",
+          "separation of concerns"
+        ],
+        "steps": [
+          {
+            "title": "Separate the product surfaces",
+            "text": "Elias owns conversation; Evidence Auditor owns source ingestion, provenance, auditing, and packet workflows."
+          },
+          {
+            "title": "Send conversation state to Core",
+            "text": "The Elias frontend posts the current messages to the shared local /api/elias/chat endpoint."
+          },
+          {
+            "title": "Make evidence optional",
+            "text": "When Evidence Auditor context is enabled, Elias retrieves relevant retained evidence chunks without merging the two apps."
+          },
+          {
+            "title": "Keep teaching synchronized",
+            "text": "Forge Learn explains this boundary and links back to the real Elias working screen."
+          }
+        ]
+      },
+      "implementation": {
+        "endpoint": "/api/elias/chat",
+        "service": "forge_core/services/elias.py",
+        "working_screen": "/static/apps/elias.html"
+      },
+      "concepts": [
+        "frontend",
+        "chat history",
+        "API",
+        "local model",
+        "retrieval context",
+        "separation of concerns"
+      ],
+      "build_story": [
+        {
+          "stage": "Need",
+          "text": "Elias needed to remain a focused conversational assistant instead of becoming the evidence workspace itself."
+        },
+        {
+          "stage": "Separation",
+          "text": "Evidence ingestion, provenance, chronology, and packet creation moved to the dedicated Evidence Auditor surface."
+        },
+        {
+          "stage": "Shared Core",
+          "text": "Elias sends conversation state to Forge Core through /api/elias/chat instead of owning a duplicate model stack."
+        },
+        {
+          "stage": "Optional grounding",
+          "text": "Elias can request relevant retained evidence context only when the user explicitly enables Evidence Auditor context."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn documents the product boundary and links directly back to the live Elias chat screen."
+        }
+      ],
+      "tester_check": "Start a new Elias chat, send a prompt, then enable Evidence Auditor context and verify the chat remains usable without opening the Evidence Auditor workspace."
+    },
+    {
+      "id": "shared_copilot",
+      "name": "Shared Copilot and model routing",
+      "product": "Forge Core",
+      "status": "implementation candidate; see acceptance report",
+      "workspace_url": "/static/apps/elias.html",
+      "concepts": [
+        "provenance",
+        "shared backend",
+        "workflow"
+      ],
+      "lesson": {
+        "title": "Shared Copilot and model routing",
+        "summary": "A shared assistant can have different app roles without duplicating its model stack.",
+        "why_it_exists": "A shared assistant can have different app roles without duplicating its model stack.",
+        "walkthrough": [
+          "Choose an installed local model.",
+          "Pass recent user/assistant turns as separate roles.",
+          "Include only the current app context and explicitly selected evidence.",
+          "Use action buttons for supported tools; model replies do not themselves execute actions."
+        ],
+        "example": {
+          "capability": "shared_copilot",
+          "release_gate": "real workflow evidence required"
+        }
+      },
+      "implementation": {
+        "endpoint": "/api/copilot/chat",
+        "service": "forge_core/services/elias.py + assistant_engine.py"
+      },
+      "build_story": [
+        {
+          "stage": "v0.5.4",
+          "text": "A shared assistant can have different app roles without duplicating its model stack."
+        }
+      ],
+      "tester_check": "Run the acceptance workflow and record actual outputs; missing engine is blocked, never passed."
+    },
+    {
+      "id": "elias_documents",
+      "name": "Standalone document chat",
+      "product": "Elias",
+      "status": "implementation candidate; see acceptance report",
+      "workspace_url": "/static/apps/elias.html",
+      "concepts": [
+        "provenance",
+        "shared backend",
+        "workflow"
+      ],
+      "lesson": {
+        "title": "Standalone document chat",
+        "summary": "General document work should not require a benefits case.",
+        "why_it_exists": "General document work should not require a benefits case.",
+        "walkthrough": [
+          "Start a new conversation.",
+          "Attach TXT, DOCX, PDF or EML.",
+          "Extraction returns derived text without requiring Evidence Auditor.",
+          "Thread documents persist in this browser; bounded excerpts enter the prompt."
+        ],
+        "example": {
+          "capability": "elias_documents",
+          "release_gate": "real workflow evidence required"
+        }
+      },
+      "implementation": {
+        "endpoint": "/api/assistant/document",
+        "service": "forge_core/services/document_text.py + static/apps/elias.html"
+      },
+      "build_story": [
+        {
+          "stage": "v0.5.4",
+          "text": "General document work should not require a benefits case."
+        }
+      ],
+      "tester_check": "Run the acceptance workflow and record actual outputs; missing engine is blocked, never passed."
+    },
+    {
+      "id": "evidence_pdf",
+      "name": "Evidence intake to PDF",
+      "product": "Evidence Auditor",
+      "status": "implementation candidate; see acceptance report",
+      "workspace_url": "/static/apps/evidence.html",
+      "concepts": [
+        "provenance",
+        "shared backend",
+        "workflow"
+      ],
+      "lesson": {
+        "title": "Evidence intake to PDF",
+        "summary": "A downloadable PDF with retained source pages is a different deliverable from an outline.",
+        "why_it_exists": "A downloadable PDF with retained source pages is a different deliverable from an outline.",
+        "walkthrough": [
+          "Drop a batch; originals receive SHA-256 identities.",
+          "Extract embedded text, or use installed OCR/transcription engines. Review reported gaps.",
+          "Choose the output recipe.",
+          "Build a PDF with source inventory, dated-source chronology, saved statements and original exhibits.",
+          "Review bookmarks, inclusion warnings and any split parts."
+        ],
+        "example": {
+          "capability": "evidence_pdf",
+          "release_gate": "real workflow evidence required"
+        }
+      },
+      "implementation": {
+        "endpoint": "/api/vault/upload-batch \u2192 /api/evidence/package",
+        "service": "forge_core/services/ingestion.py + packet_pdf.py"
+      },
+      "build_story": [
+        {
+          "stage": "v0.5.4",
+          "text": "A downloadable PDF with retained source pages is a different deliverable from an outline."
+        }
+      ],
+      "tester_check": "Run the acceptance workflow and record actual outputs; missing engine is blocked, never passed."
+    },
+    {
+      "id": "media_jobs",
+      "name": "Shared generated media jobs",
+      "product": "GrimForge / MedForge",
+      "status": "implementation candidate; see acceptance report",
+      "workspace_url": "/static/apps/grimforge.html",
+      "concepts": [
+        "provenance",
+        "shared backend",
+        "workflow"
+      ],
+      "lesson": {
+        "title": "Shared generated media jobs",
+        "summary": "Two studios should share a media adapter and honest job status.",
+        "why_it_exists": "Two studios should share a media adapter and honest job status.",
+        "walkthrough": [
+          "Start local ComfyUI with compatible models.",
+          "Choose a standard image checkpoint or import a tested API workflow containing {{prompt}}.",
+          "Queue generation; Forge stores status and renderer job ID.",
+          "Preview and download the generated result.",
+          "A saved workflow is configuration, not evidence that a render passed."
+        ],
+        "example": {
+          "capability": "media_jobs",
+          "release_gate": "real workflow evidence required"
+        }
+      },
+      "implementation": {
+        "endpoint": "/api/media/generate \u2192 /api/jobs/{id}",
+        "service": "forge_core/services/media_engine.py"
+      },
+      "build_story": [
+        {
+          "stage": "v0.5.4",
+          "text": "Two studios should share a media adapter and honest job status."
+        }
+      ],
+      "tester_check": "Run the acceptance workflow and record actual outputs; missing engine is blocked, never passed."
+    },
+    {
+      "id": "episode_media",
+      "name": "Generated episode assembly",
+      "product": "GrimForge",
+      "status": "implementation candidate; see acceptance report",
+      "workspace_url": "/static/apps/grimforge.html",
+      "concepts": [
+        "provenance",
+        "shared backend",
+        "workflow"
+      ],
+      "lesson": {
+        "title": "Generated episode assembly",
+        "summary": "Generated stills, generated motion and text-slide animatics must not be labeled interchangeably.",
+        "why_it_exists": "Generated stills, generated motion and text-slide animatics must not be labeled interchangeably.",
+        "walkthrough": [
+          "Generate a valid script and continuity bible using the selected model.",
+          "Generate a still or motion shot per scene.",
+          "Synthesize the selected British Kokoro voice; basic fallback requires an explicit selection.",
+          "FFmpeg assembles clips with narration and sidecar captions.",
+          "Review final MP4. Music/SFX is presently a plan only; continuity is prompted, not guaranteed."
+        ],
+        "example": {
+          "capability": "episode_media",
+          "release_gate": "real workflow evidence required"
+        }
+      },
+      "implementation": {
+        "endpoint": "/api/grimforge/render",
+        "service": "forge_core/services/episode.py"
+      },
+      "build_story": [
+        {
+          "stage": "v0.5.4",
+          "text": "Generated stills, generated motion and text-slide animatics must not be labeled interchangeably."
+        }
+      ],
+      "tester_check": "Run the acceptance workflow and record actual outputs; missing engine is blocked, never passed."
+    },
+    {
+      "id": "brand_parity",
+      "name": "Canonical product identities",
+      "product": "Forge Workspace",
+      "status": "implementation candidate; see acceptance report",
+      "workspace_url": "/",
+      "concepts": [
+        "provenance",
+        "shared backend",
+        "workflow"
+      ],
+      "lesson": {
+        "title": "Canonical product identities",
+        "summary": "A shared design system can preserve each product\u2019s identity.",
+        "why_it_exists": "A shared design system can preserve each product\u2019s identity.",
+        "walkthrough": [
+          "Load the same PNG asset in app headers and favicons that supplies the desktop icon.",
+          "Use emerald Elias, violet Evidence, crimson MedForge and orange GrimForge.",
+          "Keep one Forge Apps Desktop folder.",
+          "Compare screenshots to the design target and inspect actual flows."
+        ],
+        "example": {
+          "capability": "brand_parity",
+          "release_gate": "real workflow evidence required"
+        }
+      },
+      "implementation": {
+        "endpoint": "/static/brand/",
+        "service": "forge_core/static/apps/shared.css + assets/icons"
+      },
+      "build_story": [
+        {
+          "stage": "v0.5.4",
+          "text": "A shared design system can preserve each product\u2019s identity."
+        }
+      ],
+      "tester_check": "Run the acceptance workflow and record actual outputs; missing engine is blocked, never passed."
+    },
+    {
+      "id": "blender_3d",
+      "name": "Shared Blender 3D toolchain",
+      "product": "MedForge + GrimForge",
+      "status": "implementation candidate; requires live Blender render review",
+      "workspace_url": "/static/apps/medforge.html",
+      "concepts": [
+        "3D scene",
+        "mesh",
+        "headless rendering",
+        "shared dependency",
+        "FFmpeg"
+      ],
+      "lesson": {
+        "title": "Why MedForge and GrimForge share Blender",
+        "summary": "Install one 3D renderer and let Forge Core expose it to the apps that actually need 3D scenes.",
+        "why_it_exists": "Duplicating Blender per app wastes storage and creates version drift.",
+        "walkthrough": [
+          "Setup & Repair detects or installs Blender and FFmpeg.",
+          "Forge Core discovers Blender and exposes /api/3d/status.",
+          "MedForge renders an editable non-patient-specific teaching scene.",
+          "GrimForge renders an editable cinematic blockout/previs scene.",
+          "ComfyUI remains a separate optional AI image/video layer."
+        ],
+        "example": {
+          "capability": "blender_3d",
+          "release_gate": "live Blender MP4 + .blend output required"
+        }
+      },
+      "implementation": {
+        "endpoint": "/api/3d/status + /api/3d/render",
+        "service": "forge_core/services/blender_engine.py"
+      },
+      "build_story": [
+        {
+          "stage": "v0.5.4 Media/3D",
+          "text": "One shared Blender installation serves MedForge and GrimForge through Forge Core."
+        }
+      ],
+      "tester_check": "Install/detect Blender on Windows, render one MedForge mechanism and one GrimForge previs, open MP4/still/.blend, and visually inspect them."
+    },
+    {
+      "id": "grimforge_animation_modes",
+      "name": "GrimForge 3D / 2.5D / 2D full episode modes",
+      "product": "GrimForge",
+      "status": "implemented; live engines required for acceptance",
+      "workspace_url": "/static/apps/grimforge.html",
+      "concepts": [
+        "render pipeline",
+        "3D",
+        "2.5D",
+        "2D",
+        "FFmpeg",
+        "Blender",
+        "ComfyUI"
+      ],
+      "implementation": {
+        "endpoint": "POST /api/grimforge/render",
+        "service": "forge_core/services/episode.py + blender_engine.py + media_engine.py"
+      },
+      "tester_check": "Simple mode selects 3D, 2.5D, or 2D; one Generate Full Episode action creates script, animated scene media, narration, captions, and a playable MP4 when the required engines are configured.",
+      "build_story": [
+        {
+          "stage": "Earlier",
+          "text": "Simple mode could produce a storyboard or local animatic, but the media type was too abstract."
+        },
+        {
+          "stage": "v0.5.5",
+          "text": "Simple mode gets an explicit 3D / 2.5D / 2D animation selector and one-click end-to-end episode pipeline."
+        }
+      ],
+      "lesson": {
+        "title": "How GrimForge animation modes become a final episode",
+        "summary": "The same story pipeline can route each scene through Blender 3D, generated 2.5D depth motion, or generated 2D motion before narration and FFmpeg assembly.",
+        "why_it_exists": "Simple mode should let a user choose the visual language without exposing the entire Pro production stack.",
+        "walkthrough": [
+          "Choose 3D, 2.5D, or 2D in Simple mode.",
+          "Forge writes a script and continuity bible.",
+          "Each scene routes to the selected animation engine.",
+          "Kokoro records narration and Forge creates captions.",
+          "FFmpeg normalizes the scene clips and assembles the final MP4."
+        ],
+        "example": {
+          "animation_style": "2.5d",
+          "scene_count": 6,
+          "result": "grimforge-25d-<id>.mp4"
+        }
+      }
+    },
+    {
+      "id": "product_ui_system",
+      "name": "Forge product-grade UI system",
+      "product": "Forge Workspace",
+      "status": "implemented; visual review required",
+      "workspace_url": "/",
+      "concepts": [
+        "UI",
+        "UX",
+        "visual regression",
+        "design tokens",
+        "app identity"
+      ],
+      "implementation": {
+        "endpoint": "static surfaces",
+        "service": "forge_core/static/apps/shared.css + six product HTML surfaces"
+      },
+      "tester_check": "All six apps retain distinct themes, icons, strong hero/status hierarchy, primary workflow CTA, responsive layout, app-specific Copilot/actions, and no regression to bare diagnostic forms.",
+      "build_story": [
+        {
+          "stage": "Problem",
+          "text": "Backend integrations repeatedly flattened rich app interfaces into generic forms."
+        },
+        {
+          "stage": "v0.5.5",
+          "text": "A shared premium design system keeps layout quality consistent while preserving distinct app identities and workflows."
+        }
+      ],
+      "lesson": {
+        "title": "Why Forge uses one design system with six personalities",
+        "summary": "Shared components keep the suite coherent while theme tokens, icons, primary workflows and media surfaces make each app feel purpose-built.",
+        "why_it_exists": "Backend changes should not erase product identity or user workflows.",
+        "walkthrough": [
+          "Start with shared shell and accessibility rules.",
+          "Apply product-specific color and icon tokens.",
+          "Make the primary workflow visually dominant.",
+          "Keep real status and progress visible.",
+          "Run structural and visual regression checks before release."
+        ],
+        "example": {
+          "shared": "cards, buttons, metrics, status, Copilot",
+          "grimforge": "orange cinematic",
+          "medforge": "crimson clinical",
+          "evidence": "violet evidence",
+          "elias": "emerald assistant"
+        }
+      }
+    },
+    {
+      "id": "evidence_defense_pdf",
+      "name": "Source-Controlled Defense PDF",
+      "product": "Evidence Auditor",
+      "status": "production",
+      "workspace_url": "/static/apps/evidence.html",
+      "concepts": [
+        "PDF",
+        "provenance",
+        "exhibits",
+        "chronology"
+      ],
+      "lesson": {
+        "title": "How Source-Controlled Defense PDF works",
+        "summary": "How batch evidence becomes a polished front section plus intact source exhibits, bookmarks, chronology, evidence hierarchy, reviewer questions and lossless size splits.",
+        "why_it_exists": "The evidence packet should resemble the structured defense packets the product is meant to create, without inventing unsupported narrative.",
+        "walkthrough": [
+          "Start from the primary action in the working app.",
+          "Run the preflight/source-control checks before expensive work begins.",
+          "Follow each stage through Forge Core and watch how optional engines are handled.",
+          "Inspect the produced artifact and its manifest/provenance boundary.",
+          "Compare the exact route used with the route the user originally selected."
+        ],
+        "example": {
+          "request": "one-click working-app action",
+          "transport": "Forge API / queued local job",
+          "response": "finished artifact + route/provenance metadata"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Regression",
+          "text": "A polished interface existed, but the end-to-end workflow could still stop or produce a thinner artifact."
+        },
+        {
+          "stage": "Contract",
+          "text": "The primary button was redefined as a complete workflow rather than a collection of disconnected controls."
+        },
+        {
+          "stage": "Fallback/source control",
+          "text": "Forge now uses explicit fallback or source-control rules instead of silently substituting evidence or media."
+        },
+        {
+          "stage": "Verification",
+          "text": "Fixture tests verify the artifact exists and retains the required provenance or render-route information."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn documents the recovery so later UI changes cannot repeat the regression."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/evidence/package",
+        "service": "forge_core/services/evidence.py + packet_pdf.py",
+        "working_screen": "/static/apps/evidence.html"
+      },
+      "tester_check": "Upload five mixed sources, build a VBA PDF, confirm front matter, bookmarks, chronology and every original PDF page remain present."
+    },
+    {
+      "id": "medforge_teaching_package",
+      "name": "MedForge Full Teaching Package",
+      "product": "MedForge",
+      "status": "production",
+      "workspace_url": "/static/apps/medforge.html",
+      "concepts": [
+        "vision",
+        "3D",
+        "PDF",
+        "fallback"
+      ],
+      "lesson": {
+        "title": "How MedForge Full Teaching Package works",
+        "summary": "How one MedForge action runs image inspection, mechanism teaching, illustration when available, Blender 3D, and a teaching PDF.",
+        "why_it_exists": "MedForge should feel like one medical-visual studio rather than disconnected utilities.",
+        "walkthrough": [
+          "Start from the primary action in the working app.",
+          "Run the preflight/source-control checks before expensive work begins.",
+          "Follow each stage through Forge Core and watch how optional engines are handled.",
+          "Inspect the produced artifact and its manifest/provenance boundary.",
+          "Compare the exact route used with the route the user originally selected."
+        ],
+        "example": {
+          "request": "one-click working-app action",
+          "transport": "Forge API / queued local job",
+          "response": "finished artifact + route/provenance metadata"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Regression",
+          "text": "A polished interface existed, but the end-to-end workflow could still stop or produce a thinner artifact."
+        },
+        {
+          "stage": "Contract",
+          "text": "The primary button was redefined as a complete workflow rather than a collection of disconnected controls."
+        },
+        {
+          "stage": "Fallback/source control",
+          "text": "Forge now uses explicit fallback or source-control rules instead of silently substituting evidence or media."
+        },
+        {
+          "stage": "Verification",
+          "text": "Fixture tests verify the artifact exists and retains the required provenance or render-route information."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn documents the recovery so later UI changes cannot repeat the regression."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/medforge/package",
+        "service": "forge_core/services/medforge_package.py",
+        "working_screen": "/static/apps/medforge.html"
+      },
+      "tester_check": "Run the package with ComfyUI offline and confirm it still produces a PDF; on Windows with Blender installed confirm still, MP4 and .blend are also produced."
+    },
+    {
+      "id": "grimforge_render_fallback",
+      "name": "GrimForge One-Click Render Recovery",
+      "product": "GrimForge",
+      "status": "production",
+      "workspace_url": "/static/apps/grimforge.html",
+      "concepts": [
+        "preflight",
+        "fallback",
+        "2.5D",
+        "Blender"
+      ],
+      "lesson": {
+        "title": "How GrimForge One-Click Render Recovery works",
+        "summary": "How GrimForge preflights 3D/2.5D/2D and keeps Simple-mode one-click from dead-ending when an optional visual engine is missing.",
+        "why_it_exists": "Simple mode promises an episode, so missing optional ComfyUI configuration should use an explicit installed fallback when the user permits it.",
+        "walkthrough": [
+          "Start from the primary action in the working app.",
+          "Run the preflight/source-control checks before expensive work begins.",
+          "Follow each stage through Forge Core and watch how optional engines are handled.",
+          "Inspect the produced artifact and its manifest/provenance boundary.",
+          "Compare the exact route used with the route the user originally selected."
+        ],
+        "example": {
+          "request": "one-click working-app action",
+          "transport": "Forge API / queued local job",
+          "response": "finished artifact + route/provenance metadata"
+        }
+      },
+      "build_story": [
+        {
+          "stage": "Regression",
+          "text": "A polished interface existed, but the end-to-end workflow could still stop or produce a thinner artifact."
+        },
+        {
+          "stage": "Contract",
+          "text": "The primary button was redefined as a complete workflow rather than a collection of disconnected controls."
+        },
+        {
+          "stage": "Fallback/source control",
+          "text": "Forge now uses explicit fallback or source-control rules instead of silently substituting evidence or media."
+        },
+        {
+          "stage": "Verification",
+          "text": "Fixture tests verify the artifact exists and retains the required provenance or render-route information."
+        },
+        {
+          "stage": "Teach it",
+          "text": "Forge Learn documents the recovery so later UI changes cannot repeat the regression."
+        }
+      ],
+      "implementation": {
+        "endpoint": "/api/grimforge/preflight + /api/grimforge/render",
+        "service": "forge_core/services/episode.py",
+        "working_screen": "/static/apps/grimforge.html"
+      },
+      "tester_check": "Select 2.5D with ComfyUI offline and Blender available; confirm the episode finishes using Blender stills plus 2.5D camera motion and records the fallback in the manifest."
+    }
+  ]
+}

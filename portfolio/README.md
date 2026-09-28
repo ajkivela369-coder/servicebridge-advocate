@@ -2,6 +2,14 @@
 
 A growing collection of compact, auditable AI applications spanning neuroscience, health-science safety, evidence review, pairwise preference evaluation, citation QA, annotation calibration, benchmark authoring, and creative media production.
 
+<!-- FORGE-SUITE-PORTFOLIO:START -->
+## Current integrated Forge Suite
+
+The newest integrated implementation is **Forge v0.5.6**, mirrored at **[`../forge-suite/current/`](../forge-suite/current/)**. It unifies Forge Workspace, Elias, Evidence Auditor, MedForge, GrimForge, and Forge Learn behind one local Forge Core while preserving each app's distinct workflow and identity.
+
+The individual portfolio folders below remain useful project history and demonstrations. Where they differ, **`forge-suite/current/` is the controlling current local implementation**.
+<!-- FORGE-SUITE-PORTFOLIO:END -->
+
 ## Applications
 
 ### [NeuroEval](handshake-neuroeval/)

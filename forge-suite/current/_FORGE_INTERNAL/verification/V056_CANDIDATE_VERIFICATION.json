@@ -1,0 +1,347 @@
+{
+  "version": "0.5.6-workflow-recovery",
+  "python_compile": true,
+  "javascript_syntax": true,
+  "feature_gate": {
+    "ok": true,
+    "failures": [],
+    "features": [
+      {
+        "id": "reasoning",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "coding",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 2
+      },
+      {
+        "id": "embeddings_search",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 1,
+        "offline_assets": 2
+      },
+      {
+        "id": "vision",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 1,
+        "offline_assets": 1
+      },
+      {
+        "id": "transcription",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "speech",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 2
+      },
+      {
+        "id": "video",
+        "ok": true,
+        "local_routes": 4,
+        "fallback_routes": 3,
+        "offline_assets": 3
+      },
+      {
+        "id": "diagrams",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 2
+      },
+      {
+        "id": "recovery",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "ui_design",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 5
+      },
+      {
+        "id": "forge_bridge",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 2
+      },
+      {
+        "id": "vault",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "evidence_auditor",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 2
+      },
+      {
+        "id": "medforge",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 2
+      },
+      {
+        "id": "grimforge",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "forge_learn",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 2
+      },
+      {
+        "id": "elias_chat",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "shared_copilot",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 1,
+        "offline_assets": 2
+      },
+      {
+        "id": "elias_documents",
+        "ok": true,
+        "local_routes": 1,
+        "fallback_routes": 1,
+        "offline_assets": 1
+      },
+      {
+        "id": "evidence_pdf",
+        "ok": true,
+        "local_routes": 1,
+        "fallback_routes": 1,
+        "offline_assets": 2
+      },
+      {
+        "id": "media_jobs",
+        "ok": true,
+        "local_routes": 1,
+        "fallback_routes": 1,
+        "offline_assets": 2
+      },
+      {
+        "id": "episode_media",
+        "ok": true,
+        "local_routes": 1,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "brand_parity",
+        "ok": true,
+        "local_routes": 1,
+        "fallback_routes": 1,
+        "offline_assets": 2
+      },
+      {
+        "id": "blender_3d",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "grimforge_animation_modes",
+        "ok": true,
+        "local_routes": 3,
+        "fallback_routes": 2,
+        "offline_assets": 4
+      },
+      {
+        "id": "product_ui_system",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 4
+      },
+      {
+        "id": "evidence_defense_pdf",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "medforge_teaching_package",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      },
+      {
+        "id": "grimforge_render_fallback",
+        "ok": true,
+        "local_routes": 2,
+        "fallback_routes": 2,
+        "offline_assets": 3
+      }
+    ],
+    "learning": {
+      "ok": true,
+      "required": 28,
+      "covered": 28,
+      "missing": [],
+      "incomplete": [],
+      "coverage_percent": 100.0
+    },
+    "ui_regression": {
+      "ok": true,
+      "scope": "v0.5.5 product surface regression: required workflows and product identity markers; live media quality still requires user review",
+      "failures": [],
+      "surfaces": {
+        "workspace": {
+          "path": "forge_core/static/index.html",
+          "exists": true,
+          "bytes": 10319,
+          "min_bytes": 9000,
+          "missing_markers": [],
+          "ok": true
+        },
+        "elias": {
+          "path": "forge_core/static/apps/elias.html",
+          "exists": true,
+          "bytes": 12264,
+          "min_bytes": 10000,
+          "missing_markers": [],
+          "ok": true
+        },
+        "evidence": {
+          "path": "forge_core/static/apps/evidence.html",
+          "exists": true,
+          "bytes": 30520,
+          "min_bytes": 22000,
+          "missing_markers": [],
+          "ok": true
+        },
+        "medforge": {
+          "path": "forge_core/static/apps/medforge.html",
+          "exists": true,
+          "bytes": 16934,
+          "min_bytes": 11000,
+          "missing_markers": [],
+          "ok": true
+        },
+        "grimforge": {
+          "path": "forge_core/static/apps/grimforge.html",
+          "exists": true,
+          "bytes": 24473,
+          "min_bytes": 15000,
+          "missing_markers": [],
+          "ok": true
+        },
+        "learn": {
+          "path": "learning/web/index.html",
+          "exists": true,
+          "bytes": 10135,
+          "min_bytes": 9000,
+          "missing_markers": [],
+          "ok": true
+        }
+      }
+    }
+  },
+  "workflow_checks": 35,
+  "learning": {
+    "ok": true,
+    "required": 28,
+    "covered": 28,
+    "missing": [],
+    "incomplete": [],
+    "coverage_percent": 100.0
+  },
+  "ui_regression": {
+    "ok": true,
+    "scope": "v0.5.5 product surface regression: required workflows and product identity markers; live media quality still requires user review",
+    "failures": [],
+    "surfaces": {
+      "workspace": {
+        "path": "forge_core/static/index.html",
+        "exists": true,
+        "bytes": 10319,
+        "min_bytes": 9000,
+        "missing_markers": [],
+        "ok": true
+      },
+      "elias": {
+        "path": "forge_core/static/apps/elias.html",
+        "exists": true,
+        "bytes": 12264,
+        "min_bytes": 10000,
+        "missing_markers": [],
+        "ok": true
+      },
+      "evidence": {
+        "path": "forge_core/static/apps/evidence.html",
+        "exists": true,
+        "bytes": 30520,
+        "min_bytes": 22000,
+        "missing_markers": [],
+        "ok": true
+      },
+      "medforge": {
+        "path": "forge_core/static/apps/medforge.html",
+        "exists": true,
+        "bytes": 16934,
+        "min_bytes": 11000,
+        "missing_markers": [],
+        "ok": true
+      },
+      "grimforge": {
+        "path": "forge_core/static/apps/grimforge.html",
+        "exists": true,
+        "bytes": 24473,
+        "min_bytes": 15000,
+        "missing_markers": [],
+        "ok": true
+      },
+      "learn": {
+        "path": "learning/web/index.html",
+        "exists": true,
+        "bytes": 10135,
+        "min_bytes": 9000,
+        "missing_markers": [],
+        "ok": true
+      }
+    }
+  },
+  "live_acceptance_pending": [
+    "Windows in-place update",
+    "real Blender visual quality",
+    "real ComfyUI image/video quality",
+    "real Kokoro voice/accent quality"
+  ]
+}

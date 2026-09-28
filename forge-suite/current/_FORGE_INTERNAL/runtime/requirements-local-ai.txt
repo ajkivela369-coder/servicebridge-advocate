@@ -1,0 +1,7 @@
+kokoro>=0.9.4
+soundfile>=0.12
+huggingface_hub>=0.25
+faster-whisper>=1.1
+numpy>=1.26
+pyttsx3>=2.90
+pywin32>=306; platform_system == "Windows"

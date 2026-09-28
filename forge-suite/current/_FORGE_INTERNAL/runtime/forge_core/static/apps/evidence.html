@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <link href="/static/apps/shared.css" rel="stylesheet"/>
+  <title>
+   Evidence Auditor
+  </title>
+  <style>
+   .source-check{width:auto;margin:0 8px 0 0}.source-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start}.source-row .sha{font:10px ui-monospace,Consolas;color:#6f8aa1}.packet-section{border-left:3px solid #315b73;padding:9px 12px;background:#0b1b2a;border-radius:0 10px 10px 0}.upload-drop{border:1px dashed #3a6078;border-radius:14px;padding:18px;text-align:center;background:#091827}.search-hit{border:1px solid var(--line);border-radius:13px;padding:13px;background:#0b1b2b}.search-hit .score{float:right;color:#7deee5;font-size:11px}.copilot-answer{white-space:pre-wrap}
+  </style>
+ </head>
+ <body class="theme-evidence" data-forge-app="evidence">
+  <div class="app-shell">
+   <div class="topbar">
+    <div class="topbar-inner">
+     <a class="brand" href="/">
+      <span class="brandmark">
+      </span>
+      <span>
+       Evidence Auditor
+      </span>
+     </a>
+     <div class="mainnav">
+      <a href="/">
+       Forge Workspace
+      </a>
+      <a href="/static/apps/elias.html">
+       Elias
+      </a>
+      <a class="active" href="/static/apps/evidence.html">
+       Evidence Auditor
+      </a>
+      <a href="/static/apps/medforge.html">
+       MedForge
+      </a>
+      <a href="/static/apps/grimforge.html">
+       GrimForge
+      </a>
+      <a class="learn" href="/learn?feature=evidence_auditor">
+       Forge Learn ↗
+      </a>
+     </div>
+     <span class="status-chip" id="statusChip">
+      <i>
+      </i>
+      <span>
+       Checking Core
+      </span>
+     </span>
+    </div>
+   </div>
+   <main class="workspace">
+    <section class="hero">
+     <div>
+      <span class="eyebrow">
+       Working app · source-linked evidence
+      </span>
+      <h1>
+       Evidence workspace
+      </h1>
+      <p>
+       Collect whole batches of records, preserve originals, auto-index extractable text, cross-reference evidence, and create VA/SSDI packet bundles without hiding where each important statement came from.
+      </p>
+     </div>
+     <div class="hero-actions">
+      <a class="btn secondary" href="/learn?feature=vault">
+       How the Vault works →
+      </a>
+      <button class="btn" onclick="showPanel('upload');setTimeout(()=>uploadFile.click(),150)">
+       Upload Evidence → Build PDF
+      </button>
+     </div>
+    </section>
+    <div class="layout">
+     <aside class="sidebar">
+      <div class="group">
+       Case
+      </div>
+      <button class="active" data-panel="overview" onclick="showPanel('overview',this)">
+       Overview
+       <span>
+        ⌂
+       </span>
+      </button>
+      <button data-panel="upload" onclick="showPanel('upload',this)">
+       Upload &amp; index
+       <span>
+        ＋
+       </span>
+      </button>
+      <button data-panel="sources" onclick="showPanel('sources',this)">
+       Sources
+       <span id="sideSources">
+        0
+       </span>
+      </button>
+      <button data-panel="search" onclick="showPanel('search',this)">
+       Search record
+       <span>
+        ?
+       </span>
+      </button>
+      <button data-panel="timeline" onclick="showPanel('timeline',this)">
+       Timeline
+       <span>
+        ≡
+       </span>
+      </button>
+      <button data-panel="claims" onclick="showPanel('claims',this)">
+       Claims
+       <span id="sideClaims">
+        0
+       </span>
+      </button>
+      <button data-panel="packet" onclick="showPanel('packet',this)">
+       Packet builder
+       <span>
+        ↗
+       </span>
+      </button>
+      <div class="group">
+       Learning
+      </div>
+      <a href="/learn?feature=evidence_auditor">
+       How Evidence Auditor was built
+      </a>
+      <a href="/learn?feature=embeddings_search">
+       How semantic search works
+      </a>
+     </aside>
+     <div class="content">
+      <section class="tab-panel active" id="panel-overview">
+       <div class="metric-grid">
+        <div class="metric">
+         <span>
+          Stored originals
+         </span>
+         <strong id="metricSources">
+          0
+         </strong>
+        </div>
+        <div class="metric">
+         <span>
+          Source-linked claims
+         </span>
+         <strong id="metricClaims">
+          0
+         </strong>
+        </div>
+        <div class="metric">
+         <span>
+          Selected sources
+         </span>
+         <strong id="metricSelected">
+          0
+         </strong>
+        </div>
+        <div class="metric">
+         <span>
+          Forge mode
+         </span>
+         <strong id="metricMode">
+          —
+         </strong>
+        </div>
+       </div>
+       <div class="grid">
+        <section class="card">
+         <h2>
+          Ask the record
+         </h2>
+         <p>
+          Semantic search looks for related meaning, not only exact wording.
+         </p>
+         <input id="quickQuestion" value="What evidence discusses functional endurance?"/>
+         <div class="actions">
+          <button class="btn" onclick="quickSearch()">
+           Search evidence
+          </button>
+          <a class="learn-link" href="/learn?feature=embeddings_search">
+           Learn how this search works →
+          </a>
+         </div>
+         <div class="result" id="quickResults">
+          <span class="empty">
+           Ready.
+          </span>
+         </div>
+        </section>
+        <section class="card">
+         <h2>
+          Case workflow
+         </h2>
+         <div class="list">
+          <div class="item">
+           <div class="item-title">
+            1 · Preserve originals
+           </div>
+           <div class="item-meta">
+            Vault stores the uploaded file and its SHA-256 source hash.
+           </div>
+          </div>
+          <div class="item">
+           <div class="item-title">
+            2 · Add searchable text
+           </div>
+           <div class="item-meta">
+            Text-like files can be indexed automatically; other records can receive pasted/extracted text without changing the original.
+           </div>
+          </div>
+          <div class="item">
+           <div class="item-title">
+            3 · Link statements to sources
+           </div>
+           <div class="item-meta">
+            Claims retain selected source IDs instead of becoming free-floating model prose.
+           </div>
+          </div>
+          <div class="item">
+           <div class="item-title">
+            4 · Build chronology &amp; packet
+           </div>
+           <div class="item-meta">
+            Timeline and packet structure stay traceable to stored material.
+           </div>
+          </div>
+         </div>
+        </section>
+       </div>
+       <div class="section-title">
+        <h2>
+         Recent sources
+        </h2>
+        <button class="btn secondary" onclick="refreshSources()">
+         Refresh
+        </button>
+       </div>
+       <div class="grid three" id="recentSources">
+       </div>
+      </section>
+      <section class="tab-panel" id="panel-upload">
+       <div class="grid">
+        <section class="card">
+         <h2>
+          Add original evidence
+         </h2>
+         <p>
+          The original file is preserved first. Searchable text is a separate derived layer.
+         </p>
+         <div class="upload-drop">
+          <input id="uploadFile" multiple="" type="file"/>
+          <div class="item-meta" id="uploadQueue">
+           Choose one file or a whole batch. PDFs with embedded text, DOCX, TXT/MD/CSV/JSON/XML can auto-index locally.
+          </div>
+          <div class="item-meta">
+           PDF, image, document, text, JSON, CSV, or other source material.
+          </div>
+         </div>
+         <div class="field-row">
+          <div>
+           <label>
+            Category
+           </label>
+           <select id="uploadCategory">
+            <option>
+             Medical
+            </option>
+            <option>
+             Imaging
+            </option>
+            <option>
+             Military / Service
+            </option>
+            <option>
+             VA
+            </option>
+            <option>
+             Disability
+            </option>
+            <option>
+             Legal / Admin
+            </option>
+            <option>
+             Education
+            </option>
+            <option>
+             Employment
+            </option>
+            <option>
+             Correspondence
+            </option>
+            <option>
+             Other
+            </option>
+           </select>
+          </div>
+          <div>
+           <label>
+            Source date
+           </label>
+           <input id="uploadDate" type="date"/>
+          </div>
+         </div>
+         <div class="field-row">
+          <div>
+           <label>
+            Provider / facility / source
+           </label>
+           <input id="uploadProvider" placeholder="Optional"/>
+          </div>
+          <div>
+           <label>
+            Visit / record type
+           </label>
+           <input id="uploadType" placeholder="Optional"/>
+          </div>
+         </div>
+         <div class="actions">
+          <button class="btn" onclick="uploadAndBuild()">
+           Upload Evidence → Build Packet
+          </button>
+          <button class="btn secondary" onclick="uploadEvidence()">
+           Upload &amp; index only
+          </button>
+          <label>
+           Packet recipe
+           <select id="uploadRecipe">
+            <option>
+             VBA
+            </option>
+            <option>
+             SSDI
+            </option>
+            <option>
+             APTD
+            </option>
+            <option>
+             ADA
+            </option>
+            <option>
+             CLINICIAN
+            </option>
+            <option>
+             CUSTOM
+            </option>
+           </select>
+          </label>
+          <button class="btn secondary" onclick="uploadFile.click()">
+           Add more files
+          </button>
+         </div>
+         <div class="result" id="uploadStatus">
+          <span class="empty">
+           No upload started.
+          </span>
+         </div>
+        </section>
+        <section class="card">
+         <h2>
+          Add searchable text
+         </h2>
+         <p>
+          Use this for a source already in the Vault. Pasting text here adds local chunks/embeddings while leaving the stored original untouched.
+         </p>
+         <select id="textSource">
+          <option value="">
+           Choose a stored source…
+          </option>
+         </select>
+         <textarea id="searchableText" placeholder="Paste extracted text, notes, transcript, or record text here."></textarea>
+         <button class="btn" onclick="indexText()">
+          Index text locally
+         </button>
+         <div class="result" id="indexStatus">
+          <span class="empty">
+           Nothing indexed yet.
+          </span>
+         </div>
+         <div class="notice" style="margin-top:12px">
+          Embedded PDF text, DOCX and EML extract automatically. Scanned pages/images use installed Tesseract (PDF OCR also needs pdftoppm); recordings use installed Whisper. Missing engines and partial results are listed explicitly.
+         </div>
+        </section>
+       </div>
+      </section>
+      <section class="tab-panel" id="panel-sources">
+       <div class="section-title">
+        <h2>
+         Source inventory
+        </h2>
+        <div class="actions">
+         <button class="btn secondary" onclick="selectAllSources()">
+          Select all
+         </button>
+         <button class="btn secondary" onclick="clearSourceSelection()">
+          Clear selection
+         </button>
+         <button class="btn" onclick="refreshSources()">
+          Refresh
+         </button>
+        </div>
+       </div>
+       <div class="list" id="sourceList">
+       </div>
+      </section>
+      <section class="tab-panel" id="panel-search">
+       <div class="card">
+        <h2>
+         Search local evidence
+        </h2>
+        <div class="field-row">
+         <input id="searchQuestion" value="What evidence discusses functional endurance?"/>
+         <select id="searchK">
+          <option>
+           5
+          </option>
+          <option selected="">
+           10
+          </option>
+          <option>
+           20
+          </option>
+          <option>
+           50
+          </option>
+         </select>
+        </div>
+        <button class="btn" onclick="searchEvidence()">
+         Search
+        </button>
+        <div class="list" id="searchResults" style="margin-top:14px">
+        </div>
+       </div>
+      </section>
+      <section class="tab-panel" id="panel-timeline">
+       <div class="section-title">
+        <h2>
+         Chronology
+        </h2>
+        <button class="btn" onclick="loadTimeline()">
+         Refresh timeline
+        </button>
+       </div>
+       <div class="card">
+        <div class="timeline" id="timelineList">
+         <span class="empty">
+          Load the timeline to see dated source-linked claims.
+         </span>
+        </div>
+       </div>
+      </section>
+      <section class="tab-panel" id="panel-claims">
+       <div class="grid">
+        <section class="card">
+         <h2>
+          Create source-linked claim
+         </h2>
+         <p>
+          First select one or more sources in the Source inventory, then record the statement.
+         </p>
+         <textarea id="claimStatement" placeholder="Statement supported by the selected source(s)…"></textarea>
+         <div class="field-row">
+          <input id="claimDate" type="date"/>
+          <input id="claimIssue" placeholder="Issue / topic (optional)"/>
+         </div>
+         <div class="notice" id="claimSelection">
+          No sources selected.
+         </div>
+         <button class="btn" onclick="createClaim()" style="margin-top:10px">
+          Save linked claim
+         </button>
+         <div class="result" id="claimStatus">
+          <span class="empty">
+           Ready.
+          </span>
+         </div>
+        </section>
+        <section class="card">
+         <h2>
+          Saved claims
+         </h2>
+         <div class="list" id="claimsList">
+         </div>
+        </section>
+       </div>
+      </section>
+      <section class="tab-panel" id="panel-packet">
+       <div class="grid">
+        <section class="card">
+         <h2>
+          One-click packet builder
+         </h2>
+         <p>
+          Use selected sources, or leave the selection empty to include the whole Vault inventory.
+         </p>
+         <input id="caseName" value="Evidence Packet"/>
+         <div class="field-row">
+          <select id="packetKind">
+           <option value="VBA">
+            VA / VBA defense packet · polished PDF
+           </option>
+           <option value="SSDI">
+            SSDI evidence packet
+           </option>
+           <option value="APTD">
+            APTD packet
+           </option>
+           <option value="ADA">
+            ADA accommodation packet
+           </option>
+           <option value="CLINICIAN">
+            Clinician summary
+           </option>
+           <option value="CUSTOM">
+            Custom packet
+           </option>
+           <option value="GENERAL">
+            General evidence packet
+           </option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px">
+           <input checked="" id="includeOriginals" style="width:auto;margin:0" type="checkbox"/>
+           Include source originals in ZIP
+          </label>
+         </div>
+         <div class="actions">
+          <button class="btn" onclick="createPacket('VBA')">Create VBA Defense PDF</button>
+          <button class="btn" onclick="createPacket(packetKind.value)">
+           Build Source-Controlled Defense PDF
+          </button>
+          <button class="btn secondary" onclick="buildPacket()">
+           Preview structure
+          </button>
+         </div>
+         <div class="result" id="packetBuildStatus">
+          <span class="empty">
+           Ready to create a polished source-controlled PDF with front matter, evidence hierarchy, chronology, issue map, reviewer questions, exhibit index, bookmarks, and full source exhibits.
+          </span>
+         </div>
+         <div class="list" id="packetOutline" style="margin-top:14px">
+         </div>
+        </section>
+        <section class="card">
+         <h2>
+          Packet contract
+         </h2>
+         <div class="good">
+          The PDF front matter must keep each evidence type in its proper lane, preserve chronology and provenance, and append the complete source exhibits. Unsupported synthesis is never promoted to verified evidence.
+         </div>
+         <div class="section-title">
+          <h2>
+           Next production layers
+          </h2>
+         </div>
+         <div class="list">
+          <div class="item">
+           <span class="tag amber">
+            in development
+           </span>
+           <div class="item-title">
+            Automated page/screenshot extraction
+           </div>
+          </div>
+          <div class="item">
+           <span class="tag amber">
+            in development
+           </span>
+           <div class="item-title">
+            Illustrated mechanism maps tied to records
+           </div>
+          </div>
+          <div class="item">
+           <span class="tag amber">
+            in development
+           </span>
+           <div class="item-title">
+            Verified rules / citation layer
+           </div>
+          </div>
+          <div class="item">
+           <span class="tag amber">
+            in development
+           </span>
+           <div class="item-title">
+            Under-5-MB submission validation
+           </div>
+          </div>
+         </div>
+        </section>
+       </div>
+      </section>
+     </div>
+    </div>
+   </main>
+   <script>
+    const api=async(url,opt)=>{const r=await fetch(url,opt);let d;try{d=await r.json()}catch{d={text:await r.text()}}if(!r.ok)throw new Error(d.detail||d.text||('HTTP '+r.status));return d};const state={sources:[],claims:[],selected:new Set()};
+function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function showPanel(name,btn){document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));document.getElementById('panel-'+name).classList.add('active');document.querySelectorAll('.sidebar button').forEach(x=>x.classList.remove('active'));(btn||document.querySelector(`[data-panel="${name}"]`))?.classList.add('active');if(name==='sources')refreshSources();if(name==='timeline')loadTimeline();if(name==='claims')refreshClaims();if(name==='packet')buildPacket()}
+async function boot(){try{const h=await api('/api/health');statusChip.classList.add('ok');statusChip.querySelector('span').textContent='Core running';metricMode.textContent=h.settings?.mode==='LOCAL_ONLY'?'LOCAL':'HYBRID'}catch{statusChip.querySelector('span').textContent='Core unavailable'}await Promise.all([refreshSources(),refreshClaims()])}
+function metaOf(s){try{return typeof s.metadata==='string'?JSON.parse(s.metadata||'{}'):(s.metadata||{})}catch{return {}}}
+async function refreshSources(){try{const d=await api('/api/vault/items');state.sources=d.items||[];sideSources.textContent=state.sources.length;metricSources.textContent=state.sources.length;const opts=['<option value="">Choose a stored source…</option>'].concat(state.sources.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`));textSource.innerHTML=opts.join('');renderSources();renderRecent()}catch(e){sourceList.innerHTML=`<div class="notice">${esc(e.message)}</div>`}}
+function renderRecent(){recentSources.innerHTML=state.sources.slice(0,6).map(s=>{const m=metaOf(s);return `<div class="item"><span class="tag">${esc(m.category||'Source')}</span><div class="item-title" style="margin-top:7px">${esc(s.name)}</div><div class="item-meta">${esc(m.date||s.created_at||'')} · ${esc(m.provider||s.source||'')}</div></div>`}).join('')||'<div class="empty">No sources stored yet.</div>'}
+function renderSources(){sourceList.innerHTML=state.sources.map(s=>{const m=metaOf(s),checked=state.selected.has(s.id)?'checked':'';return `<label class="item source-row"><input class="source-check" type="checkbox" ${checked} onchange="toggleSource('${esc(s.id)}',this.checked)"><div><div class="item-title">${esc(s.name)}</div><div class="item-meta">${esc(m.category||'Uncategorized')} · ${esc(m.date||s.created_at||'')} · ${esc(m.provider||s.source||'')}</div><div class="sha">SHA-256 ${esc((s.sha256||'').slice(0,24))}${s.sha256?'…':''}</div></div><span class="tag ${s.deduplicated?'amber':'green'}">${esc(s.mime||'file')}</span></label>`}).join('')||'<div class="empty">No sources stored yet.</div>';updateSelection()}
+function toggleSource(id,on){on?state.selected.add(id):state.selected.delete(id);updateSelection()}
+function updateSelection(){metricSelected.textContent=state.selected.size;claimSelection.textContent=state.selected.size?`${state.selected.size} source(s) selected: ${[...state.selected].slice(0,4).join(', ')}${state.selected.size>4?'…':''}`:'No sources selected.'}
+function selectAllSources(){state.sources.forEach(s=>state.selected.add(s.id));renderSources()}function clearSourceSelection(){state.selected.clear();renderSources()}
+async function uploadEvidence(){const files=[...uploadFile.files];if(!files.length){uploadStatus.textContent='Choose one or more files first.';return}uploadStatus.textContent=`Preserving ${files.length} original file(s) and indexing extractable text…`;const meta={category:uploadCategory.value,date:uploadDate.value,provider:uploadProvider.value,record_type:uploadType.value};const fd=new FormData();files.forEach(f=>fd.append('files',f));fd.append('metadata_json',JSON.stringify(meta));fd.append('auto_index','true');try{const d=await api('/api/vault/upload-batch',{method:'POST',body:fd});const ok=(d.results||[]).filter(x=>!x.error),bad=(d.results||[]).filter(x=>x.error);uploadStatus.innerHTML=`<div class="good"><b>${ok.length} file(s) preserved.</b> Automatic indexing ran where embedded/extractable text was available.</div>`+ok.map(x=>`<div class="item"><b>${esc(x.name)}</b><div class="item-meta">${x.deduplicated?'Already in Vault · ':''}${esc(x.text_extraction?.method||'stored')} · ${x.indexing?.added||0} chunk(s)</div>${x.text_extraction?.warning?`<div class="item-meta">${esc(x.text_extraction.warning)}</div>`:''}</div>`).join('')+(bad.length?`<div class="notice">${bad.map(x=>esc(x.name+': '+x.error)).join('<br>')}</div>`:'');uploadFile.value='';await refreshSources();return {ok:bad.length===0,ids:ok.map(x=>x.id)}}catch(e){uploadStatus.textContent=e.message;return {ok:false,ids:[]}}}
+async function indexText(){if(!textSource.value||!searchableText.value.trim()){indexStatus.textContent='Choose a source and add text first.';return}indexStatus.textContent='Creating local chunks and embeddings…';try{const d=await api('/api/vault/text',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({item_id:textSource.value,text:searchableText.value,metadata:{indexed_from_ui:true}})});indexStatus.textContent=`Indexed ${d.added||0} text chunk(s).`}catch(e){indexStatus.textContent=e.message}}
+function hitHTML(h){return `<div class="search-hit"><span class="score">score ${esc(h.score??'—')}</span><div class="item-title">${esc(h.name||h.item_id||'Source')}</div><div class="item-meta">${esc(h.id||h.item_id||'')}</div><div style="margin-top:8px">${esc(h.text||'')}</div></div>`}
+async function searchEvidence(){searchResults.innerHTML='<div class="empty">Searching locally…</div>';try{const d=await api('/api/evidence/query',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:searchQuestion.value,k:+searchK.value})});searchResults.innerHTML=(d.hits||[]).map(hitHTML).join('')||'<div class="empty">No indexed text matched. The original sources may still be safely stored in the Vault.</div>'}catch(e){searchResults.innerHTML=`<div class="notice">${esc(e.message)}</div>`}}
+async function quickSearch(){searchQuestion.value=quickQuestion.value;quickResults.textContent='Searching…';try{const d=await api('/api/evidence/query',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:quickQuestion.value,k:6})});quickResults.innerHTML=(d.hits||[]).slice(0,4).map(hitHTML).join('')||'<span class="empty">No indexed text matched.</span>'}catch(e){quickResults.textContent=e.message}}
+async function refreshClaims(){try{const d=await api('/api/vault/claims');state.claims=d.claims||[];sideClaims.textContent=state.claims.length;metricClaims.textContent=state.claims.length;claimsList.innerHTML=state.claims.map(c=>{let m={};try{m=JSON.parse(c.metadata||'{}')}catch{}let ids=[];try{ids=JSON.parse(c.source_ids||'[]')}catch{}return `<div class="item"><div class="item-title">${esc(c.statement)}</div><div class="item-meta">${esc(m.date||c.created_at||'')} · ${esc(m.issue||'')} · ${ids.length} linked source(s)</div></div>`}).join('')||'<div class="empty">No claims saved yet.</div>'}catch(e){claimsList.innerHTML=`<div class="notice">${esc(e.message)}</div>`}}
+async function createClaim(){if(!claimStatement.value.trim()){claimStatus.textContent='Enter a statement first.';return}if(!state.selected.size){claimStatus.textContent='Select at least one source in Source inventory first.';return}claimStatus.textContent='Saving linked claim…';try{await api('/api/vault/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({statement:claimStatement.value,source_ids:[...state.selected],metadata:{date:claimDate.value,issue:claimIssue.value}})});claimStatus.textContent='Saved with source links.';claimStatement.value='';await refreshClaims()}catch(e){claimStatus.textContent=e.message}}
+async function loadTimeline(){timelineList.innerHTML='<span class="empty">Loading chronology…</span>';try{const d=await api('/api/evidence/timeline');timelineList.innerHTML=(d.timeline||[]).map(x=>`<div class="timeline-item"><strong>${esc(x.date)}</strong><div>${esc(x.statement)}</div><span>${(x.source_ids||[]).length} linked source(s)</span></div>`).join('')||'<span class="empty">No dated claims yet. Add a date when saving a source-linked claim.</span>'}catch(e){timelineList.textContent=e.message}}
+async function buildPacket(){packetOutline.innerHTML='<span class="empty">Building outline…</span>';try{const kind=packetKind.value||'GENERAL';const d=await api('/api/evidence/packet?case_name='+encodeURIComponent(caseName.value||'Evidence Packet')+'&kind='+encodeURIComponent(kind));packetOutline.innerHTML=`<div class="item"><div class="item-title">${esc(d.title)} · ${esc(d.kind||kind)}</div><div class="item-meta">${esc(d.rule)}</div></div>`+(d.sections||[]).map((s,i)=>`<div class="packet-section"><b>${i+1}. ${esc(s)}</b></div>`).join('')}catch(e){packetOutline.textContent=e.message}}
+async function createPacket(kind){packetKind.value=kind;packetBuildStatus.textContent=`Creating ${kind} packet bundle…`;try{const d=await api('/api/evidence/package',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,case_name:caseName.value||`${kind} Evidence Packet`,source_ids:state.selected.size?[...state.selected]:null,include_originals:includeOriginals.checked})});const pdf=String(d.pdf||'').split(/[\\/]/).pop();const file=String(d.zip||'').split(/[\\/]/).pop();packetBuildStatus.innerHTML=`<div class="good"><b>${esc(kind)} defense/evidence PDF created.</b> ${d.sources} source(s), ${d.claims} source-linked claim(s), ${d.front_matter_pages||'multiple'} front-matter page(s).</div><div class="actions" style="margin-top:10px">${pdf?`<a class="btn" href="/api/exports/${encodeURIComponent(pdf)}">Download full PDF (${(d.pdf_bytes/1000000).toFixed(2)} MB)</a>`:''}${(d.parts||[]).map(p=>`<a class="btn secondary" href="/api/exports/${encodeURIComponent(p.file.split(/[\\/]/).pop())}">Part ${p.start_page}–${p.end_page} (${(p.bytes/1000000).toFixed(2)} MB)</a>`).join('')}${file?`<a class="btn" href="/api/exports/${encodeURIComponent(file)}">Download package ZIP</a>`:''}<button class="btn secondary" onclick="buildPacket()">Show structure</button></div><div class="item-meta">Includes a polished source-control front section, evidence hierarchy, chronology, source-linked issue map, reviewer questions, exhibit index, full source exhibits and bookmarks, plus packet draft, inventory, claims and manifest${includeOriginals.checked?', and selected original files':''}.</div>`;if(d.warnings?.length){const warning=document.createElement('div');warning.className='notice';warning.textContent=d.warnings.join('\n');packetBuildStatus.append(warning)}await buildPacket()}catch(e){packetBuildStatus.textContent=e.message}}
+async function copilotAsk(){copilotAnswer.textContent='Searching local evidence…';try{const d=await api('/api/evidence/query',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({question:copilotQ.value,k:8})});const hits=d.hits||[];copilotAnswer.innerHTML=hits.length?hits.map((h,i)=>`<p><b>${i+1}. ${esc(h.name||h.item_id||'Source')}</b><br>${esc((h.text||'').slice(0,420))}</p>`).join(''):'No indexed text matched. This does not mean the Vault has no stored sources.'}catch(e){copilotAnswer.textContent=e.message}}
+async function uploadAndBuild(){const result=await uploadEvidence();if(!result?.ok||!result.ids.length){uploadStatus.insertAdjacentHTML('beforeend','<div class="notice">Packet not built: resolve upload errors first. Preserved files remain in Sources.</div>');return;}state.selected=new Set(result.ids);showPanel('packet');await createPacket(uploadRecipe.value);}
+const drop=document.querySelector('.upload-drop');drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('dragover')});drop.addEventListener('dragleave',()=>drop.classList.remove('dragover'));drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('dragover');uploadFile.files=e.dataTransfer.files;uploadQueue.textContent=uploadFile.files.length+' file(s) ready. Choose a recipe, then Upload Evidence → Build Packet.'});
+boot();
+   </script>
+   <script src="/static/apps/forge-shared.js">
+   </script>
+  </div>
+ </body>
+</html>

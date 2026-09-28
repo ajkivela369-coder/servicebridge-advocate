@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <link href="/static/apps/shared.css" rel="stylesheet"/>
+  <title>
+   Elias · Local AI Assistant
+  </title>
+  <style>
+   body.theme-elias{overflow:hidden}.elias-shell{height:100vh;display:grid;grid-template-rows:68px 1fr}.chat-layout{min-height:0;display:grid;grid-template-columns:260px minmax(0,1fr)}.chat-sidebar{min-height:0;border-right:1px solid var(--line);background:rgba(12,13,34,.9);padding:13px;display:flex;flex-direction:column}.new-chat{width:100%;margin-bottom:12px}.thread-list{overflow:auto;display:grid;gap:5px}.thread{padding:10px;border-radius:10px;color:var(--muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid transparent}.thread:hover,.thread.active{background:rgba(255,255,255,.045);color:var(--text);border-color:var(--line)}.side-foot{margin-top:auto;padding-top:12px;display:grid;gap:8px}.chat-main{min-width:0;min-height:0;display:grid;grid-template-rows:auto 1fr auto;background:radial-gradient(circle at 50% -10%,rgba(139,92,246,.12),transparent 35%),var(--bg)}.chat-head{padding:14px 24px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;gap:14px}.chat-head h1{font-size:17px;margin:0}.chat-head .sub{font-size:11px;color:var(--muted)}.toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.toggle input{width:auto;margin:0}.messages{overflow:auto;padding:30px 0 160px}.message{width:min(820px,90%);margin:0 auto 20px;display:grid;grid-template-columns:34px 1fr;gap:12px}.avatar{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-weight:900;background:rgba(255,255,255,.07);border:1px solid var(--line)}.message.assistant .avatar{background:linear-gradient(135deg,var(--cyan),var(--blue));color:#090818}.bubble{padding:2px 0;color:#e8ecff;white-space:pre-wrap;line-height:1.68}.bubble .meta{font-size:10px;color:#7885aa;margin-top:8px}.evidence-box{margin-top:10px;border:1px solid rgba(124,92,255,.25);border-radius:12px;padding:10px;background:rgba(124,92,255,.06);font-size:12px}.welcome{width:min(820px,90%);margin:70px auto 0}.welcome h2{font-size:38px;letter-spacing:-.04em;margin:0 0 8px}.welcome p{color:var(--muted);font-size:16px}.starter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}.starter{border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:14px;padding:14px;cursor:pointer;color:var(--text);text-align:left}.starter:hover{border-color:var(--blue);background:rgba(124,92,255,.06)}.composer-wrap{position:absolute;left:260px;right:0;bottom:0;padding:18px 20px 22px;background:linear-gradient(transparent,var(--bg) 28%)}.composer{width:min(840px,94%);margin:auto;border:1px solid var(--line);border-radius:20px;background:#0d1028;padding:10px;box-shadow:0 20px 60px rgba(0,0,0,.3)}.composer textarea{border:0;background:transparent;margin:0;min-height:62px;max-height:180px;resize:none;padding:8px;color:var(--text)}.composer textarea:focus{outline:0}.composer-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 4px 0}.composer-row .hint{font-size:10px;color:#68769b}.send{width:40px;height:40px;border-radius:13px;padding:0;font-size:18px}.typing{opacity:.75}.mobile-side{display:none}@media(max-width:800px){body.theme-elias{overflow:auto}.elias-shell{height:auto;min-height:100vh}.chat-layout{grid-template-columns:1fr}.chat-sidebar{display:none}.composer-wrap{left:0;position:fixed}.starter-grid{grid-template-columns:1fr}.messages{min-height:70vh}.mobile-side{display:inline-flex}}
+  </style>
+ </head>
+ <body class="theme-elias" data-forge-app="elias">
+  <div class="elias-shell">
+   <div class="topbar">
+    <div class="topbar-inner">
+     <a class="brand" href="/">
+      <span class="brandmark">
+      </span>
+      <span>
+       Elias
+      </span>
+     </a>
+     <div class="mainnav">
+      <a href="/">
+       Forge Workspace
+      </a>
+      <a class="active" href="/static/apps/elias.html">
+       Elias
+      </a>
+      <a href="/static/apps/evidence.html">
+       Evidence Auditor
+      </a>
+      <a href="/static/apps/medforge.html">
+       MedForge
+      </a>
+      <a href="/static/apps/grimforge.html">
+       GrimForge
+      </a>
+      <a class="learn" href="/learn?feature=elias_chat">
+       Forge Learn ↗
+      </a>
+     </div>
+     <span class="status-chip" id="statusChip">
+      <i>
+      </i>
+      <span>
+       Checking Core
+      </span>
+     </span>
+    </div>
+   </div>
+   <div class="chat-layout">
+    <aside class="chat-sidebar">
+     <button class="btn new-chat" onclick="newThread()">
+      ＋ New chat
+     </button>
+     <div class="thread-list" id="threadList">
+     </div>
+     <div class="side-foot">
+      <a class="btn secondary" href="/static/apps/evidence.html">
+       Open Evidence Auditor
+      </a>
+      <a class="btn secondary" href="/learn?feature=elias_chat">
+       How Elias works
+      </a>
+      <div class="item-meta">
+       Conversation history is stored in this browser. Forge Core handles the local model call.
+      </div>
+     </div>
+    </aside>
+    <main class="chat-main">
+     <div class="chat-head">
+      <div>
+       <h1 id="chatTitle">
+        New chat
+       </h1>
+       <div class="sub">
+        Local-first AI assistant · quality-first model routing · Evidence Auditor is optional
+       </div>
+      </div>
+      <select aria-label="Local model" id="eliasModel" style="max-width:240px">
+       <option value="smart" selected>
+        Smart Local · best installed reasoning model
+       </option>
+       <option value="auto">
+        Fast Local · memory-conscious
+       </option>
+      </select>
+      <label class="toggle">
+       <input id="useEvidence" type="checkbox"/>
+       Use Evidence Auditor context
+      </label>
+     </div>
+     <div class="messages" id="messages">
+     </div>
+     <div class="composer-wrap">
+      <div class="composer">
+       <textarea id="prompt" onkeydown="composerKey(event)" placeholder="Message Elias…"></textarea>
+       <div class="composer-row">
+        <div>
+         <input id="eliasAttachment" multiple="" onchange="attachDocuments()" style="font-size:11px" type="file"/>
+         <div class="item-meta" id="attachmentStatus">
+         </div>
+        </div>
+        <div class="hint">
+         Enter to send · Shift+Enter for a new line · Evidence context is opt-in
+        </div>
+        <button class="btn send" id="sendBtn" onclick="sendMessage()">
+         ↑
+        </button>
+       </div>
+      </div>
+     </div>
+    </main>
+   </div>
+  </div>
+  <script>
+   const api=async(url,opt)=>{const r=await fetch(url,opt);let d;try{d=await r.json()}catch{d={text:await r.text()}}if(!r.ok)throw new Error(d.detail||d.text||('HTTP '+r.status));return d};const STORE='forge.elias.threads.v1';let threads=[],activeId=null,busy=false;
+function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function id(){return 't-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7)}
+function load(){try{threads=JSON.parse(localStorage.getItem(STORE)||'[]')}catch{threads=[]}if(!threads.length)newThread(false);else activeId=threads[0].id;render()}
+function save(){localStorage.setItem(STORE,JSON.stringify(threads.slice(0,40)))}
+function current(){return threads.find(t=>t.id===activeId)}
+function newThread(renderNow=true){const t={id:id(),title:'New chat',created:Date.now(),messages:[],documents:[]};threads.unshift(t);activeId=t.id;save();if(renderNow){render();if(typeof attachmentStatus!=='undefined')attachmentStatus.textContent=''}}
+function selectThread(tid){activeId=tid;render();attachmentStatus.textContent=(current().documents||[]).map(d=>d.name).join(', ')}
+function renderThreads(){threadList.innerHTML=threads.map(t=>`<div class="thread ${t.id===activeId?'active':''}" onclick="selectThread('${t.id}')" title="${esc(t.title)}">${esc(t.title)}</div>`).join('')}
+function render(){const t=current();chatTitle.textContent=t?.title||'New chat';renderThreads();if(!t||!t.messages.length){messages.innerHTML=`<section class="welcome"><span class="eyebrow">ELIAS · LOCAL AI ASSISTANT</span><h2>What are we working on?</h2><p>Write, code, explore ideas, plan projects, or attach documents. Choose whether this conversation uses evidence context.</p><div class="starter-grid"><button class="starter" onclick="starter('Explain an API, JSON, and endpoints using Forge as the example.')"><b>Explain a technical concept</b><br><span class="item-meta">Use our actual Forge architecture as the example.</span></button><button class="starter" onclick="starter('Help me think through the next feature we should build in Forge.')"><b>Plan a feature</b><br><span class="item-meta">Reason through product and implementation choices.</span></button><button class="starter" onclick="starter('Summarize what Forge Core, Forge Workspace, and Forge Learn each do.')"><b>Explain Forge</b><br><span class="item-meta">Architecture without mixing teaching into the working apps.</span></button><button class="starter" onclick="location.href='/static/apps/evidence.html'"><b>Work with evidence</b><br><span class="item-meta">Open the dedicated Evidence Auditor workspace.</span></button></div></section>`;return}messages.innerHTML=t.messages.map((m,i)=>`<article class="message ${m.role}"><div class="avatar">${m.role==='assistant'?'E':'AJ'}</div><div class="bubble">${esc(m.content)}${m.evidence?.length?`<div class="evidence-box"><b>Evidence context used</b><br>${m.evidence.slice(0,5).map((h,n)=>`${n+1}. ${esc(h.name||'source')} · score ${esc(h.score??'—')}`).join('<br>')}</div>`:''}${m.engine?`<div class="meta">${esc(m.engine)}</div>`:''}</div></article>`).join('');messages.scrollTop=messages.scrollHeight}
+function starter(text){prompt.value=text;prompt.focus()}
+function composerKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}}
+async function sendMessage(){if(busy)return;const text=prompt.value.trim();if(!text)return;let t=current();if(!t){newThread(false);t=current()}t.messages.push({role:'user',content:text});if(t.title==='New chat')t.title=text.replace(/\s+/g,' ').slice(0,48);prompt.value='';busy=true;sendBtn.disabled=true;save();render();t.messages.push({role:'assistant',content:'Thinking locally…',typing:true});render();try{const history=t.messages.filter(m=>!m.typing).map(m=>({role:m.role,content:m.content}));const d=await api('/api/elias/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages:history,use_evidence:useEvidence.checked,evidence_k:6,model:eliasModel.value,context:(t.documents||[]).map(d=>'DOCUMENT '+d.name+'\n'+d.text).join('\n\n').slice(0,15000)})});t.messages=t.messages.filter(m=>!m.typing);t.messages.push({role:'assistant',content:d.message||'No response returned.',engine:d.engine,evidence:d.evidence||[]})}catch(e){t.messages=t.messages.filter(m=>!m.typing);t.messages.push({role:'assistant',content:'Elias could not complete that request: '+e.message,engine:'error'})}finally{busy=false;sendBtn.disabled=false;save();render();prompt.focus()}}
+async function boot(){try{const h=await api('/api/health');statusChip.classList.add('ok');statusChip.querySelector('span').textContent='Core '+(h.settings?.mode==='LOCAL_ONLY'?'local':'hybrid')}catch{statusChip.querySelector('span').textContent='Core unavailable'}load();prompt.focus()}
+async function attachDocuments(){const t=current();for(const f of [...eliasAttachment.files]){attachmentStatus.textContent='Extracting '+f.name+'…';try{const fd=new FormData();fd.append('file',f);const d=await api('/api/assistant/document',{method:'POST',body:fd});if(!d.text)throw Error(d.warning||'No extractable text.');t.documents=t.documents||[];t.documents.push({name:d.name,text:d.text.slice(0,14000)});attachmentStatus.textContent=t.documents.map(x=>x.name).join(', ')+(d.warning?' · '+d.warning:'');save();}catch(e){attachmentStatus.textContent=e.message;}}eliasAttachment.value='';}
+boot();
+  </script>
+  <script src="/static/apps/forge-shared.js">
+  </script>
+ </body>
+</html>

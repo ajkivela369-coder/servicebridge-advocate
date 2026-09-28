@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "tools": [
+    {
+      "id": "git",
+      "capability": "source_control",
+      "commands": [
+        "git"
+      ],
+      "windows_install": "winget install -e --id Git.Git",
+      "fallbacks": [
+        "portable Git cached in FORGE_HOME/downloads",
+        "WSL git"
+      ],
+      "offline_strategy": "Keep installer or portable archive in downloads/installers and export repository bundles."
+    },
+    {
+      "id": "uv",
+      "capability": "python_envs",
+      "commands": [
+        "uv"
+      ],
+      "windows_install": "winget install -e --id astral-sh.uv",
+      "fallbacks": [
+        "Python venv + pip",
+        "uv standalone binary cached in FORGE_HOME/bin"
+      ],
+      "offline_strategy": "Cache uv binary plus Python wheels in downloads/wheelhouse."
+    },
+    {
+      "id": "ffmpeg",
+      "capability": "media_render",
+      "commands": [
+        "ffmpeg",
+        "ffprobe"
+      ],
+      "windows_install": "winget install -e --id Gyan.FFmpeg",
+      "fallbacks": [
+        "cached Windows build",
+        "WSL apt package",
+        "compile in WSL/MSYS2"
+      ],
+      "offline_strategy": "Keep a known-good static/portable build under downloads/ffmpeg and copy it into FORGE_HOME/bin."
+    },
+    {
+      "id": "node",
+      "capability": "web_tooling",
+      "commands": [
+        "node",
+        "npm",
+        "npx"
+      ],
+      "windows_install": "winget install -e --id OpenJS.NodeJS.LTS",
+      "fallbacks": [
+        "portable Node archive",
+        "WSL node",
+        "prebuilt frontend assets"
+      ],
+      "offline_strategy": "Preserve package-lock files and npm cache; export built frontend assets for no-Node runtime use."
+    },
+    {
+      "id": "cmake",
+      "capability": "native_builds",
+      "commands": [
+        "cmake"
+      ],
+      "windows_install": "winget install -e --id Kitware.CMake",
+      "fallbacks": [
+        "WSL cmake",
+        "cached prebuilt binaries"
+      ],
+      "offline_strategy": "Prefer cached release binaries; retain source tarballs only when builds are necessary."
+    },
+    {
+      "id": "ollama",
+      "capability": "local_llm",
+      "commands": [
+        "ollama"
+      ],
+      "windows_install": "winget install Ollama.Ollama",
+      "fallbacks": [
+        "llama.cpp local server",
+        "heuristic/offline pipeline for simple tasks"
+      ],
+      "offline_strategy": "Store models under FORGE_HOME/models/ollama and keep a model inventory with hashes/sizes."
+    },
+    {
+      "id": "llama_cpp",
+      "capability": "local_llm_fallback",
+      "commands": [
+        "llama-server",
+        "llama-server.exe"
+      ],
+      "windows_install": "Use Forge install_llama_cpp.ps1 or winget install llama.cpp",
+      "fallbacks": [
+        "Ollama",
+        "heuristic/offline templates"
+      ],
+      "offline_strategy": "Cache official release binaries plus a retained GGUF model under FORGE_HOME/models/llama.cpp."
+    },
+    {
+      "id": "whisper_cpp",
+      "capability": "transcription",
+      "commands": [
+        "whisper-cli",
+        "whisper"
+      ],
+      "windows_install": "Use official whisper.cpp Windows release or build with CMake",
+      "fallbacks": [
+        "faster-whisper Python",
+        "WSL whisper.cpp"
+      ],
+      "offline_strategy": "Cache executable plus ggml model files under FORGE_HOME/models/whisper."
+    },
+    {
+      "id": "podman",
+      "capability": "containers",
+      "commands": [
+        "podman"
+      ],
+      "windows_install": "winget install RedHat.Podman-Desktop",
+      "fallbacks": [
+        "WSL2 direct execution",
+        "native Windows tools"
+      ],
+      "offline_strategy": "Export critical container images with podman save and keep them in downloads/containers."
+    },
+    {
+      "id": "wsl",
+      "capability": "linux_escape_hatch",
+      "commands": [
+        "wsl.exe"
+      ],
+      "windows_install": "wsl --install",
+      "fallbacks": [
+        "native Windows",
+        "Hyper-V/other VM when explicitly needed"
+      ],
+      "offline_strategy": "Export a configured distro with wsl --export so it can be restored later."
+    },
+    {
+      "id": "12ui",
+      "capability": "ui_design_accelerator",
+      "commands": [
+        "12ui",
+        "12ui.cmd"
+      ],
+      "windows_install": "Use Forge install_12ui.ps1. It prefers a retained offline runtime, then an online npm install when available.",
+      "fallbacks": [
+        "Forge deterministic local HTML/CSS design system",
+        "retained prebuilt UI templates"
+      ],
+      "offline_strategy": "After one successful online install, archive the complete 12ui Node runtime plus npm cache under FORGE_HOME/downloads/npm-packages. 12ui hosted design calls can still require internet/service access, so local Forge Design is the guaranteed offline route."
+    }
+  ]
+}

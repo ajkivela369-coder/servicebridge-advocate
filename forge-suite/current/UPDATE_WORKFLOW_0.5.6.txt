@@ -1,0 +1,9 @@
+FORGE v0.5.6 WORKFLOW RECOVERY
+
+- GrimForge Generate Full Episode preflights the chosen 3D / 2.5D / 2D route.
+- If 2.5D ComfyUI imagery is unavailable and Blender is installed, Simple mode can render Blender stills and apply cinematic 2.5D motion instead of stopping. The manifest records the fallback.
+- MedForge restores one full teaching workflow: source image -> local inspection -> mechanism lesson -> teaching visual -> Blender 3D clip / .blend -> PDF.
+- Evidence Auditor restores defense-style PDF output with source-control rules, evidence hierarchy, chronology, issue map, reviewer/examiner questions, exhibit index, bookmarks, full exhibits and lossless under-5-MB splits when required.
+- Forge Learn coverage: 28/28.
+
+Live Windows rendering still requires target-PC review for Blender visual quality, ComfyUI models/workflows and Kokoro voice quality.

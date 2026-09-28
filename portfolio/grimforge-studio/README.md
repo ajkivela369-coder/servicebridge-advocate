@@ -1,3 +1,7 @@
+<!-- FORGE-CURRENT-BANNER:START -->
+> **Current implementation:** GrimForge's newest local pipeline is maintained in [`../../forge-suite/current/`](../../forge-suite/current/), including the 3D / 2.5D / 2D full-episode routes. This folder is preserved as earlier project history.
+<!-- FORGE-CURRENT-BANNER:END -->
+
 # GrimForge Studio — Reference Lab release source
 
 This folder preserves the existing Streamlit GrimForge prototype and now also contains an `appdeploy/` source tree for the newer cinematic web studio.

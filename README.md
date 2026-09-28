@@ -5,6 +5,25 @@
 
 [![CI](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml)
 
+<!-- FORGE-SUITE-CURRENT:START -->
+## Current Forge Suite — v0.5.6
+
+The repository now mirrors the current integrated local Forge Suite under **[`forge-suite/current/`](forge-suite/current/)**.
+
+- **Forge Workspace** — local control center, model/tool health, backups, shared media/3D tools, and app launch.
+- **Elias** — independent local conversational/document assistant with quality-first local routing.
+- **Evidence Auditor** — batch evidence intake, source provenance, chronology/review workflows, and real defense-style PDF packet generation.
+- **MedForge** — medical image/mechanism teaching workflows, generated visuals, and Blender-backed 3D studio paths.
+- **GrimForge** — full-episode creative pipeline with explicit **3D / 2.5D / 2D** routes, narration, captions, and MP4 assembly.
+- **Forge Learn** — synchronized teaching companion covering shipping capabilities and failure modes.
+
+**Current status:** implementation candidate. Automated structural/fixture gates pass; real Windows upgrade behavior, Blender/ComfyUI output quality, and local narrator quality still require target-PC acceptance.
+
+See [Forge Suite current source](forge-suite/current/), [acceptance status](forge-suite/current/ACCEPTANCE_STATUS.md), and [product blueprint](forge-suite/current/PRODUCT_COMPLETION_BLUEPRINT.md).
+
+Older Elias, Evidence Auditor, and GrimForge folders remain in the repository as development history.
+<!-- FORGE-SUITE-CURRENT:END -->
+
 ## Featured app — Elias Evidence Auditor Pro
 
 **▶ Test the current production app:** https://elias-evidence-assistant-simscb.v2.appdeploy.ai/

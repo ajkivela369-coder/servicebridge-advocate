@@ -1,0 +1,21 @@
+{
+  "profile_id": "aj-hp-elitebook-840-g8",
+  "source": "user-provided Windows System Information screenshots, 2026-09-27",
+  "os": {"name": "Microsoft Windows 11 Pro", "build": "26200", "arch": "x64"},
+  "device": {"manufacturer": "HP", "model": "HP EliteBook 840 G8 Notebook PC", "system_name": "AJ"},
+  "cpu": {"name": "11th Gen Intel Core i7-1185G7", "base_clock_ghz": 3.0},
+  "memory": {"installed_gb": 16.0, "observed_available_gb": 6.51},
+  "virtualization": {"hypervisor_detected": true, "vbs_running": true, "secure_boot": true},
+  "gpu": {"discrete_gpu": "unknown", "policy": "assume CPU-first until Forge Doctor confirms GPU"},
+  "storage": {"capacity": "unknown", "policy": "Forge Doctor must verify >=50 GB free before full model staging"},
+  "model_policy": {
+    "general_default": "qwen2.5:3b",
+    "coding_default": "qwen2.5-coder:3b",
+    "general_optional": "qwen2.5:7b-instruct",
+    "vision_default": "qwen2.5vl:3b",
+    "embeddings": "nomic-embed-text",
+    "transcription": "small.en",
+    "speech": "kokoro:af_heart",
+    "reason": "16 GB RAM + no confirmed discrete GPU: prefer 3B quantized models for responsiveness; 7B remains optional."
+  }
+}

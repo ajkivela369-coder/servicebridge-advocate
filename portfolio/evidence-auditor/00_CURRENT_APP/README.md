@@ -1,3 +1,7 @@
+<!-- FORGE-CURRENT-BANNER:START -->
+> **Current implementation:** the newest local Evidence Auditor workflow is maintained in [`../../../forge-suite/current/`](../../../forge-suite/current/), including batch intake, source-grounded review, chronology, and defense-style PDF packet generation. This folder remains the earlier standalone/cloud-oriented implementation history.
+<!-- FORGE-CURRENT-BANNER:END -->
+
 # Elias + Evidence Auditor — Unified Flagship App
 
 > **Start here.** This folder points to the current production build. The older Streamlit implementation lives under `../legacy-streamlit/` so it no longer obscures the current app.

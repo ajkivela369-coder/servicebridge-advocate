@@ -1,0 +1,13 @@
+services:
+  forge-core:
+    build:
+      context: .
+      dockerfile: Containerfile
+    ports:
+      - "8765:8765"
+    environment:
+      FORGE_HOME: /forge
+    volumes:
+      - ./data:/app/data
+      - ${FORGE_HOME:-./forge-home}:/forge
+    restart: unless-stopped

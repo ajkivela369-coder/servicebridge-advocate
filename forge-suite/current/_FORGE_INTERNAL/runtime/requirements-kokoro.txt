@@ -1,0 +1,4 @@
+# Optional high-quality local narration. Install only after the base app works.
+kokoro
+soundfile
+numpy

@@ -1,0 +1,503 @@
+{
+  "schema_version": 1,
+  "features": [
+    {
+      "id": "reasoning",
+      "local_routes": [
+        "Ollama Qwen",
+        "llama.cpp Qwen GGUF",
+        "heuristic local"
+      ],
+      "fallback_routes": [
+        "llama.cpp",
+        "heuristic local"
+      ],
+      "offline_assets": [
+        "models/ollama",
+        "models/llama.cpp",
+        "bin/llama-server"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "coding",
+      "local_routes": [
+        "Ollama Qwen Coder",
+        "llama.cpp Qwen GGUF",
+        "template local"
+      ],
+      "fallback_routes": [
+        "llama.cpp",
+        "template local"
+      ],
+      "offline_assets": [
+        "models/ollama",
+        "models/llama.cpp"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "embeddings_search",
+      "local_routes": [
+        "Ollama nomic-embed-text",
+        "feature hashing + SQLite"
+      ],
+      "fallback_routes": [
+        "feature hashing"
+      ],
+      "offline_assets": [
+        "models/ollama",
+        "cache/vector"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "vision",
+      "local_routes": [
+        "Ollama Qwen2.5-VL",
+        "metadata-only local"
+      ],
+      "fallback_routes": [
+        "metadata-only local"
+      ],
+      "offline_assets": [
+        "models/ollama"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "transcription",
+      "local_routes": [
+        "whisper.cpp",
+        "faster-whisper"
+      ],
+      "fallback_routes": [
+        "faster-whisper",
+        "WSL whisper.cpp"
+      ],
+      "offline_assets": [
+        "bin/whisper-cli",
+        "models/whisper",
+        "downloads/wheelhouse"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "speech",
+      "local_routes": [
+        "Kokoro",
+        "eSpeak",
+        "Windows SAPI"
+      ],
+      "fallback_routes": [
+        "eSpeak",
+        "Windows SAPI"
+      ],
+      "offline_assets": [
+        "models/huggingface",
+        "downloads/wheelhouse"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "video",
+      "local_routes": [
+        "FFmpeg native",
+        "portable FFmpeg",
+        "WSL FFmpeg",
+        "container FFmpeg"
+      ],
+      "fallback_routes": [
+        "portable FFmpeg",
+        "WSL",
+        "container"
+      ],
+      "offline_assets": [
+        "bin",
+        "downloads/installers",
+        "downloads/containers"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "diagrams",
+      "local_routes": [
+        "Pillow/SVG",
+        "Mermaid",
+        "Manim"
+      ],
+      "fallback_routes": [
+        "Pillow/SVG",
+        "Mermaid"
+      ],
+      "offline_assets": [
+        "downloads/npm-cache",
+        "downloads/wheelhouse"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "recovery",
+      "local_routes": [
+        "verified offline bundle",
+        "Git bundle",
+        "WSL export"
+      ],
+      "fallback_routes": [
+        "project ZIP",
+        "clean bootstrap"
+      ],
+      "offline_assets": [
+        "backups",
+        "manifests",
+        "downloads"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "ui_design",
+      "local_routes": [
+        "12ui cached CLI/runtime when its hosted service is reachable",
+        "Forge deterministic HTML/CSS/SVG design system"
+      ],
+      "fallback_routes": [
+        "Forge deterministic design system",
+        "retained prebuilt templates"
+      ],
+      "offline_assets": [
+        "tools/12ui",
+        "downloads/npm-cache",
+        "downloads/npm-packages",
+        "templates/design",
+        "forge_core/services/design.py"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "forge_bridge",
+      "local_routes": [
+        "Forge SDK loopback client",
+        "Forge local Launcher"
+      ],
+      "fallback_routes": [
+        "local Launcher",
+        "file/export workflow"
+      ],
+      "offline_assets": [
+        "sdk",
+        "forge_core/static"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "vault",
+      "local_routes": [
+        "SQLite + hashed originals",
+        "local filesystem object store"
+      ],
+      "fallback_routes": [
+        "manifest export",
+        "project ZIP backup"
+      ],
+      "offline_assets": [
+        "vault",
+        "backups",
+        "manifests"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "evidence_auditor",
+      "local_routes": [
+        "Forge Vault + hashing embeddings + provenance",
+        "deterministic packet outline"
+      ],
+      "fallback_routes": [
+        "manual source-linked export",
+        "SQLite search"
+      ],
+      "offline_assets": [
+        "vault",
+        "forge_core/services/evidence.py"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "medforge",
+      "local_routes": [
+        "Qwen local vision + lesson engine",
+        "metadata-only + deterministic teaching"
+      ],
+      "fallback_routes": [
+        "metadata-only local",
+        "text-only teach mode"
+      ],
+      "offline_assets": [
+        "models/ollama",
+        "forge_core/services/medforge.py"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "grimforge",
+      "local_routes": [
+        "local Qwen storyboard planner",
+        "template-local storyboard",
+        "local narrated FFmpeg animatic"
+      ],
+      "fallback_routes": [
+        "template-local storyboard",
+        "FFmpeg animatic assembly"
+      ],
+      "offline_assets": [
+        "forge_core/services/grimforge.py",
+        "models/ollama",
+        "data/outputs"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "forge_learn",
+      "local_routes": [
+        "separate local Forge Learn web app",
+        "manifest-driven lessons",
+        "browser-local assessment"
+      ],
+      "fallback_routes": [
+        "static manifest view",
+        "exported lesson media"
+      ],
+      "offline_assets": [
+        "learning/web/index.html",
+        "learning/learning_manifest.json"
+      ],
+      "learning_required": false
+    },
+    {
+      "id": "elias_chat",
+      "local_routes": [
+        "Elias UI \u2192 Forge /api/elias/chat \u2192 local Qwen reasoning",
+        "optional Evidence Auditor semantic retrieval context"
+      ],
+      "fallback_routes": [
+        "shared local LLM fallback chain",
+        "evidence retrieval can remain disabled without blocking normal chat"
+      ],
+      "offline_assets": [
+        "forge_core/services/elias.py",
+        "forge_core/static/apps/elias.html",
+        "vault/index when evidence context is enabled"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "shared_copilot",
+      "name": "Shared Copilot and model routing",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "role-aware Ollama chat",
+        "llama.cpp local chat"
+      ],
+      "fallback_routes": [
+        "explicit unavailable error"
+      ],
+      "offline_assets": [
+        "models/ollama",
+        "models/llama.cpp"
+      ]
+    },
+    {
+      "id": "elias_documents",
+      "name": "Standalone document chat",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "local text extraction"
+      ],
+      "fallback_routes": [
+        "preserve document and report missing extractor"
+      ],
+      "offline_assets": [
+        "forge_core/services/document_text.py"
+      ]
+    },
+    {
+      "id": "evidence_pdf",
+      "name": "Evidence intake to PDF",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "ReportLab + pypdf packet builder"
+      ],
+      "fallback_routes": [
+        "retain originals ZIP with inclusion gaps"
+      ],
+      "offline_assets": [
+        "vault/originals",
+        "forge_core/services/packet_pdf.py"
+      ]
+    },
+    {
+      "id": "media_jobs",
+      "name": "Shared generated media jobs",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "local ComfyUI API"
+      ],
+      "fallback_routes": [
+        "explicit blocked/failed job; no fake output"
+      ],
+      "offline_assets": [
+        "config/media-workflows",
+        "jobs"
+      ]
+    },
+    {
+      "id": "episode_media",
+      "name": "Generated episode assembly",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "generated shots + Kokoro + FFmpeg"
+      ],
+      "fallback_routes": [
+        "explicit blocked render",
+        "user-selected illustrated or animatic mode"
+      ],
+      "offline_assets": [
+        "config/media-workflows",
+        "models/huggingface",
+        "bin/ffmpeg"
+      ]
+    },
+    {
+      "id": "brand_parity",
+      "name": "Canonical product identities",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "canonical static assets"
+      ],
+      "fallback_routes": [
+        "packaged local assets"
+      ],
+      "offline_assets": [
+        "assets/icons",
+        "forge_core/static/brand"
+      ]
+    },
+    {
+      "id": "blender_3d",
+      "name": "Shared Blender 3D toolchain",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "Blender headless scene/mesh/animation render",
+        "FFmpeg MP4 output"
+      ],
+      "fallback_routes": [
+        "MedForge 2D mechanism flow",
+        "GrimForge storyboard/local animatic"
+      ],
+      "offline_assets": [
+        "config/media-3d-tools.json",
+        "forge_core/services/blender_engine.py",
+        "data/outputs"
+      ]
+    },
+    {
+      "id": "grimforge_animation_modes",
+      "name": "GrimForge 3D / 2.5D / 2D full episode modes",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "Blender 3D episode scenes",
+        "ComfyUI image + FFmpeg 2.5D motion",
+        "ComfyUI 2D video workflow + FFmpeg assembly"
+      ],
+      "fallback_routes": [
+        "Storyboard/local animatic remains available when generation engines are unavailable",
+        "User can choose another configured animation family explicitly"
+      ],
+      "offline_assets": [
+        "forge_core/services/episode.py",
+        "forge_core/services/blender_engine.py",
+        "config/media-workflows",
+        "bin/ffmpeg"
+      ]
+    },
+    {
+      "id": "product_ui_system",
+      "name": "Forge product-grade UI system",
+      "learning_required": true,
+      "status": "candidate",
+      "local_routes": [
+        "packaged six-product HTML/CSS/JS surfaces",
+        "app-specific icons/themes and workflow components"
+      ],
+      "fallback_routes": [
+        "responsive single-column layouts",
+        "packaged local design assets; no CDN required"
+      ],
+      "offline_assets": [
+        "forge_core/static/apps/shared.css",
+        "forge_core/static/apps",
+        "forge_core/static/brand",
+        "learning/web/index.html"
+      ]
+    },
+    {
+      "id": "evidence_defense_pdf",
+      "local_routes": [
+        "ReportLab source-control front matter + pypdf exhibit merger",
+        "under-5-MB lossless page splitting"
+      ],
+      "fallback_routes": [
+        "source exhibit PDF + bookmarks",
+        "package ZIP with originals and manifest"
+      ],
+      "offline_assets": [
+        "forge_core/services/packet_pdf.py",
+        "forge_core/services/evidence.py",
+        "vault"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "medforge_teaching_package",
+      "local_routes": [
+        "local vision + lesson engine + ComfyUI illustration + Blender 3D + ReportLab PDF",
+        "local vision + Blender still/3D + PDF"
+      ],
+      "fallback_routes": [
+        "metadata-only analysis + deterministic lesson + PDF",
+        "Blender still when ComfyUI unavailable"
+      ],
+      "offline_assets": [
+        "forge_core/services/medforge_package.py",
+        "forge_core/services/blender_engine.py",
+        "forge_core/static/apps/medforge.html"
+      ],
+      "learning_required": true
+    },
+    {
+      "id": "grimforge_render_fallback",
+      "local_routes": [
+        "selected 3D/2.5D/2D visual route",
+        "automatic ComfyUI image setup from installed checkpoint"
+      ],
+      "fallback_routes": [
+        "2.5D Blender still + camera motion",
+        "2.5D or 3D installed route with explicit manifest note"
+      ],
+      "offline_assets": [
+        "forge_core/services/episode.py",
+        "forge_core/services/blender_engine.py",
+        "forge_core/static/apps/grimforge.html"
+      ],
+      "learning_required": true
+    }
+  ]
+}

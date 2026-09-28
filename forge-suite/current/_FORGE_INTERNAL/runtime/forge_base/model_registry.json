@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "ollama_models": [
+    {
+      "id": "general-7b",
+      "name": "qwen2.5:7b-instruct",
+      "capability": "general_reasoning",
+      "approx_download_gb": 4.7,
+      "required": false,
+      "license_note": "Apache-2.0 for the 7B model",
+      "install": "ollama pull qwen2.5:7b-instruct"
+    },
+    {
+      "id": "coder-7b",
+      "name": "qwen2.5-coder:7b",
+      "capability": "coding",
+      "approx_download_gb": 4.7,
+      "required": false,
+      "license_note": "See upstream model license",
+      "install": "ollama pull qwen2.5-coder:7b"
+    },
+    {
+      "id": "embeddings",
+      "name": "nomic-embed-text",
+      "capability": "embeddings",
+      "approx_download_gb": 0.274,
+      "required": true,
+      "license_note": "See upstream model license",
+      "install": "ollama pull nomic-embed-text"
+    },
+    {
+      "id": "vision-7b",
+      "name": "qwen2.5vl:7b",
+      "capability": "vision",
+      "approx_download_gb": 6.0,
+      "required": false,
+      "license_note": "Apache-2.0; requires a recent Ollama release",
+      "install": "ollama pull qwen2.5vl:7b"
+    },
+    {
+      "id": "general-low-memory",
+      "name": "qwen2.5:3b",
+      "capability": "general_reasoning_fallback",
+      "approx_download_gb": 1.9,
+      "required": true,
+      "license_note": "Qwen license for 3B; review before redistribution",
+      "install": "ollama pull qwen2.5:3b"
+    },
+    {
+      "id": "coder-low-memory",
+      "name": "qwen2.5-coder:3b",
+      "capability": "coding_fallback",
+      "approx_download_gb": 1.9,
+      "required": true,
+      "license_note": "See upstream model license",
+      "install": "ollama pull qwen2.5-coder:3b"
+    },
+    {
+      "id": "vision-low-memory",
+      "name": "qwen2.5vl:3b",
+      "capability": "vision_fallback",
+      "approx_download_gb": 3.2,
+      "required": false,
+      "license_note": "See upstream model license",
+      "install": "ollama pull qwen2.5vl:3b"
+    }
+  ],
+  "whisper_models": [
+    {
+      "id": "base.en",
+      "filename": "ggml-base.en.bin",
+      "capability": "transcription_fast",
+      "approx_download_mb": 142,
+      "sha1": "137c40403d78fd54d454da0f9bd998f78703390c",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin",
+      "required": true
+    },
+    {
+      "id": "small.en",
+      "filename": "ggml-small.en.bin",
+      "capability": "transcription_quality",
+      "approx_download_mb": 466,
+      "sha1": "db8a495a91d927739e50b3fc1cc4c6b8f6c2d022",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin",
+      "required": true
+    }
+  ],
+  "tts": {
+    "primary": "Kokoro-82M",
+    "package": "kokoro>=0.9.4",
+    "model_repo": "hexgrad/Kokoro-82M",
+    "default_voice": "af_heart",
+    "fallbacks": [
+      "espeak-ng",
+      "Windows SAPI through PowerShell"
+    ]
+  }
+}
