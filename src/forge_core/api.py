@@ -94,6 +94,16 @@ class SearchBody(BaseModel):
     limit: int = 12
 
 
+class BackupVerifyBody(BaseModel):
+    pack_path: str
+
+
+class RecoveryDrillBody(BaseModel):
+    pack_path: str
+    network_isolation_confirmed: bool = False
+    primary_executable: str = "ollama"
+
+
 def _sdk(app_id: str) -> ForgeSDK:
     # The Forge daemon must execute jobs locally. Never recurse back into its
     # own HTTP surface even if FORGE_CORE_URL is present in the environment.
@@ -171,27 +181,28 @@ def cache_status():
 
 @app.get("/v1/backup/status")
 def backup_status():
-    return {
-        "configured": False,
-        "verified_restore": False,
-        "detail": "Backup/recovery verification is not complete yet in v0.4.",
-    }
+    from .recovery import load_recovery_status
+    report = ForgeCore().paths.root / "recovery" / "latest.json"
+    return load_recovery_status(report)
 
 
 @app.post("/v1/backup/verify")
-def backup_verify():
-    return {
-        "verified": False,
-        "detail": "A backup is not marked PASS until a clean restore rebuilds and renders a representative project.",
-    }
+def backup_verify(body: BackupVerifyBody):
+    from servicebridge.local_runtime.offline import verify_offline_pack
+    return verify_offline_pack(body.pack_path)
 
 
 @app.post("/v1/recovery/drill")
-def recovery_drill():
-    return {
-        "started": False,
-        "detail": "Use the Forge disaster-recovery runner; destructive environment changes are not triggered from the API.",
-    }
+def recovery_drill(body: RecoveryDrillBody):
+    from .recovery import run_recovery_drill
+    report_path = ForgeCore().paths.root / "recovery" / "latest.json"
+    report = run_recovery_drill(
+        body.pack_path,
+        report_path=report_path,
+        primary_executable=body.primary_executable,
+        network_isolation_confirmed=body.network_isolation_confirmed,
+    )
+    return report.to_dict()
 
 
 
