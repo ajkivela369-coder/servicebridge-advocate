@@ -148,6 +148,30 @@ class EvidenceStore:
             for row in rows
         ]
 
+    def list_index_records(self) -> list[dict[str, object]]:
+        """Return local retrieval records for optional semantic indexing."""
+        rows = self.connection.execute(
+            """
+            SELECT c.chunk_id, c.source_id, c.text, c.ordinal, c.locator,
+                   c.evidence_class, s.title
+            FROM chunks c
+            JOIN sources s ON s.source_id = c.source_id
+            ORDER BY c.source_id, c.ordinal
+            """
+        ).fetchall()
+        return [
+            {
+                "chunk_id": row["chunk_id"],
+                "source_id": row["source_id"],
+                "text": row["text"],
+                "ordinal": row["ordinal"],
+                "locator": row["locator"],
+                "evidence_class": row["evidence_class"],
+                "title": row["title"],
+            }
+            for row in rows
+        ]
+
     def list_sources(self) -> list[SourceDocument]:
         rows = self.connection.execute("SELECT * FROM sources ORDER BY title").fetchall()
         return [
