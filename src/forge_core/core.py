@@ -320,17 +320,20 @@ class ForgeCore:
                     ),
                 }
 
-            ram, vram = estimate_model_memory(model, work_class=work_class)
             reservation_id = f"model:{requester}:{capability}"
             reservations.reserve(
                 reservation_id,
                 owner=requester,
                 capability=capability,
                 model_id=model.model_id,
-                ram_gb=ram,
-                vram_gb=vram if decision.use_gpu else 0.0,
+                ram_gb=decision.ram_required_gb,
+                vram_gb=decision.vram_required_gb if decision.use_gpu else 0.0,
                 unloadable=True,
-                metadata={"work_class": work_class.value},
+                metadata={
+                    "work_class": work_class.value,
+                    "fit": decision.status.value,
+                    "use_gpu": decision.use_gpu,
+                },
             )
             return {
                 "capability": capability,
