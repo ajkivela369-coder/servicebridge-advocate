@@ -143,6 +143,19 @@ LESSONS = [
         "failure": "A mask filename is treated as proven anatomy, an archive contains the wrong volume, or a mask is overlaid without spatial alignment checks.",
         "fix": "Keep imported masks labeled DERIVED / UNREVIEWED and require affine/orientation validation before source overlay.",
         "check": "Mask loader tests verify NIfTI/ZIP import and MedForge blocks overlay based only on matching dimensions.",
+    },,
+    {
+        "id": "12",
+        "title": "Hand the evidence-aware package to Forge",
+        "module": "med_export",
+        "function": "build_render_bundle",
+        "plain": "Package the mechanism manifest and reviewed/derived masks so the animation engine receives geometry plus the evidence rules that govern it.",
+        "why": "If we send only a pretty 3D model to the renderer, provenance can disappear. The bundle keeps the mask, affine, render rules, and evidence-boundary note together.",
+        "input": "Render manifest, imported NIfTI masks, optional rendered source preview",
+        "output": "Portable ZIP for the Forge rendering pipeline",
+        "failure": "Raw DICOM or identifiers leak into a video handoff, or the renderer loses the distinction between source and reconstruction.",
+        "fix": "Never include raw DICOM in the bundle, preserve mask affines, keep preview opt-in, and ship an evidence-boundary README with every package.",
+        "check": "Bundle tests confirm manifest + NIfTI are present, affine is preserved, and no .dcm file is packaged.",
     },
 ]
 
