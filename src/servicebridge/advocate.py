@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from typing import Protocol
+
 from .models import AdvocacyRequest, AdvocacyResponse, RetrievalHit
 from .policies import instructions_for
 from .providers import PromptOnlyProvider, TextProvider
-from .store import EvidenceStore
+class RetrievalStore(Protocol):
+    def search(self, query: str, limit: int = 8) -> list[RetrievalHit]: ...
 
 
 class Advocate:
-    def __init__(self, store: EvidenceStore, provider: TextProvider | None = None):
+    def __init__(self, store: RetrievalStore, provider: TextProvider | None = None):
         self.store = store
         self.provider = provider or PromptOnlyProvider()
 

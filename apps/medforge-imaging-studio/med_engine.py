@@ -30,6 +30,11 @@ ANALYSIS_ENGINES = {
         "role": "Human-authored observations, labels, measurements, and hypotheses.",
         "notes": "No automated diagnosis. Source pixels remain unchanged.",
     },
+    "Local VLM / Creditless": {
+        "status": "adapter",
+        "role": "Local multimodal image-review assistant through a localhost OpenAI-compatible VLM server.",
+        "notes": "Source image stays local to the configured localhost server. Uses the same observation/uncertainty prompt and never enables cloud fallback.",
+    },
     "MedGemma multimodal": {
         "status": "planned",
         "role": "Medical image/text comprehension assistant.",

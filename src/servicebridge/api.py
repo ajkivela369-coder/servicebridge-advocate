@@ -10,7 +10,10 @@ except ImportError as exc:  # pragma: no cover - exercised only without optional
 
 from .advocate import Advocate
 from .models import AdvocacyMode, AdvocacyRequest, BenefitLane
-from .providers import OpenAIProvider, PromptOnlyProvider
+from .local_runtime import RuntimeMode, RuntimePolicy
+from .local_runtime.evidence import LocalSemanticEvidenceStore
+from .local_runtime.memory import LocalEmbeddingClient, LocalVectorStore
+from .providers import provider_for_runtime
 from .store import EvidenceStore
 
 
@@ -21,7 +24,8 @@ class AskBody(BaseModel):
     audience: str = Field(default="claimant", max_length=200)
     requested_output: str = Field(default="analysis", max_length=200)
     top_k: int = Field(default=8, ge=1, le=30)
-    use_openai: bool = False
+    runtime_mode: RuntimeMode = RuntimeMode.CREDITLESS
+    use_openai: bool = False  # legacy flag; requires explicit cloud mode/admin opt-in
 
 
 app = FastAPI(
@@ -38,19 +42,73 @@ def health() -> dict[str, str]:
 
 @app.post("/v1/ask")
 def ask(body: AskBody) -> dict[str, object]:
-    if body.use_openai and not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(status_code=400, detail="OPENAI_API_KEY is not configured")
-    provider = OpenAIProvider() if body.use_openai else PromptOnlyProvider()
-    database = os.getenv("SERVICEBRIDGE_DB", "./private_data/servicebridge.sqlite3")
-    with EvidenceStore(database) as store:
-        response = Advocate(store, provider).answer(
-            AdvocacyRequest(
-                question=body.question,
-                lane=body.lane,
-                mode=body.mode,
-                audience=body.audience,
-                requested_output=body.requested_output,
-                top_k=body.top_k,
-            )
+    runtime_mode = body.runtime_mode
+    if body.use_openai and runtime_mode != RuntimeMode.CLOUD:
+        raise HTTPException(
+            status_code=400,
+            detail="Legacy use_openai=true now requires runtime_mode='cloud'.",
         )
+
+    if runtime_mode == RuntimeMode.CLOUD:
+        if os.getenv("SERVICEBRIDGE_ALLOW_CLOUD") != "1":
+            raise HTTPException(
+                status_code=403,
+                detail="Cloud runtime is disabled. Set SERVICEBRIDGE_ALLOW_CLOUD=1 to opt in.",
+            )
+        if not os.getenv("OPENAI_API_KEY"):
+            raise HTTPException(status_code=400, detail="OPENAI_API_KEY is not configured")
+        provider = provider_for_runtime(
+            mode=RuntimeMode.CLOUD,
+            cloud_model=os.getenv("SERVICEBRIDGE_MODEL"),
+            allow_external_network=True,
+            allow_cloud_fallback=True,
+        )
+    else:
+        provider = provider_for_runtime(
+            mode=runtime_mode,
+            local_endpoint=os.getenv(
+                "SERVICEBRIDGE_LOCAL_LLM_ENDPOINT",
+                "http://127.0.0.1:8080/v1/chat/completions",
+            ),
+            local_model=os.getenv("SERVICEBRIDGE_LOCAL_MODEL", "local-model"),
+            allow_external_network=False,
+            allow_cloud_fallback=False,
+        )
+
+    database = os.getenv("SERVICEBRIDGE_DB", "./private_data/servicebridge.sqlite3")
+    request = AdvocacyRequest(
+        question=body.question,
+        lane=body.lane,
+        mode=body.mode,
+        audience=body.audience,
+        requested_output=body.requested_output,
+        top_k=body.top_k,
+    )
+
+    with EvidenceStore(database) as store:
+        if (
+            runtime_mode != RuntimeMode.CLOUD
+            and os.getenv("SERVICEBRIDGE_USE_LOCAL_SEMANTIC") == "1"
+        ):
+            vector_db = os.getenv(
+                "SERVICEBRIDGE_VECTOR_DB",
+                "./private_data/local_runtime/evidence_vectors.sqlite3",
+            )
+            embedding_endpoint = os.getenv(
+                "SERVICEBRIDGE_LOCAL_EMBEDDING_ENDPOINT",
+                "http://127.0.0.1:8080/v1/embeddings",
+            )
+            embedder = LocalEmbeddingClient(
+                endpoint=embedding_endpoint,
+                model=os.getenv(
+                    "SERVICEBRIDGE_LOCAL_EMBEDDING_MODEL",
+                    "local-embedding-model",
+                ),
+                policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+            )
+            with LocalVectorStore(vector_db) as vectors:
+                retriever = LocalSemanticEvidenceStore(store, vectors, embedder)
+                response = Advocate(retriever, provider).answer(request)
+        else:
+            response = Advocate(store, provider).answer(request)
     return response.to_dict()

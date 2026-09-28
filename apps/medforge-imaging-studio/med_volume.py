@@ -37,6 +37,7 @@ class VolumeStudy:
     spacing_zyx: Tuple[float, float, float]
     source_files_count: int
     decode_warnings: List[str]
+    affine_zyx_ras: np.ndarray | None = None
 
     @property
     def shape(self):
@@ -51,6 +52,7 @@ class VolumeStudy:
             "spacing_zyx": [float(x) for x in self.spacing_zyx],
             "source_files_count": int(self.source_files_count),
             "decode_warnings": list(self.decode_warnings),
+            "spatial_affine_present": self.affine_zyx_ras is not None,
             "raw_dicom_headers_retained": False,
         }
 
@@ -153,6 +155,55 @@ def _decode_frame(ds, warnings: List[str], source_name: str) -> np.ndarray:
     return arr
 
 
+def _dicom_zyx_affine_ras(sorted_datasets, z_spacing: float, row_spacing: float, col_spacing: float):
+    """
+    Return a 4x4 affine mapping MedForge z,y,x voxel indices to patient RAS mm.
+
+    DICOM patient coordinates are LPS. The internal volume is z,y,x, while
+    DICOM ImageOrientationPatient describes the x/column and y/row directions.
+    """
+    if not sorted_datasets:
+        return None
+    first = sorted_datasets[0][1]
+    try:
+        iop = np.asarray([float(v) for v in first.ImageOrientationPatient], dtype=np.float64)
+        ipp = np.asarray([float(v) for v in first.ImagePositionPatient], dtype=np.float64)
+        if iop.shape != (6,) or ipp.shape != (3,):
+            return None
+        x_dir = iop[:3]
+        y_dir = iop[3:]
+        if np.linalg.norm(x_dir) <= 0 or np.linalg.norm(y_dir) <= 0:
+            return None
+        x_dir = x_dir / np.linalg.norm(x_dir)
+        y_dir = y_dir / np.linalg.norm(y_dir)
+        z_dir = np.cross(x_dir, y_dir)
+        if np.linalg.norm(z_dir) <= 0:
+            return None
+        z_dir = z_dir / np.linalg.norm(z_dir)
+
+        if len(sorted_datasets) >= 2:
+            try:
+                second_ipp = np.asarray(
+                    [float(v) for v in sorted_datasets[1][1].ImagePositionPatient],
+                    dtype=np.float64,
+                )
+                if second_ipp.shape == (3,) and float(np.dot(second_ipp - ipp, z_dir)) < 0:
+                    z_dir = -z_dir
+            except Exception:
+                pass
+
+        affine_lps = np.eye(4, dtype=np.float64)
+        affine_lps[:3, 0] = z_dir * float(z_spacing)
+        affine_lps[:3, 1] = y_dir * float(row_spacing)
+        affine_lps[:3, 2] = x_dir * float(col_spacing)
+        affine_lps[:3, 3] = ipp
+
+        lps_to_ras = np.diag([-1.0, -1.0, 1.0, 1.0])
+        return lps_to_ras @ affine_lps
+    except Exception:
+        return None
+
+
 def _slice_spacing(sorted_datasets) -> float:
     positions = []
     for index, (_, ds) in enumerate(sorted_datasets):
@@ -251,6 +302,12 @@ def build_dicom_volume(
     except Exception:
         row_spacing = col_spacing = 1.0
     z_spacing = _slice_spacing(parsed)
+    affine_zyx_ras = _dicom_zyx_affine_ras(
+        parsed,
+        z_spacing=z_spacing,
+        row_spacing=row_spacing,
+        col_spacing=col_spacing,
+    )
 
     return VolumeStudy(
         volume=volume,
@@ -260,6 +317,7 @@ def build_dicom_volume(
         spacing_zyx=(float(z_spacing), float(row_spacing), float(col_spacing)),
         source_files_count=len(parsed),
         decode_warnings=warnings,
+        affine_zyx_ras=affine_zyx_ras,
     )
 
 

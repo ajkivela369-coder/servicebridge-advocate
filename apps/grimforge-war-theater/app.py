@@ -2,10 +2,22 @@ import base64
 import html
 import json
 import random
+import sys
+import tempfile
 from pathlib import Path
 
 import streamlit as st
 import streamlit.components.v1 as components
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from servicebridge.local_runtime import RuntimeMode, discover_services
+from servicebridge.local_runtime.media import ffmpeg_available
+from servicebridge.local_runtime.workers import worker_capabilities
+from local_pipeline import render_grimforge_local
 
 from war_engine import (
     FACTIONS,
@@ -78,6 +90,16 @@ div[data-testid="stPopover"] button {border-color:#6b542d !important;}
 
 if "mode" not in st.session_state:
     st.session_state.mode = "Simple"
+if "runtime_mode" not in st.session_state:
+    st.session_state.runtime_mode = RuntimeMode.CREDITLESS.value
+if "local_runtime_status" not in st.session_state:
+    st.session_state.local_runtime_status = []
+if "local_worker_status" not in st.session_state:
+    st.session_state.local_worker_status = []
+if "creditless_video_bytes" not in st.session_state:
+    st.session_state.creditless_video_bytes = b""
+if "creditless_render_meta" not in st.session_state:
+    st.session_state.creditless_render_meta = {}
 if "presets" not in st.session_state:
     st.session_state.presets = {group: options[0] for group, options in PRESETS.items()}
 if "faction" not in st.session_state:
@@ -103,11 +125,11 @@ if "narrator_voice" not in st.session_state:
 if "narrator_enabled" not in st.session_state:
     st.session_state.narrator_enabled = True
 if "tts_engine" not in st.session_state:
-    st.session_state.tts_engine = "Browser Speech"
+    st.session_state.tts_engine = "Local Auto"
 if "video_engine" not in st.session_state:
-    st.session_state.video_engine = "LTX-2"
+    st.session_state.video_engine = "Deterministic Forge"
 if "gpu_backend" not in st.session_state:
-    st.session_state.gpu_backend = "Hugging Face ZeroGPU"
+    st.session_state.gpu_backend = "Local hardware (Creditless)"
 if "reference_url" not in st.session_state:
     st.session_state.reference_url = REFERENCE_URL
 if "reference_library" not in st.session_state:
@@ -173,6 +195,7 @@ def current_project_payload():
         "commander": st.session_state.commander,
         "objective": st.session_state.objective,
         "mode": st.session_state.mode,
+        "runtime_mode": st.session_state.runtime_mode,
         "presets": dict(st.session_state.presets),
         "faction": st.session_state.faction,
         "lens_name": st.session_state.lens_name,
@@ -195,7 +218,7 @@ def load_project_payload(payload):
     if not isinstance(payload, dict):
         raise ValueError("Project file must contain a JSON object.")
     for key in [
-        "title", "enemy", "commander", "objective", "mode", "presets", "faction",
+        "title", "enemy", "commander", "objective", "mode", "runtime_mode", "presets", "faction",
         "lens_name", "custom_minutes", "scene_count", "narrator_voice",
         "narrator_enabled", "tts_engine", "video_engine", "gpu_backend", "reference_url", "reference_library", "full_episode_profile",
     ]:
@@ -218,6 +241,30 @@ with st.sidebar:
     st.markdown('<div class="gf-eyebrow">GRIMFORGE</div><div class="gf-title">War Theater</div>', unsafe_allow_html=True)
     st.caption("GitHub-first · Streamlit build")
     st.session_state.mode = st.radio("Workspace", ["Simple", "Pro"], horizontal=True, index=0 if st.session_state.mode == "Simple" else 1)
+    st.markdown("**Runtime**")
+    runtime_options = [x.value for x in RuntimeMode]
+    st.session_state.runtime_mode = st.selectbox(
+        "Execution policy",
+        runtime_options,
+        index=runtime_options.index(st.session_state.runtime_mode)
+        if st.session_state.runtime_mode in runtime_options else 0,
+        help="Creditless blocks non-local AI endpoints. Hybrid/Cloud require explicit external-provider configuration.",
+    )
+    if st.button("Scan local engines", use_container_width=True, key="grimforge_scan_local"):
+        st.session_state.local_runtime_status = [x.to_dict() for x in discover_services()]
+        st.session_state.local_worker_status = [x.to_dict() for x in worker_capabilities()]
+    if st.session_state.runtime_mode == RuntimeMode.CREDITLESS.value:
+        st.caption("Creditless: local engines + deterministic Forge rendering only. No automatic paid fallback.")
+    if st.session_state.local_runtime_status or st.session_state.local_worker_status:
+        ready_services = [
+            x["service_id"] for x in st.session_state.local_runtime_status if x["healthy"]
+        ]
+        ready_workers = [
+            x["worker_id"] for x in st.session_state.local_worker_status if x["available"]
+        ]
+        ready = sorted(set(ready_services + ready_workers))
+        st.caption("Local ready: " + (", ".join(ready) if ready else "none detected yet"))
+
     st.markdown("**Project file**")
     project_json = json.dumps(current_project_payload(), indent=2)
     st.download_button(
@@ -241,11 +288,11 @@ with st.sidebar:
     st.markdown("**Provider status**")
     st.caption("Episode generator: local/deterministic")
     st.caption("Source-locked media: connected")
-    st.caption("Reference analyzer: not connected")
-    st.caption("Video renderer: provider selectable · execution not connected")
-    st.caption("Open-source TTS: Kokoro / KittenTTS / MeloTTS / Piper planned")
-    st.caption("Browser narration: connected preview fallback")
-    st.caption("Final MP4 worker: not connected")
+    st.caption("Reference analyzer: local VLM adapter available when a compatible model is loaded")
+    st.caption("Video renderer: Deterministic Forge connected · local Diffusers adapter available")
+    st.caption("Local TTS: Kokoro→Piper auto selector connected")
+    st.caption("Browser narration: optional preview fallback")
+    st.caption("Final MP4 worker: local FFmpeg render-plan runner connected")
     st.divider()
     st.markdown("**Narrator voice**")
     voice_names = list(NARRATOR_VOICE_PROFILES.keys())
@@ -271,12 +318,18 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     tts_meta = TTS_ENGINES[st.session_state.tts_engine]
-    tts_status = "CONNECTED" if tts_meta["status"] == "connected" else "PLANNED · not connected yet"
+    tts_status = (
+        "CONNECTED"
+        if tts_meta["status"] == "connected"
+        else ("LOCAL ADAPTER" if tts_meta["status"] == "adapter" else "PLANNED · not connected yet")
+    )
     st.caption(f'{tts_meta["role"]} · {tts_status}')
     st.caption(f'{tts_meta["runtime"]} · {tts_meta["license"]}')
     st.caption(tts_meta["notes"])
-    if tts_meta["status"] != "connected":
-        st.info("This engine is listed in the production plan but is not executing audio yet; Browser Speech remains the active preview fallback.")
+    if tts_meta["status"] == "adapter":
+        st.info("The local adapter is implemented; actual narration requires the corresponding local package/model/voice to be installed.")
+    elif tts_meta["status"] != "connected":
+        st.info("This engine is listed in the production plan but is not executing audio yet.")
     st.divider()
     st.markdown("**Video generator**")
     video_names = list(VIDEO_ENGINES.keys())
@@ -287,11 +340,16 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     video_meta = VIDEO_ENGINES[st.session_state.video_engine]
-    st.caption(f'{video_meta["role"]} · PLANNED · not connected yet')
+    video_status = (
+        "CONNECTED"
+        if video_meta["status"] == "connected"
+        else ("LOCAL ADAPTER" if video_meta["status"] == "adapter" else "PLANNED")
+    )
+    st.caption(f'{video_meta["role"]} · {video_status}')
     st.caption(video_meta["modes"])
     st.caption(f'{video_meta["runtime"]} · {video_meta["license"]}')
     st.caption(video_meta["notes"])
-    st.caption("Workflow: ComfyUI orchestration → selected generator → FFmpeg assembly/QC.")
+    st.caption("Workflow: direct local worker or optional ComfyUI → selected generator → local FFmpeg assembly/QC.")
     st.divider()
     st.markdown("**GPU backend**")
     gpu_names = list(GPU_BACKENDS.keys())
@@ -306,7 +364,10 @@ with st.sidebar:
     st.caption(f'Connection: {gpu_meta["connection"]}')
     st.caption(f'Best for: {gpu_meta["best_for"]}')
     st.caption(gpu_meta["notes"])
-    st.info("GPU backend is selectable in GrimForge, but credentials/session launch still happens in the provider account. No backend is treated as an always-on connected renderer until a real worker endpoint is configured.")
+    if st.session_state.gpu_backend == "Local hardware (Creditless)":
+        st.success("Local hardware is the default route. Missing local capabilities degrade to deterministic Forge rendering instead of a paid provider.")
+    else:
+        st.info("This is an optional external accelerator. Account/session limits remain external and are never an automatic Creditless fallback.")
     st.divider()
     with st.popover("◉ Director Veyr", use_container_width=True):
         st.caption("Local copilot · persistent project-aware advice")
@@ -373,8 +434,15 @@ r1, r2, r3, r4, r5 = st.columns(5)
 r1.metric("Episode engine", "Ready")
 r2.metric("Narration preview", "Ready" if st.session_state.narrator_enabled else "Muted")
 r3.metric("Source lock", "Ready" if source_media_src() else "Optional")
-r4.metric("Video render", "Planned")
-r5.metric("Final MP4", "Blocked")
+r4.metric(
+    "Video render",
+    "Local" if st.session_state.video_engine in {"Deterministic Forge", "Local Diffusers"} else "Optional external",
+)
+ffmpeg_ready = any(
+    x.get("service_id") == "ffmpeg" and x.get("healthy")
+    for x in st.session_state.local_runtime_status
+)
+r5.metric("Final MP4", "Ready" if ffmpeg_ready else "Needs local FFmpeg")
 st.markdown(
     f'<div class="gf-summary"><strong>{html.escape(route["label"])}</strong> · '
     f'<span class="gf-muted">{html.escape(route["reason"])}</span><br>'
@@ -390,7 +458,7 @@ st.markdown(
     f'<div class="gf-summary"><strong>{html.escape(st.session_state.narrator_voice)}</strong> · '
     f'<span class="gf-muted">{html.escape(voice_profile["description"])}</span><br>'
     f'<span class="gf-badge">TTS engine: {html.escape(st.session_state.tts_engine)}</span>'
-    f'<span class="gf-badge">Premium voice provider not connected</span>'
+    f'<span class="gf-badge">Local Auto: Kokoro → Piper → captions/silence</span>'
     f'<span class="gf-badge">Original voice direction — no narrator cloning</span></div>',
     unsafe_allow_html=True,
 )
@@ -641,7 +709,7 @@ else:
         st.selectbox("Frame rate intent", [24, 25, 30, 60])
         st.selectbox("Quality", ["Highest available", "Balanced", "Fast preview"])
         st.checkbox("Captions", True)
-        st.caption("Highest available means the best settings a connected provider actually supports.")
+        st.caption("Highest available uses the best local path that fits the machine; external providers are optional accelerators only.")
 
     if st.button("🔥 FORGE / REFORGE EPISODE", type="primary", use_container_width=True):
         st.session_state.episode = make_episode(
@@ -685,9 +753,9 @@ else:
         f'<span class="gf-muted">{html.escape(episode.logline)}</span><br>'
         f'<span class="gf-badge">PLAYABLE ANIMATIC</span>{source_lock_badge}'
         f'<span class="gf-badge">Story target {round(episode.runtime_seconds/60,1)} min</span>'
-        f'<span class="gf-badge">VIDEO: {html.escape(st.session_state.video_engine)} · planned</span>'
+        f'<span class="gf-badge">VIDEO: {html.escape(st.session_state.video_engine)}</span>'
         f'<span class="gf-badge">GPU: {html.escape(st.session_state.gpu_backend)}</span>'
-        f'<span class="gf-badge">FINAL FULL-MOTION RENDER · provider not connected</span></div>',
+        f'<span class="gf-badge">CREDITLESS MP4 · local deterministic fallback available</span></div>',
         unsafe_allow_html=True,
     )
 
@@ -890,17 +958,82 @@ else:
                 unsafe_allow_html=True,
             )
 
-    st.subheader("Final Render Queue")
+    st.subheader("Creditless Local Render")
+    st.caption(
+        "This renderer always has a local path: source-locked image or deterministic scene cards → "
+        "Kokoro/Piper when available (otherwise silence) → captions → FFmpeg MP4."
+    )
+    timing_mode = st.radio(
+        "Local timing",
+        ["Fast animatic · cap each scene at 12s", "Full story-runtime timing"],
+        horizontal=True,
+        key="creditless_timing_mode",
+    )
+    render_cap = 12.0 if timing_mode.startswith("Fast") else None
+    if st.button(
+        "🎬 RENDER CREDITLESS MP4",
+        type="primary",
+        use_container_width=True,
+        disabled=not ffmpeg_available(),
+        key="render_creditless_grimforge",
+    ):
+        st.session_state.creditless_video_bytes = b""
+        st.session_state.creditless_render_meta = {}
+        try:
+            with tempfile.TemporaryDirectory(prefix="grimforge-creditless-") as tmp:
+                result = render_grimforge_local(
+                    episode.to_dict(),
+                    output_dir=tmp,
+                    source_media=current_source_media_payload(),
+                    use_local_tts=st.session_state.narrator_enabled,
+                    scene_duration_cap=render_cap,
+                    fps=30,
+                    width=1280,
+                    height=720,
+                )
+                final_path = Path(result["output_path"])
+                st.session_state.creditless_video_bytes = final_path.read_bytes()
+                st.session_state.creditless_render_meta = result
+            st.success("Creditless GrimForge MP4 rendered locally.")
+        except Exception as exc:
+            st.error(f"Could not finish the local render: {exc}")
+
+    if not ffmpeg_available():
+        st.warning("Install local FFmpeg to enable the deterministic no-credit MP4 renderer.")
+
+    if st.session_state.creditless_video_bytes:
+        st.video(st.session_state.creditless_video_bytes)
+        st.download_button(
+            "⬇ Download GrimForge Creditless MP4",
+            data=st.session_state.creditless_video_bytes,
+            file_name="grimforge-creditless.mp4",
+            mime="video/mp4",
+            use_container_width=True,
+        )
+        with st.expander("Creditless render details"):
+            st.json(st.session_state.creditless_render_meta)
+
+    local_tts_workers = {
+        x.get("worker_id"): x.get("available")
+        for x in st.session_state.local_worker_status
+    }
+    local_tts_status = (
+        "Ready" if local_tts_workers.get("kokoro")
+        else ("Piper executable detected" if any(
+            x.get("service_id") == "piper" and x.get("healthy")
+            for x in st.session_state.local_runtime_status
+        ) else "Captions/silence fallback")
+    )
     queue_rows = [
         ("Episode structure", "Ready"),
         ("Playable animatic", "Ready"),
         ("Reference rights boundary", "Ready"),
-        ("Source-locked visual layer", "Ready" if source_media_src() else "Optional"),
-        ("Full-motion video generation", "Not connected"),
-        ("Premium voice performance", "Not connected"),
-        ("Music / SFX generation", "Not connected"),
-        ("Continuity render QC", "Waiting"),
-        ("Final MP4", "Waiting"),
+        ("Source-locked visual layer", "Ready" if source_media_src() else "Deterministic scene cards"),
+        ("Generative video", "Optional local upgrade"),
+        ("Local narration", local_tts_status),
+        ("Captions", "Ready"),
+        ("Deterministic renderer", "Ready" if ffmpeg_available() else "Needs local FFmpeg"),
+        ("Final MP4", "Ready locally" if ffmpeg_available() else "Needs local FFmpeg"),
     ]
     st.table({"Stage": [x[0] for x in queue_rows], "Status": [x[1] for x in queue_rows]})
 

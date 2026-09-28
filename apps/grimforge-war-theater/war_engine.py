@@ -195,6 +195,14 @@ RUNTIME_SECONDS = {
 # Original performance profiles only. These describe broad narration qualities
 # and are not intended to clone or impersonate any identifiable narrator.
 GPU_BACKENDS = {
+    "Local hardware (Creditless)": {
+        "status": "local",
+        "connection": "ServiceBridge Local Runtime",
+        "cost": "No per-call credits",
+        "hardware": "Detected CPU/GPU/RAM on this machine",
+        "best_for": "Default private rendering, local Diffusers, FFmpeg, Blender, and cached model workflows",
+        "notes": "Default Creditless route. Capability depends on installed local engines and model files; missing features degrade locally instead of falling back to paid APIs.",
+    },
     "Hugging Face ZeroGPU": {
         "status": "available_external",
         "connection": "Gradio API / Space endpoint",
@@ -230,6 +238,22 @@ GPU_BACKENDS = {
 }
 
 VIDEO_ENGINES = {
+    "Deterministic Forge": {
+        "status": "connected",
+        "role": "Always-available local renderer",
+        "modes": "Source-locked stills, local clips, Blender clips, captions, narration, FFmpeg assembly",
+        "runtime": "ServiceBridge Local Runtime / FFmpeg",
+        "license": "Repository code + local asset licenses",
+        "notes": "Default Creditless path. Does not require a generative video model to export a watchable MP4.",
+    },
+    "Local Diffusers": {
+        "status": "adapter",
+        "role": "Direct local generative video",
+        "modes": "Text-to-video for compatible already-downloaded Diffusers pipelines",
+        "runtime": "Local Python / torch / Diffusers",
+        "license": "Depends on selected model weights",
+        "notes": "No ComfyUI required. Creditless worker uses local_files_only=True and requires model-specific hardware/profile choices.",
+    },
     "LTX-2": {
         "status": "planned",
         "role": "Flagship cinematic / audio-video",
@@ -265,8 +289,15 @@ VIDEO_ENGINES = {
 }
 
 TTS_ENGINES = {
+    "Local Auto": {
+        "status": "connected",
+        "role": "Default local narration selector",
+        "runtime": "ServiceBridge Local Runtime",
+        "license": "Selected local engine/voice license applies",
+        "notes": "Tries offline Kokoro first, then a configured local Piper voice; never falls back to cloud TTS.",
+    },
     "Kokoro": {
-        "status": "planned",
+        "status": "adapter",
         "role": "HQ local/default",
         "runtime": "Browser-local or local Python worker",
         "license": "Apache-2.0",
@@ -287,7 +318,7 @@ TTS_ENGINES = {
         "notes": "Useful for multilingual narration and accent coverage.",
     },
     "Piper": {
-        "status": "planned",
+        "status": "adapter",
         "role": "Offline reliability fallback",
         "runtime": "Local Python/ONNX worker",
         "license": "GPL-3.0-or-later engine; voice licenses vary",
@@ -576,8 +607,9 @@ def veyr_advice(action: str, episode: Episode | None, pro: bool = False) -> str:
         )
     if action == "What is missing for final episode":
         return (
-            "The Streamlit build can create the episode structure and playable animatic now. "
-            "A true full-motion MP4 still needs connected video/TTS/audio/render providers or a local render worker."
+            "Deterministic Forge is the local no-credit fallback for a finished MP4: source/still/Blender clips, "
+            "local narration or silence, captions, audio mix, and FFmpeg assembly. Higher-end local generative "
+            "video is optional when compatible Diffusers/ComfyUI models and hardware are installed."
         )
     return "I can help with pacing, scale, geography, continuity, commander arc, sound, tactical reversals, weak-scene diagnosis, or final QC."
 
@@ -601,6 +633,25 @@ def episode_from_dict(data: dict) -> Episode:
 
 def render_route_advice(video_engine: str, gpu_backend: str) -> dict:
     """Heuristic routing guidance only; this is not live hardware detection."""
+    if video_engine == "Deterministic Forge":
+        return {
+            "rating": "preferred",
+            "label": "Preferred Creditless route",
+            "reason": "Uses local/source assets, Blender clips when available, narration/captions, and FFmpeg assembly without generative-video credits.",
+        }
+    if video_engine == "Local Diffusers":
+        if gpu_backend == "Local hardware (Creditless)":
+            return {
+                "rating": "preferred",
+                "label": "Preferred local generative route",
+                "reason": "Runs compatible already-downloaded Diffusers video models directly on local hardware with no cloud fallback.",
+            }
+        return {
+            "rating": "experimental",
+            "label": "Local engine / external compute mismatch",
+            "reason": "Local Diffusers is designed for Local hardware; choose a named external engine/provider if intentionally leaving Creditless Mode.",
+        }
+
     matrix = {
         "LTX-2": {
             "Hugging Face ZeroGPU": ("preferred", "High-VRAM burst compute is the cleanest free-app integration target."),

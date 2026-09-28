@@ -75,6 +75,15 @@ class MedForgeVolumeTests(unittest.TestCase):
         study = volume_engine.build_dicom_volume(blobs, uid)
         self.assertEqual(study.shape, (5, 8, 10))
         self.assertAlmostEqual(study.spacing_zyx[0], 1.5, places=4)
+        self.assertIsNotNone(study.affine_zyx_ras)
+        expected_affine = np.array([
+            [0.0, 0.0, -0.9, 0.0],
+            [0.0, -0.8, 0.0, 0.0],
+            [1.5, 0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])
+        np.testing.assert_allclose(study.affine_zyx_ras, expected_affine, atol=1e-6)
+        self.assertTrue(study.safe_summary()["spatial_affine_present"])
         summary_text = str(study.safe_summary())
         self.assertNotIn("SHOULD", summary_text)
         self.assertNotIn("SECRET-ID", summary_text)

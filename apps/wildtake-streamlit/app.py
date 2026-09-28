@@ -1,6 +1,18 @@
 import streamlit as st
 from dataclasses import dataclass
+from pathlib import Path
 import subprocess
+import sys
+import tempfile
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from servicebridge.local_runtime import RuntimeMode, discover_services
+from servicebridge.local_runtime.workers import worker_capabilities
+from local_pipeline import WildTakeBeat, render_wildtake_local
 
 st.set_page_config(page_title="WildTake Studio", page_icon="🦘", layout="wide")
 
@@ -53,6 +65,16 @@ if "beats" not in st.session_state:
     ]
 if "queue" not in st.session_state:
     st.session_state.queue = []
+if "runtime_mode" not in st.session_state:
+    st.session_state.runtime_mode = RuntimeMode.CREDITLESS.value
+if "local_runtime_status" not in st.session_state:
+    st.session_state.local_runtime_status = []
+if "local_worker_status" not in st.session_state:
+    st.session_state.local_worker_status = []
+if "final_video_bytes" not in st.session_state:
+    st.session_state.final_video_bytes = b""
+if "final_render_meta" not in st.session_state:
+    st.session_state.final_render_meta = {}
 
 st.title("WildTake Studio")
 st.caption("Original animal-commentary Shorts. Upload → analyze → script → narrate → caption → mix → export.")
@@ -60,11 +82,39 @@ st.caption("Original animal-commentary Shorts. Upload → analyze → script →
 with st.sidebar:
     st.subheader("Mode")
     mode = st.radio("Workflow", ["Simple", "Pro"], horizontal=True)
+    st.markdown("**Runtime**")
+    runtime_options = [x.value for x in RuntimeMode]
+    st.session_state.runtime_mode = st.selectbox(
+        "Execution policy",
+        runtime_options,
+        index=runtime_options.index(st.session_state.runtime_mode)
+        if st.session_state.runtime_mode in runtime_options else 0,
+        help="Creditless uses only local engines and blocks automatic paid/cloud fallback.",
+    )
+    if st.button("Scan local engines", use_container_width=True, key="wildtake_scan_local"):
+        st.session_state.local_runtime_status = [x.to_dict() for x in discover_services()]
+        st.session_state.local_worker_status = [x.to_dict() for x in worker_capabilities()]
+    if st.session_state.runtime_mode == RuntimeMode.CREDITLESS.value:
+        st.caption("Creditless: manual/local analysis + local voice/render workers only.")
     st.divider()
     st.subheader("Providers")
-    provider_badge("Vision analysis", False, "Connect a vision model to auto-detect timestamped action beats.")
-    provider_badge("Premium TTS", False, "Connect a licensed high-quality speech provider for natural narration.")
-    provider_badge("Render engine", ffmpeg_available(), "FFmpeg is used only when actually available.")
+    local_by_id = {x["service_id"]: x for x in st.session_state.local_runtime_status}
+    local_workers = {x["worker_id"]: x for x in st.session_state.local_worker_status}
+    local_llm_ready = bool(local_by_id.get("llama_cpp", {}).get("healthy") or local_by_id.get("ollama", {}).get("healthy"))
+    local_piper_ready = bool(local_by_id.get("piper", {}).get("healthy"))
+    local_kokoro_ready = bool(local_workers.get("kokoro", {}).get("available"))
+    local_tts_ready = local_kokoro_ready or local_piper_ready
+    provider_badge(
+        "Local vision / analysis",
+        local_llm_ready,
+        "llama.cpp/Ollama can become the local analysis lane when a compatible VLM is loaded.",
+    )
+    provider_badge(
+        "Local TTS",
+        local_tts_ready,
+        "Local Auto tries offline Kokoro first, then a configured Piper voice. If neither works, WildTake can still render captions + silence.",
+    )
+    provider_badge("Render engine", ffmpeg_available(), "FFmpeg is the always-local deterministic renderer.")
     st.caption("WildTake never labels preview/demo content as a completed AI render.")
 
 left, right = st.columns([1.08, 0.92], gap="large")
@@ -131,7 +181,7 @@ with right:
         <div>
           <div style="font-size:28px;font-weight:700;">WildTake Preview</div>
           <div class="wt-muted">1080 × 1920 target</div><br>
-          <div class="wt-muted">Final narration/render requires connected providers.</div>
+          <div class="wt-muted">Creditless final render: local narration when available, captions, and FFmpeg assembly.</div>
         </div>
       </div>
     </div>
@@ -139,7 +189,7 @@ with right:
 
     st.subheader("Audio lanes")
     for lane, state in [
-        ("Narration", "Premium TTS not connected"),
+        ("Narration", "Local TTS ready" if local_tts_ready else "Captions + silence fallback"),
         ("Source ambience", "Preserve / duck under voice"),
         ("Music", "Optional"),
         ("SFX", "Optional"),
@@ -159,7 +209,7 @@ with right:
     qc = [
         ("Rights preflight", rights != "Other / Unknown"),
         ("Source clip", uploaded is not None),
-        ("Narration provider", False),
+        ("Narration provider", local_tts_ready),
         ("Render engine", ffmpeg_available()),
         ("Caption overflow", None),
         ("Audio clipping", None),
@@ -170,23 +220,84 @@ with right:
         st.write(f"{icon} {name}")
 
 st.divider()
-st.subheader("Production queue")
-if st.button("MAKE MY VIDEO", type="primary", use_container_width=True, disabled=(rights == "Other / Unknown")):
-    st.session_state.queue = [
-        ("Rights Preflight", "passed"),
-        ("Analyze action beats", "manual / provider not connected"),
-        ("Write commentary", "script ready for review"),
-        ("Generate narration", "blocked — premium TTS not connected"),
-        ("Mix sound", "waiting"),
-        ("Render 1080×1920", "waiting"),
-        ("Final QC", "waiting"),
+st.subheader("Creditless production")
+st.caption(
+    "This path does not call a hosted video or voice API. On a local deployment, the source stays on that machine. "
+    "If local TTS is unavailable, the render continues with captions and silence."
+)
+
+render_disabled = rights == "Other / Unknown" or uploaded is None or not ffmpeg_available()
+if st.button(
+    "MAKE MY VIDEO · LOCAL",
+    type="primary",
+    use_container_width=True,
+    disabled=render_disabled,
+):
+    st.session_state.final_video_bytes = b""
+    st.session_state.final_render_meta = {}
+    beats_for_render = [
+        WildTakeBeat(
+            timestamp=b.timestamp,
+            text=b.punchline or b.description,
+        )
+        for b in st.session_state.beats
     ]
+    try:
+        with tempfile.TemporaryDirectory(prefix="wildtake-creditless-") as tmp:
+            result = render_wildtake_local(
+                uploaded.getvalue(),
+                uploaded.name,
+                beats=beats_for_render,
+                narration_text=script,
+                output_dir=tmp,
+                use_local_tts=True,
+                fps=int(fps if mode == "Pro" else 30),
+                width=1080,
+                height=1920,
+            )
+            final_path = Path(result["output_path"])
+            st.session_state.final_video_bytes = final_path.read_bytes()
+            st.session_state.final_render_meta = result
+
+        narration_state = (
+            f'local {result["tts"]["provider"]}'
+            if result.get("tts")
+            else "captions + silence fallback"
+        )
+        st.session_state.queue = [
+            ("Rights Preflight", "passed"),
+            ("Action beats", "manual/local"),
+            ("Commentary", "script locked"),
+            ("Narration", narration_state),
+            ("Captions", f'{result["caption_count"]} local cue(s)'),
+            ("Render", "local FFmpeg complete"),
+            ("Cloud credits", "0"),
+        ]
+        st.success("Local WildTake MP4 rendered.")
+    except Exception as exc:
+        st.session_state.queue = [("Local render", f"failed — {type(exc).__name__}: {exc}")]
+        st.error(f"Could not finish the local render: {exc}")
+
+if not ffmpeg_available():
+    st.warning("Install local FFmpeg to enable the no-credit final MP4 renderer.")
+
+if st.session_state.final_video_bytes:
+    st.video(st.session_state.final_video_bytes)
+    st.download_button(
+        "⬇ Download WildTake MP4",
+        data=st.session_state.final_video_bytes,
+        file_name="wildtake-creditless.mp4",
+        mime="video/mp4",
+        use_container_width=True,
+    )
+    with st.expander("Local render details"):
+        st.json(st.session_state.final_render_meta)
 
 if st.session_state.queue:
     for step, state in st.session_state.queue:
         st.write(f"**{step}** — {state}")
 else:
-    st.caption("Nothing queued yet.")
+    st.caption("Nothing rendered yet.")
 
 st.divider()
 st.caption(
