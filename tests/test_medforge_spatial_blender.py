@@ -29,6 +29,7 @@ masks_mod = load("med_masks_mesh_test", "med_masks.py")
 motion_mod = load("med_motion_test", "med_motion.py")
 blender_mod = load("med_blender_test", "med_blender.py")
 native_mod = load("med_native3d_test", "med_native3d.py")
+proximity_mod = load("med_proximity_test", "med_proximity.py")
 
 
 class MedForgeSpatialTests(unittest.TestCase):
@@ -204,6 +205,60 @@ class MedForgeMeshBlenderTests(unittest.TestCase):
             np.array([[0.0, -1.0, 0.0], [0.0, 1.0, 0.0]]),
             atol=1e-6,
         )
+
+    def test_geometric_proximity_changes_with_explicit_motion(self):
+        mesh_a = mesh_mod.MeshData(
+            name="a",
+            vertices_ras_mm=np.array([
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ], dtype=np.float32),
+            faces=np.zeros((0, 3), dtype=np.int32),
+            source_voxels=2,
+            provenance="synthetic",
+        )
+        mesh_b = mesh_mod.MeshData(
+            name="b",
+            vertices_ras_mm=np.array([
+                [10.0, 0.0, 0.0],
+                [10.0, 1.0, 0.0],
+            ], dtype=np.float32),
+            faces=np.zeros((0, 3), dtype=np.int32),
+            source_voxels=2,
+            provenance="synthetic",
+        )
+        motion_b = motion_mod.build_motion(
+            "b",
+            translation_mm_xyz=(-4.0, 0.0, 0.0),
+            start_frame=1,
+            end_frame=5,
+        )
+        series = proximity_mod.proximity_over_motion(
+            "a",
+            mesh_a,
+            "b",
+            mesh_b,
+            motion_b=motion_b,
+            frames=[1, 3, 5],
+        )
+        self.assertAlmostEqual(series.samples[0].distance_mm, 10.0, places=6)
+        self.assertAlmostEqual(series.samples[1].distance_mm, 8.0, places=6)
+        self.assertAlmostEqual(series.samples[2].distance_mm, 6.0, places=6)
+        self.assertEqual(series.minimum_frame, 5)
+        self.assertIn("does not measure tissue force", series.interpretation)
+
+    def test_proximity_requires_two_distinct_structures(self):
+        mesh = mesh_mod.MeshData(
+            name="a",
+            vertices_ras_mm=np.array([[0.0, 0.0, 0.0]], dtype=np.float32),
+            faces=np.zeros((0, 3), dtype=np.int32),
+            source_voxels=1,
+            provenance="synthetic",
+        )
+        with self.assertRaises(ValueError):
+            proximity_mod.proximity_over_motion(
+                "a", mesh, "a", mesh, frames=[1]
+            )
 
     def test_blender_command_is_background_local(self):
         command = blender_mod.blender_bundle_command(
