@@ -16,17 +16,78 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e .
+      - run: python -m pip install -e '.[api]'
       - run: python -m pip install -r portfolio/evidence-auditor/legacy-streamlit/requirements.txt
       - run: python -m pip install -r portfolio/grimforge-studio/requirements.txt
       - run: python -m pip install -r apps/medforge-imaging-studio/requirements.txt
       - run: python -m pip install -r apps/medforge-build-lab/requirements.txt
       - run: python -m pip install -r apps/forge-systems-lab/requirements.txt
+      - run: python -m pip install -r apps/forge-launcher/requirements.txt
       - run: python -m pip install -r apps/grimforge-war-theater/requirements.txt
       - run: python -m pip install -r apps/wildtake-streamlit/requirements.txt
       - run: python scripts/check_public_repo.py
       - run: python -m unittest discover -s tests -v
-      - run: python -m compileall -q src portfolio/evidence-auditor/legacy-streamlit portfolio/evidence-auditor/00_CURRENT_APP/reference portfolio/grimforge-studio apps/grimforge-war-theater apps/wildtake-streamlit apps/medforge-imaging-studio apps/medforge-build-lab apps/forge-systems-lab
+      - run: python -m compileall -q src portfolio/evidence-auditor/legacy-streamlit portfolio/evidence-auditor/00_CURRENT_APP/reference portfolio/grimforge-studio apps/grimforge-war-theater apps/wildtake-streamlit apps/medforge-imaging-studio apps/medforge-build-lab apps/forge-systems-lab apps/forge-launcher
+      - name: Boot Forge Core API
+        run: |
+          uvicorn forge_core.api:app --host 127.0.0.1 --port 8765 >/tmp/forge-core.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8765/health; then
+              kill $PID || true
+              wait $PID || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/forge-core.log
+          kill $PID || true
+          exit 1
+      - name: Boot Forge Launcher
+        run: |
+          streamlit run apps/forge-launcher/app.py --server.headless true --server.address 127.0.0.1 --server.port 8500 >/tmp/forge-launcher.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8500/_stcore/health; then
+              kill $PID || true
+              wait $PID || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/forge-launcher.log
+          kill $PID || true
+          exit 1
+      - name: Boot Elias API
+        run: |
+          uvicorn servicebridge.api:app --host 127.0.0.1 --port 8766 >/tmp/elias.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8766/health; then
+              kill $PID || true
+              wait $PID || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/elias.log
+          kill $PID || true
+          exit 1
+      - name: Boot Evidence Auditor
+        run: |
+          streamlit run portfolio/evidence-auditor/legacy-streamlit/dashboard.py --server.headless true --server.address 127.0.0.1 --server.port 8506 >/tmp/evidence-auditor.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8506/_stcore/health; then
+              kill $PID || true
+              wait $PID || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/evidence-auditor.log
+          kill $PID || true
+          exit 1
       - name: Boot MedForge Imaging Studio
         run: |
           streamlit run apps/medforge-imaging-studio/app.py --server.headless true --server.address 127.0.0.1 --server.port 8501 >/tmp/medforge.log 2>&1 &
