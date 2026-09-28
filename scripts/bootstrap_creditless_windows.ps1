@@ -40,7 +40,7 @@ if ($WithOCR) {
 
 Write-Host ""
 Write-Host "Local executable checks" -ForegroundColor Cyan
-foreach ($Exe in @("ffmpeg", "llama-server", "ollama", "piper", "nvidia-smi")) {
+foreach ($Exe in @("ffmpeg", "llama-server", "ollama", "piper", "blender", "nvidia-smi")) {
   $Found = Get-Command $Exe -ErrorAction SilentlyContinue
   if ($Found) {
     Write-Host ("  READY   {0} -> {1}" -f $Exe, $Found.Source) -ForegroundColor Green
