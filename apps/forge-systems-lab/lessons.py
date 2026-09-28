@@ -180,7 +180,7 @@ LESSONS = [
         "why": "Generative video should improve shots, not determine whether Forge can export a movie at all.",
         "failure": "No video model or GPU means the project cannot export anything.",
         "fix": "Use source-locked/generated stills plus local audio and deterministic motion/assembly as the always-available render path.",
-    },,
+    },
     {
         "id": "19",
         "title": "Generate video directly from local model files",
@@ -190,7 +190,7 @@ LESSONS = [
         "why": "ComfyUI should be optional. When the machine can run a compatible model, Forge can call the model itself without a hosted service or a separate generation app.",
         "failure": "A generic profile passes unsupported parameters, a huge model exceeds VRAM, or missing weights trigger an internet download.",
         "fix": "Inspect the loaded pipeline signature, pass only supported parameters, use hardware/model profiles, and require local_files_only=True.",
-    },,
+    },
     {
         "id": "20",
         "title": "Use a higher-quality local voice without cloud TTS",
