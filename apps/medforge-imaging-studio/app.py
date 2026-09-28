@@ -15,7 +15,8 @@ _SRC = _REPO_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from servicebridge.local_runtime import RuntimeMode, discover_services
+from servicebridge.local_runtime import RuntimeMode, RuntimePolicy, discover_services
+from servicebridge.local_runtime.vision import LocalVisionClient
 
 from med_io import load_medical_image_bytes
 from med_export import build_render_bundle
@@ -126,6 +127,9 @@ for key, value in {
     "blender_bundle_bytes": b"",
     "runtime_mode": RuntimeMode.CREDITLESS.value,
     "local_runtime_status": [],
+    "local_vlm_endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+    "local_vlm_model": "local-vision-model",
+    "local_vlm_answer": "",
 }.items():
     init(key, value)
 
@@ -267,7 +271,10 @@ with st.sidebar:
     st.divider()
     st.markdown("**Analysis engines**")
     for name, meta in ANALYSIS_ENGINES.items():
-        status = "CONNECTED" if meta["status"] == "connected" else "PLANNED"
+        status = {
+            "connected": "CONNECTED",
+            "adapter": "LOCAL ADAPTER",
+        }.get(meta["status"], "PLANNED")
         st.caption(f"{name} · {status}")
     st.divider()
     st.checkbox("Strip patient-identifying metadata from exports", key="strip_phi")
@@ -719,8 +726,55 @@ with tabs[4]:
         file_name="medforge-image-analysis-prompt.txt",
         mime="text/plain",
     )
-    if st.session_state.analysis_engine != "Manual / source-faithful":
-        st.warning("This analysis engine is architected but not connected to a live inference endpoint in this build yet.")
+
+    if st.session_state.analysis_engine == "Local VLM / Creditless":
+        st.markdown("**Local VLM connection**")
+        v1, v2 = st.columns([0.66, 0.34])
+        st.session_state.local_vlm_endpoint = v1.text_input(
+            "Local endpoint",
+            st.session_state.local_vlm_endpoint,
+            help="Creditless Mode only permits localhost/loopback endpoints.",
+        )
+        st.session_state.local_vlm_model = v2.text_input(
+            "Local model",
+            st.session_state.local_vlm_model,
+        )
+        if st.button(
+            "Analyze source with local VLM",
+            type="primary",
+            key="run_local_medforge_vlm",
+            disabled=not bool(st.session_state.source_data_uri),
+        ):
+            try:
+                client = LocalVisionClient(
+                    endpoint=st.session_state.local_vlm_endpoint,
+                    model=st.session_state.local_vlm_model,
+                    policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+                )
+                st.session_state.local_vlm_answer = client.analyze(
+                    image_data_uri=st.session_state.source_data_uri,
+                    instructions=prompt,
+                    question=(
+                        st.session_state.analysis_question.strip()
+                        or "Review this image using the required evidence-separated sections."
+                    ),
+                )
+                st.success("Local VLM response received. No cloud fallback was permitted.")
+            except Exception as exc:
+                st.error(f"Local VLM analysis failed: {exc}")
+        if st.session_state.local_vlm_answer:
+            st.text_area(
+                "Local VLM output",
+                st.session_state.local_vlm_answer,
+                height=360,
+            )
+            st.caption(
+                "Treat model output as an assistive observation draft. Verify image observations, measurements, labels, and record links before using them as evidence."
+            )
+    elif st.session_state.analysis_engine != "Manual / source-faithful":
+        st.warning(
+            "This analysis engine is represented as an adapter/plan but is not the active local inference route in this build."
+        )
 
 with tabs[5]:
     st.subheader("Potential injury / pathology mechanism")
