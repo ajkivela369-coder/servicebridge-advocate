@@ -52,6 +52,13 @@ PUBLIC_DATASETS = [
         "kind": "npz3d",
         "source_note": "MedMNIST public 3D benchmark derived from abdominal CT organ crops",
     },
+    {
+        "name": "MedMNIST AdrenalMNIST3D shape mask",
+        "url": "https://zenodo.org/records/10519652/files/adrenalmnist3d.npz?download=1",
+        "expected_md5": "bbd3c5a5576322bc4cdfea780653b1ce",
+        "kind": "mask3d",
+        "source_note": "MedMNIST public expert-annotated adrenal-gland 3D shape masks",
+    },
 ]
 
 def download(item):
@@ -126,6 +133,39 @@ def exercise_volume_pipeline(source_name, volume, source_note):
     }
 
 
+def exercise_reference_mask_pipeline(source_name, volume, source_note):
+    mask = np.asarray(volume) > 0
+    if not mask.any():
+        raise RuntimeError("Reference mask is empty.")
+    z, y, x = [s // 2 for s in mask.shape]
+    axial, coronal, sagittal = med_volume.mpr_slices(mask.astype(np.float32), z, y, x)
+    summary = med_segmentation.summarize_mask(mask, method="Public reference anatomy mask")
+    steps = med_engine.build_mechanism_steps(
+        "public reference anatomy mask",
+        "expert-annotated shape",
+        "Translation / displacement",
+        "software-test motion only",
+        "software-test illustrative effect only",
+        source_name,
+    )
+    manifest = med_engine.build_render_manifest(source_name, source_name, [], steps)
+    assert mask.shape == volume.shape
+    assert axial.ndim == coronal.ndim == sagittal.ndim == 2
+    assert summary.voxel_count > 0
+    assert manifest["render_rules"]["source_and_reconstruction_visually_distinct"] is True
+    return {
+        "source": source_name,
+        "source_note": source_note,
+        "source_kind": "public-reference-segmentation-mask",
+        "volume_shape": list(mask.shape),
+        "mask_voxels": summary.voxel_count,
+        "reference_mask": True,
+        "mechanism_steps": len(steps),
+        "source_reconstruction_separation": True,
+        "status": "PASS",
+    }
+
+
 def exercise_pipeline(source_name, loaded, source_note):
     label = med_engine.ImageLabel(
         id="L01",
@@ -177,6 +217,9 @@ def main():
         if item["kind"] == "npz3d":
             volume = npz_sample_volume(path)
             results.append(exercise_volume_pipeline(item["name"], volume, item["source_note"]))
+        elif item["kind"] == "mask3d":
+            volume = npz_sample_volume(path)
+            results.append(exercise_reference_mask_pipeline(item["name"], volume, item["source_note"]))
         else:
             png_bytes, original_shape = npz_sample_to_png_bytes(path)
             loaded = med_io.load_standard_image_bytes(png_bytes, item["name"] + ".png")
