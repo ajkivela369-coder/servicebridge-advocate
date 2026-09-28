@@ -1,3 +1,4 @@
+from .memory import LocalEmbeddingClient, LocalVectorStore, VectorHit, cosine_similarity
 from .runtime import (
     AssetCache,
     HardwareProfile,
@@ -13,6 +14,10 @@ from .runtime import (
 
 __all__ = [
     "AssetCache",
+    "LocalEmbeddingClient",
+    "LocalVectorStore",
+    "VectorHit",
+    "cosine_similarity",
     "HardwareProfile",
     "JobQueue",
     "LocalOpenAICompatibleProvider",
