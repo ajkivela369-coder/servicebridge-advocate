@@ -3,11 +3,28 @@ import io
 import json
 from pathlib import Path
 
+import numpy as np
+import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
 
 from med_io import load_medical_image_bytes
+from med_volume import (
+    build_dicom_volume,
+    downsample_volume,
+    expand_dicom_blobs,
+    inspect_dicom_series,
+    mpr_slices,
+    window_to_pil,
+)
+from med_segmentation import (
+    SEGMENTATION_ENGINES,
+    monai_label_job_spec,
+    percentile_mask,
+    summarize_mask,
+    totalsegmentator_job_spec,
+)
 from med_engine import (
     ANALYSIS_ENGINES,
     EVIDENCE_LANES,
@@ -81,6 +98,10 @@ for key, value in {
     "analysis_question": "",
     "rights_note": "User-provided / owned, permitted, or otherwise authorized for review",
     "strip_phi": True,
+    "dicom_blobs": [],
+    "dicom_series_infos": [],
+    "selected_series_uid": "",
+    "volume_study": None,
 }.items():
     init(key, value)
 
@@ -133,6 +154,7 @@ def project_payload():
             "engine": st.session_state.analysis_engine,
             "question": st.session_state.analysis_question,
         },
+        "volume": st.session_state.volume_study.safe_summary() if st.session_state.volume_study else None,
     }
 
 
@@ -209,7 +231,16 @@ st.info(
     "It should not convert a single image into a definitive diagnosis or proof of causation."
 )
 
-tabs = st.tabs(["1 · Source", "2 · Label & Observe", "3 · Image Understanding", "4 · Mechanism Synthesizer", "5 · Animatic", "6 · Export"])
+tabs = st.tabs([
+    "1 · Source",
+    "2 · DICOM Study",
+    "3 · MPR & 3D",
+    "4 · Label & Observe",
+    "5 · Image Understanding",
+    "6 · Mechanism Synthesizer",
+    "7 · Animatic",
+    "8 · Export",
+])
 
 with tabs[0]:
     st.subheader("Source-locked medical image")
@@ -234,6 +265,171 @@ with tabs[0]:
         st.warning("Upload an image to begin.")
 
 with tabs[1]:
+    st.subheader("DICOM study / series loader")
+    st.caption(
+        "Upload multiple DICOM instances or a ZIP containing a study. "
+        "MedForge groups series using SeriesInstanceUID but does not export raw DICOM headers."
+    )
+    study_uploads = st.file_uploader(
+        "DICOM instances or ZIP",
+        type=["dcm", "dicom", "zip"],
+        accept_multiple_files=True,
+        key="dicom_study_upload",
+    )
+    if study_uploads and st.button("Inspect DICOM study", type="primary", key="inspect_dicom_study"):
+        try:
+            raw_blobs = [(u.name, u.getvalue()) for u in study_uploads]
+            st.session_state.dicom_blobs = expand_dicom_blobs(raw_blobs)
+            infos = inspect_dicom_series(st.session_state.dicom_blobs)
+            st.session_state.dicom_series_infos = [x.to_dict() for x in infos]
+            if infos:
+                st.session_state.selected_series_uid = infos[0].series_uid
+                st.success(f"Found {len(infos)} DICOM series across {len(st.session_state.dicom_blobs)} files.")
+            else:
+                st.warning("No readable DICOM series were found.")
+        except Exception as exc:
+            st.error(f"Could not inspect this study: {exc}")
+
+    infos = st.session_state.dicom_series_infos
+    if infos:
+        options = [x["series_uid"] for x in infos]
+        selected = st.selectbox(
+            "Series",
+            options,
+            index=options.index(st.session_state.selected_series_uid)
+            if st.session_state.selected_series_uid in options else 0,
+            format_func=lambda uid: next(
+                (
+                    f'{x["modality"]} · {x["description"] or "Unnamed series"} · '
+                    f'{x["instance_count"]} instance(s)'
+                )
+                for x in infos if x["series_uid"] == uid
+            ),
+        )
+        st.session_state.selected_series_uid = selected
+        st.dataframe(
+            [
+                {
+                    "Modality": x["modality"],
+                    "Description": x["description"],
+                    "Instances": x["instance_count"],
+                    "Rows": x["rows"],
+                    "Columns": x["columns"],
+                }
+                for x in infos
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        if st.button("Build source-locked volume", type="primary", key="build_dicom_volume"):
+            try:
+                study = build_dicom_volume(st.session_state.dicom_blobs, selected)
+                st.session_state.volume_study = study
+                st.session_state.source_modality = study.modality
+                st.session_state.source_name = (
+                    f'DICOM series · {study.description}' if study.description else "DICOM series"
+                )
+                mid = study.volume.shape[0] // 2
+                st.session_state.source_data_uri = pil_to_data_uri(window_to_pil(study.volume[mid]))
+                st.session_state.source_mime = "image/png"
+                st.success(
+                    f"Volume built: {study.shape[0]} × {study.shape[1]} × {study.shape[2]} voxels. "
+                    "The raw DICOM Dataset objects are not included in project export."
+                )
+            except Exception as exc:
+                st.error(f"Could not assemble this DICOM series: {exc}")
+
+    if st.session_state.volume_study:
+        st.markdown("**Current volume**")
+        st.json(st.session_state.volume_study.safe_summary())
+        if st.session_state.volume_study.decode_warnings:
+            with st.expander("Decode warnings"):
+                for warning in st.session_state.volume_study.decode_warnings:
+                    st.write(warning)
+
+
+with tabs[2]:
+    st.subheader("Multiplanar reconstruction + 3D volume preview")
+    study = st.session_state.volume_study
+    if study is None:
+        st.info("Build a DICOM volume in the DICOM Study tab first.")
+    else:
+        volume = study.volume
+        zc, yc, xc = volume.shape[0] // 2, volume.shape[1] // 2, volume.shape[2] // 2
+        s1, s2, s3 = st.columns(3)
+        z = s1.slider("Axial slice (Z)", 0, volume.shape[0] - 1, zc)
+        y = s2.slider("Coronal position (Y)", 0, volume.shape[1] - 1, yc)
+        x = s3.slider("Sagittal position (X)", 0, volume.shape[2] - 1, xc)
+
+        axial, coronal, sagittal = mpr_slices(volume, z, y, x)
+        v1, v2, v3 = st.columns(3)
+        v1.image(window_to_pil(axial), caption=f"Axial · Z {z}", use_container_width=True)
+        v2.image(window_to_pil(coronal), caption=f"Coronal · Y {y}", use_container_width=True)
+        v3.image(window_to_pil(sagittal), caption=f"Sagittal · X {x}", use_container_width=True)
+
+        st.caption(
+            "These views are reconstructed from the same source-locked voxel volume. "
+            "They are display reformats, not new imaging acquisitions."
+        )
+
+        st.markdown("**3D intensity preview**")
+        st.caption(
+            "This is a downsampled voxel-intensity visualization for orientation and software testing—not anatomy segmentation."
+        )
+        preview = downsample_volume(volume, max_axis=42)
+        finite = preview[np.isfinite(preview)]
+        if finite.size:
+            lo, hi = np.percentile(finite, (65, 99.5))
+            zz, yy, xx = np.mgrid[
+                0:preview.shape[0],
+                0:preview.shape[1],
+                0:preview.shape[2],
+            ]
+            fig = go.Figure(
+                data=go.Volume(
+                    x=xx.flatten(),
+                    y=yy.flatten(),
+                    z=zz.flatten(),
+                    value=preview.flatten(),
+                    isomin=float(lo),
+                    isomax=float(hi),
+                    opacity=0.08,
+                    surface_count=12,
+                )
+            )
+            fig.update_layout(
+                height=620,
+                margin=dict(l=0, r=0, t=30, b=0),
+                scene=dict(aspectmode="data"),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("**Segmentation pipeline test**")
+        percentile = st.slider("Exploratory high-intensity percentile", 50, 99, 85)
+        mask = percentile_mask(volume, percentile)
+        mask_summary = summarize_mask(mask)
+        m1, m2 = st.columns([0.45, 0.55])
+        m1.image(
+            Image.fromarray((mask[z].astype(np.uint8) * 255)).convert("RGB"),
+            caption="Exploratory mask · axial",
+            use_container_width=True,
+        )
+        m2.json(mask_summary.to_dict())
+        st.warning(
+            "The threshold mask has no anatomical or diagnostic meaning. It only proves that a 3D mask can pass "
+            "through the MedForge viewer/render pipeline."
+        )
+
+        with st.expander("Planned anatomy segmentation adapters"):
+            st.json({
+                "engines": SEGMENTATION_ENGINES,
+                "TotalSegmentator job contract": totalsegmentator_job_spec(),
+                "MONAI Label job contract": monai_label_job_spec(),
+            })
+
+
+with tabs[3]:
     st.subheader("Evidence lanes and labels")
     st.caption("Every note is assigned to a lane so observation, measurement, and hypothesis do not blur together.")
 
@@ -300,7 +496,7 @@ with tabs[1]:
                     st.session_state.labels.pop(idx)
                     st.rerun()
 
-with tabs[2]:
+with tabs[4]:
     st.subheader("Image understanding")
     engine_names = list(ANALYSIS_ENGINES.keys())
     st.session_state.analysis_engine = st.selectbox(
@@ -332,7 +528,7 @@ with tabs[2]:
     if st.session_state.analysis_engine != "Manual / source-faithful":
         st.warning("This analysis engine is architected but not connected to a live inference endpoint in this build yet.")
 
-with tabs[3]:
+with tabs[5]:
     st.subheader("Potential injury / pathology mechanism")
     st.caption("This creates an illustrative hypothesis sequence. It does not change an observation into a proven mechanism.")
     st.session_state.mechanism_structures = st.text_input(
@@ -372,7 +568,7 @@ with tabs[3]:
             st.write(step.narration)
             st.caption(step.visual)
 
-with tabs[4]:
+with tabs[6]:
     st.subheader("Playable mechanism animatic")
     if not st.session_state.mechanism_steps:
         st.info("Build a mechanism storyboard first.")
@@ -417,7 +613,7 @@ with tabs[4]:
         components.html(animatic, height=700, scrolling=False)
         st.caption("This preview animates the explanation and source framing. A later renderer can replace hypothetical steps with dedicated anatomy illustrations or 3D scenes.")
 
-with tabs[5]:
+with tabs[7]:
     st.subheader("Evidence-aware export")
     manifest = build_render_manifest(
         st.session_state.project_title,
@@ -425,6 +621,13 @@ with tabs[5]:
         st.session_state.labels,
         st.session_state.mechanism_steps,
     )
+    manifest["volume_summary"] = (
+        st.session_state.volume_study.safe_summary() if st.session_state.volume_study else None
+    )
+    manifest["segmentation_adapters"] = {
+        "TotalSegmentator": totalsegmentator_job_spec(),
+        "MONAI Label": monai_label_job_spec(),
+    }
     st.download_button(
         "⬇ Download mechanism render manifest",
         data=json.dumps(manifest, indent=2),
