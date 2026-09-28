@@ -131,6 +131,19 @@ class ForgeSDK:
         *,
         work_class: WorkClass | str = WorkClass.STANDARD,
     ) -> dict[str, Any]:
+        work_class = WorkClass(work_class)
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/reason",
+                {
+                    "app_id": self.app_id,
+                    "instructions": instructions,
+                    "input": input_text,
+                    "work_class": work_class.value,
+                },
+            )
+
         from servicebridge.providers import provider_for_runtime
 
         selection = self.select_model("reason", work_class=work_class)
@@ -173,6 +186,20 @@ class ForgeSDK:
         question: str,
         work_class: WorkClass | str = WorkClass.STANDARD,
     ) -> dict[str, Any]:
+        work_class = WorkClass(work_class)
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/vision",
+                {
+                    "app_id": self.app_id,
+                    "image_data_uri": image_data_uri,
+                    "instructions": instructions,
+                    "question": question,
+                    "work_class": work_class.value,
+                },
+            )
+
         from servicebridge.local_runtime.vision import LocalVisionClient
 
         selection = self.select_model("vision", work_class=work_class)
@@ -215,6 +242,20 @@ class ForgeSDK:
         compute_type: str = "int8",
         language: str | None = None,
     ) -> dict[str, Any]:
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/transcribe",
+                {
+                    "app_id": self.app_id,
+                    "media_path": media_path,
+                    "model_size": model_size,
+                    "device": device,
+                    "compute_type": compute_type,
+                    "language": language,
+                },
+            )
+
         from servicebridge.local_runtime.workers import transcribe_file
 
         result = transcribe_file(
@@ -236,6 +277,19 @@ class ForgeSDK:
         piper_model: str | None = None,
         kokoro_voice: str = "af_heart",
     ) -> dict[str, Any]:
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/tts",
+                {
+                    "app_id": self.app_id,
+                    "text": text,
+                    "output_wav": output_wav,
+                    "piper_model": piper_model,
+                    "kokoro_voice": kokoro_voice,
+                },
+            )
+
         from servicebridge.local_runtime.speech import generate_speech_local_auto
 
         result = generate_speech_local_auto(
@@ -249,6 +303,13 @@ class ForgeSDK:
         return result
 
     def embed(self, texts: list[str]) -> dict[str, Any]:
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/embed",
+                {"app_id": self.app_id, "texts": texts},
+            )
+
         from servicebridge.local_runtime.memory import LocalEmbeddingClient
 
         selection = self.select_model("embed", work_class=WorkClass.TINY)
@@ -278,6 +339,13 @@ class ForgeSDK:
                 self.unload(reservation_id)
 
     def ocr(self, path: str) -> dict[str, Any]:
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/ocr",
+                {"app_id": self.app_id, "path": path},
+            )
+
         from pathlib import Path
         from servicebridge.local_runtime.documents import extract_pdf_text, paddle_ocr
 
@@ -303,7 +371,16 @@ class ForgeSDK:
         return result
 
     def render_video(self, plan) -> dict[str, Any]:
+        from dataclasses import asdict
         from servicebridge.local_runtime.render import LocalRenderPlan, render_plan
+
+        if self.core_url:
+            payload = plan if isinstance(plan, dict) else asdict(plan)
+            return self._http(
+                "POST",
+                "/v1/video",
+                {"app_id": self.app_id, "plan": payload},
+            )
 
         if isinstance(plan, dict):
             plan = LocalRenderPlan.from_dict(plan)
@@ -325,6 +402,23 @@ class ForgeSDK:
         role: str = "source",
         locator: str = "",
     ) -> dict[str, Any]:
+        if self.core_url:
+            import base64
+            source = self._http(
+                "POST",
+                "/v1/vault/source",
+                {
+                    "app_id": self.app_id,
+                    "original_name": original_name,
+                    "data_b64": base64.b64encode(data).decode("ascii"),
+                    "mime_type": mime_type,
+                    "metadata": metadata or {},
+                    "role": role,
+                    "locator": locator,
+                },
+            )
+            return source
+
         from .vault import ForgeVault
 
         core = ForgeCore()
