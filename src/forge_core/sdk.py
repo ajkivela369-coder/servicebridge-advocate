@@ -6,7 +6,7 @@ import os
 from typing import Any
 from urllib.request import Request, urlopen
 
-from servicebridge.local_runtime import RuntimeMode
+from servicebridge.local_runtime import RuntimeMode, RuntimePolicy
 
 from .core import ForgeCore
 from .scheduler import WorkClass
@@ -119,3 +119,216 @@ class ForgeSDK:
         if self.core_url:
             return self._http("GET", "/v1/cache/status")
         return ForgeCore().cache_status()
+
+
+
+    # --- Standard execution surface used by all Forge-backed apps ---
+
+    def reason(
+        self,
+        instructions: str,
+        input_text: str,
+        *,
+        work_class: WorkClass | str = WorkClass.STANDARD,
+    ) -> dict[str, Any]:
+        from servicebridge.providers import provider_for_runtime
+
+        selection = self.select_model("reason", work_class=work_class)
+        selected = selection.get("selected_model") or {}
+        model_id = str(
+            selected.get("model_id")
+            or os.getenv("FORGE_LLM_MODEL", "local-model")
+        )
+        provider = provider_for_runtime(
+            mode=RuntimeMode.CREDITLESS,
+            local_endpoint=os.getenv(
+                "FORGE_LLM_ENDPOINT",
+                "http://127.0.0.1:8080/v1/chat/completions",
+            ),
+            local_model=model_id,
+            allow_external_network=False,
+            allow_cloud_fallback=False,
+        )
+        text = provider.generate(
+            instructions=instructions,
+            input_text=input_text,
+        )
+        return {
+            "text": text,
+            "backend": "Forge Core",
+            "model_id": model_id,
+            "selection": selection,
+            "cloud_used": False,
+        }
+
+    def vision(
+        self,
+        *,
+        image_data_uri: str,
+        instructions: str,
+        question: str,
+        work_class: WorkClass | str = WorkClass.STANDARD,
+    ) -> dict[str, Any]:
+        from servicebridge.local_runtime.vision import LocalVisionClient
+
+        selection = self.select_model("vision", work_class=work_class)
+        selected = selection.get("selected_model") or {}
+        model_id = str(
+            selected.get("model_id")
+            or os.getenv("FORGE_VLM_MODEL", "local-vision-model")
+        )
+        client = LocalVisionClient(
+            endpoint=os.getenv(
+                "FORGE_VLM_ENDPOINT",
+                "http://127.0.0.1:8080/v1/chat/completions",
+            ),
+            model=model_id,
+            policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+        )
+        text = client.analyze(
+            image_data_uri=image_data_uri,
+            instructions=instructions,
+            question=question,
+        )
+        return {
+            "text": text,
+            "backend": "Forge Core",
+            "model_id": model_id,
+            "selection": selection,
+            "cloud_used": False,
+        }
+
+    def transcribe(
+        self,
+        media_path: str,
+        *,
+        model_size: str = "small",
+        device: str = "cpu",
+        compute_type: str = "int8",
+        language: str | None = None,
+    ) -> dict[str, Any]:
+        from servicebridge.local_runtime.workers import transcribe_file
+
+        result = transcribe_file(
+            media_path,
+            model_size=model_size,
+            device=device,
+            compute_type=compute_type,
+            language=language,
+        )
+        result["backend"] = "Forge Core"
+        result["cloud_used"] = False
+        return result
+
+    def tts(
+        self,
+        text: str,
+        *,
+        output_wav: str,
+        piper_model: str | None = None,
+        kokoro_voice: str = "af_heart",
+    ) -> dict[str, Any]:
+        from servicebridge.local_runtime.speech import generate_speech_local_auto
+
+        result = generate_speech_local_auto(
+            text,
+            output_wav=output_wav,
+            piper_model=piper_model,
+            kokoro_voice=kokoro_voice,
+        )
+        result["backend"] = "Forge Core"
+        result["cloud_used"] = False
+        return result
+
+    def embed(self, texts: list[str]) -> dict[str, Any]:
+        from servicebridge.local_runtime.memory import LocalEmbeddingClient
+
+        selection = self.select_model("embed", work_class=WorkClass.TINY)
+        selected = selection.get("selected_model") or {}
+        model_id = str(
+            selected.get("model_id")
+            or os.getenv("FORGE_EMBEDDING_MODEL", "local-embedding-model")
+        )
+        client = LocalEmbeddingClient(
+            endpoint=os.getenv(
+                "FORGE_EMBEDDING_ENDPOINT",
+                "http://127.0.0.1:8080/v1/embeddings",
+            ),
+            model=model_id,
+            policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+        )
+        return {
+            "vectors": client.embed(texts),
+            "backend": "Forge Core",
+            "model_id": model_id,
+            "selection": selection,
+            "cloud_used": False,
+        }
+
+    def ocr(self, path: str) -> dict[str, Any]:
+        from pathlib import Path
+        from servicebridge.local_runtime.documents import extract_pdf_text, paddle_ocr
+
+        p = Path(path)
+        if p.suffix.lower() == ".pdf":
+            pages = extract_pdf_text(p)
+            if any(bool(x.get("needs_ocr")) for x in pages):
+                result = paddle_ocr(p)
+                result["pages"] = pages
+            else:
+                result = {
+                    "engine": "pypdf",
+                    "source": str(p),
+                    "pages": pages,
+                    "text": "\n\n".join(
+                        str(x.get("text", "")) for x in pages
+                    ),
+                }
+        else:
+            result = paddle_ocr(p)
+        result["backend"] = "Forge Core"
+        result["cloud_used"] = False
+        return result
+
+    def render_video(self, plan) -> dict[str, Any]:
+        from servicebridge.local_runtime.render import LocalRenderPlan, render_plan
+
+        if isinstance(plan, dict):
+            plan = LocalRenderPlan.from_dict(plan)
+        output = render_plan(plan)
+        return {
+            "output_path": str(output),
+            "backend": "Forge Core",
+            "render_mode": "deterministic-local",
+            "cloud_used": False,
+        }
+
+    def vault_add_bytes(
+        self,
+        data: bytes,
+        *,
+        original_name: str,
+        mime_type: str = "",
+        metadata: dict[str, Any] | None = None,
+        role: str = "source",
+        locator: str = "",
+    ) -> dict[str, Any]:
+        from .vault import ForgeVault
+
+        core = ForgeCore()
+        with ForgeVault(core.paths.vault) as vault:
+            source = vault.add_bytes(
+                data,
+                original_name=original_name,
+                mime_type=mime_type,
+                metadata=metadata,
+            )
+            vault.reference(
+                self.app_id,
+                source["source_id"],
+                role=role,
+                locator=locator,
+            )
+            source["references"] = vault.references_for(source["source_id"])
+            source["backend"] = "Forge Core"
+            return source
