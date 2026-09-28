@@ -1,0 +1,24 @@
+{
+  "mode": "creditless",
+  "paths": {
+    "asset_vault": "./private_data/local_runtime/assets",
+    "job_database": "./private_data/local_runtime/jobs.sqlite3",
+    "models": "./private_data/local_runtime/models"
+  },
+  "services": {
+    "llama_cpp": {
+      "endpoint": "http://127.0.0.1:8080/v1/chat/completions",
+      "model": "local-model"
+    },
+    "comfyui": {
+      "endpoint": "http://127.0.0.1:8188"
+    },
+    "piper": {
+      "voice_model": "./private_data/local_runtime/models/piper/voice.onnx"
+    }
+  },
+  "policy": {
+    "allow_external_network": false,
+    "allow_cloud_fallback": false
+  }
+}
