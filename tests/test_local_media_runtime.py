@@ -107,6 +107,53 @@ class LocalRenderRunnerTests(unittest.TestCase):
             self.assertFalse(built["copy_assembled_to_final"])
             self.assertTrue(all(cmd[0] == "ffmpeg" for cmd in built["commands"]))
 
+    def test_render_plan_accepts_local_blender_video_clip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            clip = root / "blender.mp4"
+            clip.write_bytes(b"x")
+            plan = LocalRenderPlan(
+                title="Blender handoff",
+                output_path=str(root / "final.mp4"),
+                scenes=[
+                    LocalSceneAsset(
+                        "S01",
+                        "",
+                        4.0,
+                        "",
+                        video_path=str(clip),
+                    )
+                ],
+            )
+            self.assertEqual(plan.validate(), [])
+            built = build_render_commands(plan, work_dir=root / "work")
+            first = built["commands"][0]
+            self.assertEqual(first[0], "ffmpeg")
+            self.assertIn("-stream_loop", first)
+            self.assertIn(str(clip), first)
+
+    def test_render_plan_rejects_image_and_video_together(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image = root / "frame.png"
+            video = root / "clip.mp4"
+            image.write_bytes(b"x")
+            video.write_bytes(b"x")
+            plan = LocalRenderPlan(
+                title="Ambiguous",
+                output_path=str(root / "final.mp4"),
+                scenes=[
+                    LocalSceneAsset(
+                        "S01",
+                        str(image),
+                        2.0,
+                        "",
+                        video_path=str(video),
+                    )
+                ],
+            )
+            self.assertTrue(plan.validate())
+
     def test_render_plan_rejects_missing_assets(self):
         plan = LocalRenderPlan(
             title="Bad",
