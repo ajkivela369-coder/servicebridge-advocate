@@ -116,21 +116,28 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         self.assertTrue(all(value != "Custom" for value in p.values()))
 
     def test_gpu_backend_registry(self):
-        expected = ("Hugging Face ZeroGPU", "Kaggle T4x2", "Google Colab Free", "Lightning AI Free")
-        self.assertEqual(tuple(engine.GPU_BACKENDS.keys()), expected)
+        self.assertEqual(next(iter(engine.GPU_BACKENDS)), "Local hardware (Creditless)")
+        self.assertEqual(engine.GPU_BACKENDS["Local hardware (Creditless)"]["status"], "local")
+        for name in ("Hugging Face ZeroGPU", "Kaggle T4x2", "Google Colab Free", "Lightning AI Free"):
+            self.assertIn(name, engine.GPU_BACKENDS)
         self.assertIn("48 GB or 96 GB", engine.GPU_BACKENDS["Hugging Face ZeroGPU"]["hardware"])
         self.assertIn("T4", engine.GPU_BACKENDS["Kaggle T4x2"]["hardware"])
 
     def test_video_engine_registry(self):
-        expected = ("LTX-2", "Wan 2.2", "Mochi 1", "CogVideoX-2B")
-        self.assertEqual(tuple(engine.VIDEO_ENGINES.keys()), expected)
-        self.assertTrue(all(engine.VIDEO_ENGINES[name]["status"] == "planned" for name in expected))
+        self.assertEqual(next(iter(engine.VIDEO_ENGINES)), "Deterministic Forge")
+        self.assertEqual(engine.VIDEO_ENGINES["Deterministic Forge"]["status"], "connected")
+        self.assertEqual(engine.VIDEO_ENGINES["Local Diffusers"]["status"], "adapter")
+        for name in ("LTX-2", "Wan 2.2", "Mochi 1", "CogVideoX-2B"):
+            self.assertIn(name, engine.VIDEO_ENGINES)
+            self.assertEqual(engine.VIDEO_ENGINES[name]["status"], "planned")
 
     def test_tts_engine_registry(self):
-        for name in ("Kokoro", "KittenTTS", "MeloTTS", "Piper", "Browser Speech"):
+        for name in ("Local Auto", "Kokoro", "KittenTTS", "MeloTTS", "Piper", "Browser Speech"):
             self.assertIn(name, engine.TTS_ENGINES)
+        self.assertEqual(engine.TTS_ENGINES["Local Auto"]["status"], "connected")
         self.assertEqual(engine.TTS_ENGINES["Browser Speech"]["status"], "connected")
-        self.assertEqual(engine.TTS_ENGINES["Kokoro"]["status"], "planned")
+        self.assertEqual(engine.TTS_ENGINES["Kokoro"]["status"], "adapter")
+        self.assertEqual(engine.TTS_ENGINES["Piper"]["status"], "adapter")
 
     def test_grim_chronicle_voice_profile(self):
         profile = engine.NARRATOR_VOICE_PROFILES["Grim Chronicle"]
@@ -139,10 +146,11 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         self.assertIn("resonant", profile["description"].lower())
         self.assertTrue(profile["preferred_names"])
 
-    def test_veyr_reports_missing_provider_for_final_episode(self):
+    def test_veyr_reports_local_fallback_for_final_episode(self):
         ep = engine.make_episode("A", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
         msg = engine.veyr_advice("What is missing for final episode", ep)
-        self.assertIn("full-motion MP4", msg)
+        self.assertIn("Deterministic Forge", msg)
+        self.assertIn("local", msg.lower())
 
 
 if __name__ == "__main__":
