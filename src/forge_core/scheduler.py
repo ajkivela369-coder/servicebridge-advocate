@@ -282,8 +282,8 @@ class MemoryAdmissionController:
         # Live free memory already reflects real processes; reservations protect
         # against concurrent Forge jobs that have been admitted but are not yet
         # reflected in OS/GPU telemetry.
-        usable_ram = max(0.0, observed_ram_free - reserve_ram)
-        usable_vram = max(0.0, observed_vram_free - reserve_vram)
+        usable_ram = max(0.0, observed_ram_free - reserve_ram - leased_ram)
+        usable_vram = max(0.0, observed_vram_free - reserve_vram - leased_vram)
 
         return {
             "hardware": hw.to_dict(),
@@ -357,23 +357,30 @@ class MemoryAdmissionController:
             )
 
         if ram_ok and not gpu_ok and request.allow_cpu_fallback:
-            return AdmissionDecision(
-                status=FitStatus.TIGHT,
-                capability=request.capability,
-                model_id=request.model_id,
-                use_gpu=False,
-                ram_required_gb=ram_need,
-                vram_required_gb=0.0,
-                ram_available_after_reserve_gb=ram_available,
-                vram_available_after_reserve_gb=vram_available,
-                reason=(
-                    "GPU memory is insufficient; admit only through a CPU/offload "
-                    "worker that supports this model."
-                ),
-                unload_candidates=tuple(
-                    self.reservations.unload_candidates(vram_need - vram_available)
-                ),
-            )
+            # A GPU model moved to CPU/offload still needs host memory. Treat the
+            # requested VRAM as additional RAM unless a worker provides a more
+            # precise measured profile.
+            cpu_ram_need = ram_need + vram_need
+            if cpu_ram_need <= ram_available:
+                return AdmissionDecision(
+                    status=FitStatus.TIGHT,
+                    capability=request.capability,
+                    model_id=request.model_id,
+                    use_gpu=False,
+                    ram_required_gb=cpu_ram_need,
+                    vram_required_gb=0.0,
+                    ram_available_after_reserve_gb=ram_available,
+                    vram_available_after_reserve_gb=vram_available,
+                    reason=(
+                        "GPU memory is insufficient; model can be admitted only "
+                        "through a CPU/offload worker with additional host-RAM budget."
+                    ),
+                    unload_candidates=tuple(
+                        self.reservations.unload_candidates(
+                            max(0.0, vram_need - vram_available)
+                        )
+                    ),
+                )
 
         needed_vram = max(0.0, vram_need - vram_available)
         return AdmissionDecision(
