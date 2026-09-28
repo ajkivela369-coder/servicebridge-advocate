@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +9,13 @@ import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SRC = _REPO_ROOT / "src"
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+from servicebridge.local_runtime import RuntimeMode, discover_services
 
 from med_io import load_medical_image_bytes
 from med_export import build_render_bundle
@@ -106,6 +114,8 @@ for key, value in {
     "volume_study": None,
     "imported_masks": [],
     "selected_mask_name": "",
+    "runtime_mode": RuntimeMode.CREDITLESS.value,
+    "local_runtime_status": [],
 }.items():
     init(key, value)
 
@@ -137,6 +147,7 @@ def project_payload():
         "schema_version": 1,
         "app": "MedForge Imaging Studio",
         "title": st.session_state.project_title,
+        "runtime_mode": st.session_state.runtime_mode,
         "source": {
             "name": st.session_state.source_name,
             "data_uri": st.session_state.source_data_uri,
@@ -167,6 +178,7 @@ def project_payload():
 
 def load_project(data):
     st.session_state.project_title = data.get("title", st.session_state.project_title)
+    st.session_state.runtime_mode = data.get("runtime_mode", st.session_state.runtime_mode)
     source = data.get("source", {})
     st.session_state.source_name = source.get("name", "")
     st.session_state.source_data_uri = source.get("data_uri", "")
@@ -191,6 +203,24 @@ with st.sidebar:
     st.markdown('<div class="mf-eyebrow">SOURCE-FAITHFUL MEDICAL VISUALIZATION</div><div class="mf-title">MedForge</div>', unsafe_allow_html=True)
     st.caption("Imaging Studio · forked from the Forge engine")
     st.session_state.project_title = st.text_input("Project title", st.session_state.project_title)
+
+    st.markdown("**Runtime**")
+    runtime_options = [x.value for x in RuntimeMode]
+    st.session_state.runtime_mode = st.selectbox(
+        "Execution policy",
+        runtime_options,
+        index=runtime_options.index(st.session_state.runtime_mode)
+        if st.session_state.runtime_mode in runtime_options else 0,
+        key="medforge_runtime_mode",
+        help="Creditless prevents external AI fallback. Sensitive imaging can stay on the local machine.",
+    )
+    if st.button("Scan local engines", use_container_width=True, key="medforge_scan_local"):
+        st.session_state.local_runtime_status = [x.to_dict() for x in discover_services()]
+    if st.session_state.runtime_mode == RuntimeMode.CREDITLESS.value:
+        st.caption("Creditless: use local/manual imaging tools, local workers, and deterministic exports only.")
+    if st.session_state.local_runtime_status:
+        ready = [x["service_id"] for x in st.session_state.local_runtime_status if x["healthy"]]
+        st.caption("Local ready: " + (", ".join(ready) if ready else "none detected yet"))
 
     st.markdown("**Project file**")
     st.download_button(
