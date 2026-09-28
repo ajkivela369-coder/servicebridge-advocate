@@ -121,6 +121,26 @@ LESSONS = [
         "failure": "A scanned PDF has almost no extractable text and disappears from retrieval.",
         "fix": "Detect low-text pages, send only those pages through the local OCR worker, and cache the result.",
     },
+    {
+        "id": "13",
+        "title": "Register models instead of downloading them silently",
+        "module": "servicebridge.local_runtime.models",
+        "function": "LocalModelCatalog",
+        "plain": "Keep a catalog of model files already present on disk, including type, hardware needs, quality rank, and optional hash.",
+        "why": "True offline mode needs to know exactly which model files are installed before the network is disconnected.",
+        "failure": "An app discovers it needs weights only after a job starts and silently tries to download them.",
+        "fix": "Provision models deliberately, register them, verify hashes, and select only compatible local files.",
+    },
+    {
+        "id": "14",
+        "title": "Fuse keyword and semantic evidence search locally",
+        "module": "servicebridge.local_runtime.evidence",
+        "function": "reciprocal_rank_fusion",
+        "plain": "Combine SQLite full-text results with locally embedded semantic matches.",
+        "why": "Exact terms are excellent for citations while semantic retrieval can recover differently worded evidence. Both can stay on-device.",
+        "failure": "A hosted vector database outage removes semantic search, or semantic ranking hides exact record language.",
+        "fix": "Keep FTS as the baseline, run embeddings locally, and fuse both ranked lists rather than replacing one with the other.",
+    },
 ]
 
 PIPELINE = [
@@ -136,4 +156,6 @@ PIPELINE = [
     "FFmpeg Render",
     "Local Memory",
     "OCR",
+    "Model Catalog",
+    "Local Hybrid RAG",
 ]
