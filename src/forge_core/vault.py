@@ -4,7 +4,7 @@ from hashlib import sha256
 import json
 import mimetypes
 from pathlib import Path
-import shutil
+import re
 import sqlite3
 import time
 from typing import Any
@@ -55,8 +55,23 @@ class ForgeVault:
                 provenance_json TEXT NOT NULL,
                 created_at REAL NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS text_units (
+                text_id TEXT PRIMARY KEY,
+                source_id TEXT NOT NULL,
+                page INTEGER,
+                locator TEXT NOT NULL,
+                text TEXT NOT NULL,
+                metadata_json TEXT NOT NULL
+            );
+            CREATE VIRTUAL TABLE IF NOT EXISTS text_fts USING fts5(
+                text_id UNINDEXED,
+                source_id UNINDEXED,
+                text,
+                tokenize = 'porter unicode61'
+            );
             CREATE INDEX IF NOT EXISTS idx_refs_source ON refs(source_id);
             CREATE INDEX IF NOT EXISTS idx_derived_source ON derived(source_id);
+            CREATE INDEX IF NOT EXISTS idx_text_units_source ON text_units(source_id);
             """
         )
 
@@ -206,6 +221,93 @@ class ForgeVault:
             "provenance": provenance or {},
         }
 
+
+    def index_text_units(
+        self,
+        source_id: str,
+        units: list[dict[str, Any]],
+        *,
+        replace: bool = True,
+    ) -> int:
+        if self.get_source(source_id) is None:
+            raise KeyError(source_id)
+        rows = []
+        for index, unit in enumerate(units, start=1):
+            text = str(unit.get("text", "") or "").strip()
+            if not text:
+                continue
+            page = unit.get("page")
+            locator = str(
+                unit.get("locator")
+                or (f"p. {page}" if page is not None else f"unit {index}")
+            )
+            text_id = f"{source_id}:{page if page is not None else index}:{index}"
+            rows.append(
+                (
+                    text_id,
+                    source_id,
+                    int(page) if page is not None else None,
+                    locator,
+                    text,
+                    json.dumps(unit.get("metadata", {}), sort_keys=True),
+                )
+            )
+
+        with self.db:
+            if replace:
+                self.db.execute("DELETE FROM text_fts WHERE source_id=?", (source_id,))
+                self.db.execute("DELETE FROM text_units WHERE source_id=?", (source_id,))
+            self.db.executemany(
+                """
+                INSERT OR REPLACE INTO text_units
+                (text_id, source_id, page, locator, text, metadata_json)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
+            self.db.executemany(
+                "INSERT INTO text_fts (text_id, source_id, text) VALUES (?, ?, ?)",
+                [(row[0], row[1], row[4]) for row in rows],
+            )
+        return len(rows)
+
+    def search_text(self, query: str, *, limit: int = 12) -> list[dict[str, Any]]:
+        terms = [
+            token.lower()
+            for token in re.findall(r"[A-Za-z0-9_]{2,}", str(query))
+        ]
+        if not terms:
+            return []
+        fts_query = " OR ".join(f'"{term}"' for term in terms[:24])
+        rows = self.db.execute(
+            """
+            SELECT u.text_id, u.source_id, u.page, u.locator, u.text,
+                   u.metadata_json, s.original_name, s.sha256,
+                   bm25(text_fts, 1.0) AS rank
+            FROM text_fts
+            JOIN text_units u ON u.text_id = text_fts.text_id
+            JOIN sources s ON s.source_id = u.source_id
+            WHERE text_fts MATCH ?
+            ORDER BY rank ASC
+            LIMIT ?
+            """,
+            (fts_query, max(1, int(limit))),
+        ).fetchall()
+        return [
+            {
+                "text_id": row["text_id"],
+                "source_id": row["source_id"],
+                "source_name": row["original_name"],
+                "sha256": row["sha256"],
+                "page": row["page"],
+                "locator": row["locator"],
+                "text": row["text"],
+                "score": float(-row["rank"]),
+                "metadata": json.loads(row["metadata_json"]),
+            }
+            for row in rows
+        ]
+
     def references_for(self, source_id: str) -> list[dict[str, Any]]:
         rows = self.db.execute(
             "SELECT * FROM refs WHERE source_id=? ORDER BY app_id, role, locator",
@@ -225,6 +327,7 @@ class ForgeVault:
         source_count = self.db.execute("SELECT COUNT(*) FROM sources").fetchone()[0]
         ref_count = self.db.execute("SELECT COUNT(*) FROM refs").fetchone()[0]
         derived_count = self.db.execute("SELECT COUNT(*) FROM derived").fetchone()[0]
+        text_unit_count = self.db.execute("SELECT COUNT(*) FROM text_units").fetchone()[0]
         unique_bytes = self.db.execute(
             "SELECT COALESCE(SUM(size_bytes),0) FROM sources"
         ).fetchone()[0]
@@ -233,6 +336,7 @@ class ForgeVault:
             "source_count": int(source_count),
             "reference_count": int(ref_count),
             "derived_count": int(derived_count),
+            "text_unit_count": int(text_unit_count),
             "unique_source_bytes": int(unique_bytes),
             "deduplication": "sha256",
             "originals_immutable_by_convention": True,
