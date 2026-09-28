@@ -84,6 +84,15 @@ def worker_capabilities() -> list[WorkerCapability]:
             "python-local",
             "Higher-quality local TTS; Creditless adapter forces model-hub offline mode.",
         ),
+        WorkerCapability(
+            "medforge_native3d",
+            all(
+                importlib.util.find_spec(name) is not None
+                for name in ("numpy", "matplotlib", "skimage", "scipy")
+            ) and shutil.which("ffmpeg") is not None,
+            "python-local",
+            "No-Blender patient-space 3D mechanism rendering with Python + FFmpeg.",
+        ),
     ]
 
 
