@@ -120,6 +120,60 @@ class ForgeSDK:
             return self._http("GET", "/v1/cache/status")
         return ForgeCore().cache_status()
 
+    def cache_lookup(self, namespace: str, payload: Any) -> dict[str, Any] | None:
+        if self.core_url:
+            data = self._http(
+                "POST",
+                "/v1/cache/lookup",
+                {
+                    "app_id": self.app_id,
+                    "namespace": namespace,
+                    "payload": payload,
+                },
+            )
+            return data.get("entry")
+        from .cache import ForgeProjectCache
+        core = ForgeCore()
+        with ForgeProjectCache(core.paths.cache / "projects") as cache:
+            return cache.get(namespace, payload)
+
+    def cache_put_bytes(
+        self,
+        namespace: str,
+        payload: Any,
+        data: bytes,
+        *,
+        kind: str,
+        suffix: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if self.core_url:
+            import base64
+            return self._http(
+                "POST",
+                "/v1/cache/put",
+                {
+                    "app_id": self.app_id,
+                    "namespace": namespace,
+                    "payload": payload,
+                    "data_b64": base64.b64encode(data).decode("ascii"),
+                    "kind": kind,
+                    "suffix": suffix,
+                    "metadata": metadata or {},
+                },
+            )
+        from .cache import ForgeProjectCache
+        core = ForgeCore()
+        with ForgeProjectCache(core.paths.cache / "projects") as cache:
+            return cache.put_bytes(
+                namespace,
+                payload,
+                data,
+                kind=kind,
+                suffix=suffix,
+                metadata=metadata,
+            )
+
     def backup_status(self) -> dict[str, Any]:
         if self.core_url:
             return self._http("GET", "/v1/backup/status")
