@@ -143,7 +143,7 @@ LESSONS = [
         "failure": "A mask filename is treated as proven anatomy, an archive contains the wrong volume, or a mask is overlaid without spatial alignment checks.",
         "fix": "Keep imported masks labeled DERIVED / UNREVIEWED and require affine/orientation validation before source overlay.",
         "check": "Mask loader tests verify NIfTI/ZIP import and MedForge blocks overlay based only on matching dimensions.",
-    },,
+    },
     {
         "id": "12",
         "title": "Hand the evidence-aware package to Forge",
