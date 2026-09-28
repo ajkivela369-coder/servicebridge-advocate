@@ -66,11 +66,11 @@ def npz_sample_to_png_bytes(path):
         raise RuntimeError(f"No image array found in {path}")
     arr = np.asarray(arr)
     if arr.ndim == 2:
-        img = Image.fromarray(arr.astype(np.uint8), mode="L").convert("RGB")
+        img = Image.fromarray(arr.astype(np.uint8)).convert("RGB")
     elif arr.ndim == 3 and arr.shape[-1] in (1, 3, 4):
         if arr.shape[-1] == 1:
             arr = arr[..., 0]
-            img = Image.fromarray(arr.astype(np.uint8), mode="L").convert("RGB")
+            img = Image.fromarray(arr.astype(np.uint8)).convert("RGB")
         else:
             img = Image.fromarray(arr.astype(np.uint8)).convert("RGB")
     else:
@@ -137,6 +137,25 @@ def main():
         path = examples.get_path(key)
         loaded = med_io.load_dicom_bytes(Path(path).read_bytes(), Path(path).name)
         results.append(exercise_pipeline(display, loaded, "pydicom public example dataset"))
+
+    # TCIA documents getSingleImage as a public API that returns one DICOM
+    # object identified by SeriesInstanceUID + SOPInstanceUID.
+    tcia_url = (
+        "https://services.cancerimagingarchive.net/nbia-api/services/v1/getSingleImage"
+        "?SeriesInstanceUID=143.284188174537413748743284550513035752067"
+        "&SOPInstanceUID=143.53599064898089361503082484556513429004"
+    )
+    req = urllib.request.Request(tcia_url, headers={"User-Agent": "MedForge-public-smoke/1.0"})
+    with urllib.request.urlopen(req, timeout=90) as response:
+        tcia_bytes = response.read()
+    loaded = med_io.load_dicom_bytes(tcia_bytes, "TCIA_getSingleImage.dcm")
+    results.append(
+        exercise_pipeline(
+            "TCIA public single DICOM",
+            loaded,
+            "The Cancer Imaging Archive public getSingleImage example endpoint",
+        )
+    )
 
     report = {
         "suite": "MedForge public imaging smoke test",
