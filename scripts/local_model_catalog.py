@@ -6,7 +6,7 @@ from pathlib import Path
 from servicebridge.local_runtime.models import (
     LocalModel,
     LocalModelCatalog,
-    file_sha256,
+    artifact_sha256,
 )
 from servicebridge.local_runtime import detect_hardware
 
@@ -28,6 +28,8 @@ def main() -> None:
     add.add_argument("--min-ram-gb", type=float, default=0)
     add.add_argument("--min-vram-gb", type=float, default=0)
     add.add_argument("--hash", action="store_true")
+    add.add_argument("--license", default="")
+    add.add_argument("--source", default="")
     add.add_argument("--replace", action="store_true")
 
     sub.add_parser("list")
@@ -40,9 +42,9 @@ def main() -> None:
 
     if args.command == "add":
         path = Path(args.path).expanduser().resolve()
-        if not path.exists():
-            raise SystemExit(f"Model file not found: {path}")
-        digest = file_sha256(path) if args.hash else ""
+        if not path.exists() or not (path.is_file() or path.is_dir()):
+            raise SystemExit(f"Model file/directory not found: {path}")
+        digest = artifact_sha256(path) if args.hash else ""
         catalog.add(
             LocalModel(
                 model_id=args.id,
@@ -53,6 +55,8 @@ def main() -> None:
                 min_ram_gb=args.min_ram_gb,
                 min_vram_gb=args.min_vram_gb,
                 sha256=digest,
+                license=args.license,
+                source=args.source,
             ),
             replace=args.replace,
         )
