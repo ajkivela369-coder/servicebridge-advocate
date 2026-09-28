@@ -180,6 +180,16 @@ LESSONS = [
         "why": "Generative video should improve shots, not determine whether Forge can export a movie at all.",
         "failure": "No video model or GPU means the project cannot export anything.",
         "fix": "Use source-locked/generated stills plus local audio and deterministic motion/assembly as the always-available render path.",
+    },,
+    {
+        "id": "19",
+        "title": "Generate video directly from local model files",
+        "module": "servicebridge.local_runtime.video",
+        "function": "generate_video_local",
+        "plain": "Load an already-downloaded Diffusers-compatible text-to-video model directly in Python and export its frames to MP4.",
+        "why": "ComfyUI should be optional. When the machine can run a compatible model, Forge can call the model itself without a hosted service or a separate generation app.",
+        "failure": "A generic profile passes unsupported parameters, a huge model exceeds VRAM, or missing weights trigger an internet download.",
+        "fix": "Inspect the loaded pipeline signature, pass only supported parameters, use hardware/model profiles, and require local_files_only=True.",
     },
 ]
 
@@ -201,5 +211,6 @@ PIPELINE = [
     "Direct Image Gen",
     "Workflow Catalog",
     "Captions",
+    "Direct Video Gen",
     "Final Local Render",
 ]
