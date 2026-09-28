@@ -16,7 +16,7 @@ PY=".venv-creditless/bin/python"
 
 echo
 echo "Local executable checks"
-for exe in ffmpeg llama-server ollama piper nvidia-smi; do
+for exe in ffmpeg llama-server ollama piper blender nvidia-smi; do
   if command -v "$exe" >/dev/null 2>&1; then
     echo "  READY   $exe -> $(command -v "$exe")"
   else
