@@ -100,7 +100,7 @@ LESSONS = [
         "why": "Even when no generative model fits the machine, Forge can still make a useful narrated video.",
         "failure": "The app equates 'AI video unavailable' with 'video unavailable.'",
         "fix": "Separate generative shot creation from deterministic video assembly.",
-    },,
+    },
     {
         "id": "11",
         "title": "Keep semantic memory local",
