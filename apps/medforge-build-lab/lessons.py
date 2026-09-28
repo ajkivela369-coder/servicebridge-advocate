@@ -130,6 +130,19 @@ LESSONS = [
         "failure": "A downstream renderer redraws the source, removes uncertainty labels, or presents a hypothesis as observed anatomy.",
         "fix": "Carry explicit source-fidelity and hypothesis-separation rules inside the manifest itself.",
         "check": "Manifest tests assert source pixels are preserved and hypothesis cannot be relabeled as observation.",
+    },,
+    {
+        "id": "11",
+        "title": "Bring free segmentation back into MedForge",
+        "module": "med_masks",
+        "function": "load_mask_upload",
+        "plain": "Import NIfTI anatomy masks created by TotalSegmentator or another segmentation tool without changing the original DICOM source.",
+        "why": "Segmentation is derived data. Keeping it in a separate object lets us visualize and animate anatomy without pretending the mask is part of the original scan.",
+        "input": ".nii, .nii.gz, or a ZIP of segmentation masks",
+        "output": "One or more 3D boolean mask volumes with provenance",
+        "failure": "A mask filename is treated as proven anatomy, an archive contains the wrong volume, or a mask is overlaid without spatial alignment checks.",
+        "fix": "Keep imported masks labeled DERIVED / UNREVIEWED and require affine/orientation validation before source overlay.",
+        "check": "Mask loader tests verify NIfTI/ZIP import and MedForge blocks overlay based only on matching dimensions.",
     },
 ]
 
@@ -143,5 +156,6 @@ PIPELINE = [
     "Mask / Segmentation",
     "Image Understanding",
     "Mechanism",
+    "Free Segmentation",
     "Render / Export",
 ]
