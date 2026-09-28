@@ -5,6 +5,7 @@ import inspect
 from pathlib import Path
 import sys
 import tempfile
+import uuid
 
 import streamlit as st
 
@@ -25,6 +26,7 @@ from servicebridge.local_runtime import (
     runtime_snapshot,
 )
 from servicebridge.local_runtime.workers import worker_capabilities
+from forge_core.academy import AcademyStore, build_question, remediation_plan, score_question
 from lessons import LESSONS, PIPELINE
 
 
@@ -50,7 +52,9 @@ st.markdown(
 .badge{display:inline-block;padding:4px 8px;border:1px solid #385f67;border-radius:999px;background:#0b272c;color:#afe6ec;font-size:.7rem;margin:2px}
 .flow{display:flex;gap:6px;align-items:center;overflow:auto;padding:8px 0}
 .node{min-width:114px;border:1px solid #315861;background:#0b2024;border-radius:12px;padding:9px;text-align:center;font-size:12px}
-.arrow{font-size:18px;color:#688b91}
+.arrow{font-size:18px;color:#688b91;animation:flowPulse 1.7s ease-in-out infinite}
+@keyframes flowPulse{50%{transform:translateX(4px);color:#9adce5}}
+.active-node{border-color:#69b9c5!important;box-shadow:0 0 0 2px rgba(105,185,197,.12)}
 </style>
 """,
     unsafe_allow_html=True,
@@ -82,12 +86,13 @@ flow = '<div class="flow">' + ''.join(
 ) + '</div>'
 st.markdown(flow, unsafe_allow_html=True)
 
-status_tab, policy_tab, vault_tab, models_tab, lesson_tab = st.tabs([
+status_tab, policy_tab, vault_tab, models_tab, lesson_tab, academy_tab = st.tabs([
     "Runtime status",
     "Policy simulator",
     "Cache + queue sandbox",
     "Local models",
     "How it works",
+    "Forge Academy",
 ])
 
 with status_tab:
@@ -277,5 +282,100 @@ with lesson_tab:
         source = f"# Could not load source: {exc}"
     with st.expander(f'Actual code · {lesson["module"]}.{lesson["function"]}', expanded=True):
         st.code(source, language="python")
+
+
+with academy_tab:
+    st.subheader("Pre-test → lesson → simulator → post-test")
+    st.caption(
+        "Forge Academy measures learning instead of assuming that a prettier explanation worked. "
+        "Wrong answers trigger targeted remediation tied to the actual runtime lesson."
+    )
+    st.session_state.setdefault("academy_session_id", uuid.uuid4().hex[:12])
+    st.session_state.setdefault("academy_answers", {"pre": {}, "post": {}})
+
+    academy_root = Path(tempfile.gettempdir()) / "forge-systems-lab-academy"
+    store = AcademyStore(academy_root / "academy.sqlite3")
+    try:
+        lesson = LESSONS[lesson_idx]
+        question = build_question(lesson, LESSONS)
+        phase = st.radio(
+            "Assessment phase",
+            ["pre", "post"],
+            horizontal=True,
+            format_func=lambda x: "Pre-test" if x == "pre" else "Post-test",
+            key="academy_phase",
+        )
+        st.markdown(f"**Lesson {lesson['id']} · {lesson['title']}**")
+        st.write(question.prompt)
+        answer = st.radio(
+            "Choose the best repair",
+            list(range(len(question.options))),
+            format_func=lambda i: question.options[i],
+            key=f"academy_answer_{phase}_{lesson['id']}",
+        )
+        if st.button(
+            "Submit assessment",
+            type="primary",
+            key=f"academy_submit_{phase}_{lesson['id']}",
+        ):
+            correct = score_question(question, int(answer))
+            st.session_state["academy_answers"][phase][question.question_id] = int(answer)
+            store.record(
+                st.session_state["academy_session_id"],
+                lesson_id=question.lesson_id,
+                phase=phase,
+                correct=correct,
+                selected_index=int(answer),
+                answer_index=question.answer_index,
+            )
+            if correct:
+                st.success("Correct. The repair matches the architecture.")
+            else:
+                st.warning("Not yet. Forge Academy has queued targeted remediation below.")
+
+        pre_answers = st.session_state["academy_answers"].get("pre", {})
+        pre_plan = remediation_plan([question], pre_answers)
+        if pre_plan:
+            st.markdown("**Adaptive remediation**")
+            st.info(lesson["plain"])
+            st.warning("Failure pattern\n\n" + lesson["failure"])
+            st.success("Repair path\n\n" + lesson["fix"])
+
+        st.markdown("**Simulator branch**")
+        st.write(
+            "A dependent app hits this failure. Choose what Forge should do next; "
+            "the branch uses the same repair rule as the production lesson."
+        )
+        sim_choice = st.selectbox(
+            "Next action",
+            list(question.options),
+            key=f"academy_sim_{lesson['id']}",
+        )
+        if st.button("Run simulator decision", key=f"academy_sim_submit_{lesson['id']}"):
+            idx = list(question.options).index(sim_choice)
+            correct = score_question(question, idx)
+            store.record(
+                st.session_state["academy_session_id"],
+                lesson_id=question.lesson_id,
+                phase="simulator",
+                correct=correct,
+                selected_index=idx,
+                answer_index=question.answer_index,
+            )
+            if correct:
+                st.success("The simulated branch stays inside the Forge contract.")
+            else:
+                st.error("That branch would reintroduce the failure. Review the repair path and retry.")
+
+        summary = store.summary(st.session_state["academy_session_id"])
+        st.markdown("**Measured learning**")
+        a1,a2,a3 = st.columns(3)
+        gain = summary["learning_gain"]
+        a1.metric("Pre-test", f'{gain["pre_percent"]:.1f}%')
+        a2.metric("Post-test", f'{gain["post_percent"]:.1f}%')
+        a3.metric("Raw gain", f'{gain["raw_gain"]:+.0f}')
+        st.json(summary)
+    finally:
+        store.close()
 
 st.caption("Forge Systems Lab · live companion to the ServiceBridge Local Runtime")
