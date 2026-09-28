@@ -15,6 +15,7 @@ from forge_core import ForgeCore, ForgeSDK
 from forge_core.model_profiles import register_present_profiles, staged_profile_status
 from forge_core.process import ForgeProcessManager
 from forge_core.settings import ForgeSettings
+from servicebridge.local_runtime.offline import build_offline_pack
 
 
 st.set_page_config(
@@ -256,20 +257,89 @@ with jobs_tab:
 
 with recovery_tab:
     st.subheader("Backup & disaster recovery")
-    st.warning(
-        "Recovery is not marked PASS yet. The acceptance test is a clean restore that rebuilds and renders a representative project."
+    recovery_state = forge.backup_status()
+    status = str(recovery_state.get("status", "NOT_RUN"))
+    if status == "PASS":
+        st.success("Recovery PASS · a clean restored copy rebuilt and rendered the verification project.")
+    elif status == "PARTIAL":
+        st.warning("Recovery PARTIAL · inspect the failed acceptance checks below.")
+    else:
+        st.warning(
+            "Recovery is not marked PASS until a verified pack is restored into a clean directory "
+            "and the restored code actually renders the representative MP4."
+        )
+    st.json(recovery_state)
+
+    backup_root = Path(settings.get("backup_root", "./private_data/forge_backups"))
+    if not backup_root.is_absolute():
+        backup_root = ROOT / backup_root
+    backup_root.mkdir(parents=True, exist_ok=True)
+    default_pack = backup_root / "forge-creditless-offline-pack.zip"
+
+    include_models = st.checkbox(
+        "Include registered model files in offline pack",
+        value=False,
+        help="Model files can make the backup very large. They are never swept in unless you explicitly enable this.",
     )
-    checklist = {
-        "settings": (ROOT / "private_data/forge/settings.json").exists(),
-        "model catalog": ForgeCore().paths.model_catalog.exists(),
-        "Forge Vault": Path(ForgeCore().paths.vault).exists(),
-        "cache": Path(ForgeCore().paths.cache).exists(),
-        "recovery drill verified": False,
-    }
-    st.json(checklist)
-    st.markdown(
-        "Planned drill: disable internet → make one primary executable unavailable → restore into a clean directory → "
-        "re-register local assets/models → rebuild representative project → render output → verify hashes."
+    if st.button("Build verified offline pack", use_container_width=True):
+        try:
+            result = build_offline_pack(
+                default_pack,
+                repo_root=ROOT,
+                model_catalog=ForgeCore().paths.model_catalog,
+                workflow_catalog=ROOT / "private_data/local_runtime/workflows.json",
+                include_models=include_models,
+            )
+            st.session_state["last_backup_result"] = result
+            st.success(f'Offline pack built: {result["entry_count"]} verified manifest entries.')
+        except Exception as exc:
+            st.error(f"Backup build failed: {exc}")
+
+    if st.session_state.get("last_backup_result"):
+        st.json(st.session_state["last_backup_result"])
+
+    pack_path = st.text_input(
+        "Recovery pack",
+        str(default_pack),
+        help="Forge verifies every manifest hash before attempting the restore.",
+    )
+    network_confirmed = st.checkbox(
+        "External internet is actually disabled for this drill",
+        value=False,
+        help="Do not check this merely to obtain PASS. Forge records this as an acceptance condition.",
+    )
+    primary_exe = st.text_input(
+        "Primary executable to remove from recovery PATH",
+        "ollama",
+    )
+
+    r1, r2 = st.columns(2)
+    if r1.button("Verify pack", use_container_width=True):
+        try:
+            st.session_state["backup_verify"] = forge.verify_backup(pack_path)
+        except Exception as exc:
+            st.error(f"Pack verification failed: {exc}")
+    if r2.button("Run recovery drill", type="primary", use_container_width=True):
+        try:
+            st.session_state["recovery_result"] = forge.recovery_drill(
+                pack_path,
+                network_isolation_confirmed=network_confirmed,
+                primary_executable=primary_exe,
+            )
+        except Exception as exc:
+            st.error(f"Recovery drill failed: {exc}")
+
+    if st.session_state.get("backup_verify"):
+        st.markdown("**Pack verification**")
+        st.json(st.session_state["backup_verify"])
+    if st.session_state.get("recovery_result"):
+        st.markdown("**Latest drill result**")
+        st.json(st.session_state["recovery_result"])
+
+    st.caption(
+        "Acceptance chain: archive hashes → empty restore target → restored source compiles → "
+        "Forge imports from restored copy → primary executable absent from PATH → external network isolation confirmed → "
+        "representative project renders to a non-empty MP4."
     )
 
 with settings_tab:
