@@ -200,7 +200,7 @@ LESSONS = [
         "why": "Piper gives us a lightweight CPU baseline, while Kokoro gives the apps a second local voice-quality tier without per-character credits.",
         "failure": "Kokoro lazily requests a missing model or voice file from the internet.",
         "fix": "Force model-hub offline flags before pipeline creation and fail if the required model/voice is not already cached.",
-    },,
+    },
     {
         "id": "21",
         "title": "Auto-fallback between local voice engines",
