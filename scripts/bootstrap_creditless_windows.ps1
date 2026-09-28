@@ -1,6 +1,7 @@
 param(
   [switch]$WithOCR,
-  [switch]$WithWhisper
+  [switch]$WithWhisper,
+  [string]$Wheelhouse = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,18 +25,34 @@ if (-not (Test-Path $Venv)) {
 }
 
 $Py = Join-Path $Venv "Scripts\python.exe"
-& $Py -m pip install --upgrade pip
-& $Py -m pip install -e .
-& $Py -m pip install -r apps/forge-systems-lab/requirements.txt
-& $Py -m pip install "pypdf>=5"
+$PipSource = @()
+if ($Wheelhouse) {
+  $ResolvedWheelhouse = (Resolve-Path $Wheelhouse).Path
+  $PipSource = @("--no-index", "--find-links", $ResolvedWheelhouse)
+  Write-Host "Offline wheelhouse: $ResolvedWheelhouse" -ForegroundColor Cyan
+} else {
+  & $Py -m pip install --upgrade pip
+}
+
+& $Py -m pip install @PipSource -e .
+foreach ($Req in @(
+  "apps/forge-systems-lab/requirements.txt",
+  "apps/grimforge-war-theater/requirements.txt",
+  "apps/wildtake-streamlit/requirements.txt",
+  "apps/medforge-imaging-studio/requirements.txt",
+  "apps/medforge-build-lab/requirements.txt"
+)) {
+  & $Py -m pip install @PipSource -r $Req
+}
+& $Py -m pip install @PipSource "pypdf>=5"
 
 if ($WithWhisper) {
-  & $Py -m pip install faster-whisper
+  & $Py -m pip install @PipSource faster-whisper
 }
 
 if ($WithOCR) {
-  Write-Host "Installing PaddleOCR Python package. Backend/model provisioning may require additional setup."
-  & $Py -m pip install paddleocr
+  Write-Host "Installing PaddleOCR Python package. Model weights must be pre-provisioned for true offline use."
+  & $Py -m pip install @PipSource paddleocr
 }
 
 Write-Host ""
