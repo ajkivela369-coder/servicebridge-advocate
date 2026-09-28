@@ -22,9 +22,11 @@ jobs:
       - run: python -m pip install -r apps/medforge-imaging-studio/requirements.txt
       - run: python -m pip install -r apps/medforge-build-lab/requirements.txt
       - run: python -m pip install -r apps/forge-systems-lab/requirements.txt
+      - run: python -m pip install -r apps/grimforge-war-theater/requirements.txt
+      - run: python -m pip install -r apps/wildtake-streamlit/requirements.txt
       - run: python scripts/check_public_repo.py
       - run: python -m unittest discover -s tests -v
-      - run: python -m compileall -q src portfolio/evidence-auditor/legacy-streamlit portfolio/evidence-auditor/00_CURRENT_APP/reference portfolio/grimforge-studio apps/medforge-imaging-studio apps/medforge-build-lab apps/forge-systems-lab
+      - run: python -m compileall -q src portfolio/evidence-auditor/legacy-streamlit portfolio/evidence-auditor/00_CURRENT_APP/reference portfolio/grimforge-studio apps/grimforge-war-theater apps/wildtake-streamlit apps/medforge-imaging-studio apps/medforge-build-lab apps/forge-systems-lab
       - name: Boot MedForge Imaging Studio
         run: |
           streamlit run apps/medforge-imaging-studio/app.py --server.headless true --server.address 127.0.0.1 --server.port 8501 >/tmp/medforge.log 2>&1 &
@@ -68,5 +70,35 @@ jobs:
             sleep 1
           done
           cat /tmp/forge-systems-lab.log
+          kill $PID || true
+          exit 1
+      - name: Boot GrimForge War Theater
+        run: |
+          streamlit run apps/grimforge-war-theater/app.py --server.headless true --server.address 127.0.0.1 --server.port 8504 >/tmp/grimforge-war.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8504/_stcore/health; then
+              kill $PID || true
+              wait $PID || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/grimforge-war.log
+          kill $PID || true
+          exit 1
+      - name: Boot WildTake Studio
+        run: |
+          streamlit run apps/wildtake-streamlit/app.py --server.headless true --server.address 127.0.0.1 --server.port 8505 >/tmp/wildtake.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8505/_stcore/health; then
+              kill $PID || true
+              wait $PID || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/wildtake.log
           kill $PID || true
           exit 1
