@@ -332,3 +332,80 @@ class ForgeSDK:
             source["references"] = vault.references_for(source["source_id"])
             source["backend"] = "Forge Core"
             return source
+
+
+
+    def ingest_document_bytes(
+        self,
+        data: bytes,
+        *,
+        original_name: str,
+        mime_type: str = "",
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Vault the original once, then extract local page/text records."""
+        from pathlib import Path
+        import tempfile
+
+        source = self.vault_add_bytes(
+            data,
+            original_name=original_name,
+            mime_type=mime_type,
+            metadata=metadata,
+            role="ingested-source",
+        )
+
+        suffixes = "".join(Path(original_name).suffixes) or ".bin"
+        pages: list[dict[str, Any]] = []
+        with tempfile.NamedTemporaryFile(suffix=suffixes) as tmp:
+            tmp.write(data)
+            tmp.flush()
+            path = Path(tmp.name)
+            lower = original_name.lower()
+            if lower.endswith(".pdf"):
+                from servicebridge.local_runtime.documents import extract_pdf_text
+
+                pages = extract_pdf_text(path)
+                if any(bool(x.get("needs_ocr")) for x in pages):
+                    try:
+                        ocr_result = self.ocr(str(path))
+                        ocr_text = str(ocr_result.get("text", "")).strip()
+                        if ocr_text:
+                            pages = [{
+                                "page": 1,
+                                "text": ocr_text,
+                                "needs_ocr": False,
+                                "ocr_fallback": True,
+                            }]
+                    except Exception:
+                        # Embedded text remains available even when optional OCR
+                        # is not installed.
+                        pass
+            elif lower.endswith((".txt", ".md", ".csv", ".json")):
+                pages = [{
+                    "page": 1,
+                    "text": data.decode("utf-8", errors="replace"),
+                    "needs_ocr": False,
+                }]
+            else:
+                try:
+                    ocr_result = self.ocr(str(path))
+                    pages = [{
+                        "page": 1,
+                        "text": str(ocr_result.get("text", "")),
+                        "needs_ocr": False,
+                        "ocr_fallback": True,
+                    }]
+                except Exception:
+                    pages = []
+
+        for page in pages:
+            page["source_id"] = source["source_id"]
+            page["sha256"] = source["sha256"]
+            page["source_name"] = original_name
+
+        return {
+            "source": source,
+            "pages": pages,
+            "backend": "Forge Core",
+        }
