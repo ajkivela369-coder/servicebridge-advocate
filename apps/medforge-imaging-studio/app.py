@@ -562,15 +562,22 @@ with tabs[2]:
                 st.json(spatial.to_dict())
                 if spatial.spatial_overlay_ready:
                     st.success(
-                        "The DICOM and NIfTI volumes overlap in patient RAS space. "
-                        "MedForge can resample the DERIVED mask into the source DICOM grid."
+                        "The DICOM and NIfTI volumes are geometrically compatible in patient RAS space. "
+                        "Geometry alone does not prove that this mask belongs to this exact source series."
+                    )
+                    pairing_confirmed = st.checkbox(
+                        "I confirm this mask was generated from this DICOM series or was explicitly co-registered to it",
+                        value=False,
+                        key=f"confirm_mask_pairing_{selected_mask.name}",
                     )
                     show_overlay = st.checkbox(
                         "Show affine-aligned source/mask overlay",
                         value=False,
                         key=f"show_aligned_overlay_{selected_mask.name}",
+                        disabled=not pairing_confirmed,
+                        help="Overlay stays disabled until the source↔mask pairing is explicitly confirmed.",
                     )
-                    if show_overlay:
+                    if show_overlay and pairing_confirmed:
                         try:
                             aligned_mask, _ = resample_mask_to_source(
                                 selected_mask.data,
