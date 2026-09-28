@@ -79,3 +79,44 @@ A MedForge render must:
 ## Relationship to GrimForge
 
 MedForge reuses Forge concepts—source lock, scene planning, narration, animatics, render manifests—but has a separate medical/evidence interface. This keeps the creative war-film product clean while allowing a shared rendering core underneath both apps.
+
+
+## DICOM study + 3D volume workflow
+
+The current branch now adds:
+- multiple DICOM file or ZIP upload
+- PHI-minimized series inspection
+- series selection by SeriesInstanceUID
+- geometric slice ordering using ImagePositionPatient + ImageOrientationPatient when available
+- rescale slope/intercept handling
+- source-locked z-y-x volume assembly
+- axial / coronal / sagittal multiplanar reconstruction
+- downsampled browser 3D intensity preview
+- compressed DICOM decoder support through pylibjpeg plugins
+- explicit decode warnings when a series cannot be assembled
+
+Raw pydicom Dataset objects are not included in project JSON exports.
+
+## Segmentation path
+
+The branch now proves the mask pipeline with a deliberately non-clinical percentile mask. This mask has **no anatomical meaning**. It exists so the mask viewer/render plumbing can be tested before connecting anatomical segmentation.
+
+Planned reviewed adapters:
+- TotalSegmentator
+- MONAI Label
+
+Both adapters are represented as provider-neutral job contracts and remain marked planned until a real worker is connected and validated.
+
+## Parallel learning app
+
+The sibling app `apps/medforge-build-lab/` teaches the same pipeline step by step. It imports the actual MedForge modules and uses source introspection so lesson code stays synchronized with the app.
+
+The Build Lab includes:
+- source → privacy → series → volume → MPR → 3D preview → mask/segmentation → image understanding → mechanism → export pipeline map
+- plain-English explanations
+- input/output for each step
+- why the step matters
+- failure modes and repair paths
+- current unit-test strategy
+- actual live function source code
+- a synthetic 3D phantom sandbox with axial/coronal/sagittal controls
