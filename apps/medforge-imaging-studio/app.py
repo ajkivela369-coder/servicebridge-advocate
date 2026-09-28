@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +17,7 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from servicebridge.local_runtime import RuntimeMode, RuntimePolicy, discover_services
+from servicebridge.local_runtime.media import ffmpeg_available
 from servicebridge.local_runtime.vision import LocalVisionClient
 
 from med_io import load_medical_image_bytes
@@ -28,6 +30,7 @@ from med_blender import (
 )
 from med_mesh import mask_to_mesh, mesh_surface_area_mm2
 from med_motion import build_motion, motion_from_dict
+from med_native3d import NativeRenderSettings, render_native_animation
 from med_space import alignment_report, resample_mask_to_source
 from med_volume import (
     build_dicom_volume,
@@ -125,6 +128,7 @@ for key, value in {
     "selected_mask_name": "",
     "blender_motions": [],
     "blender_bundle_bytes": b"",
+    "native3d_video_bytes": b"",
     "runtime_mode": RuntimeMode.CREDITLESS.value,
     "local_runtime_status": [],
     "local_vlm_endpoint": "http://127.0.0.1:8080/v1/chat/completions",
@@ -1008,6 +1012,89 @@ with tabs[7]:
             st.caption(
                 "The bundle contains OBJ meshes, scene.json, the Blender build script, and evidence-boundary notes. "
                 "It contains no raw DICOM files."
+            )
+
+            st.markdown("**Same bundle · no Blender required**")
+            st.code(
+                "python scripts/render_medforge_native3d_bundle.py medforge-blender-bundle.zip --output medforge-native3d.mp4",
+                language="bash",
+            )
+            st.caption(
+                "The native renderer uses the same patient-space OBJ meshes and explicit motion tracks, then renders frames with Python and assembles the MP4 with FFmpeg."
+            )
+
+        st.markdown("**One-click native Python 3D render**")
+        n1, n2 = st.columns(2)
+        native_fps = n1.number_input(
+            "Native preview FPS",
+            min_value=6,
+            max_value=30,
+            value=15,
+            step=1,
+            key="native3d_fps",
+        )
+        native_frames = n2.number_input(
+            "Native preview frames",
+            min_value=10,
+            max_value=180,
+            value=45,
+            step=5,
+            key="native3d_frames",
+        )
+        if st.button(
+            "Render native 3D MP4 · no Blender",
+            use_container_width=True,
+            key="render_native3d",
+            disabled=not ffmpeg_available(),
+        ):
+            try:
+                ids = object_ids_for_masks(st.session_state.imported_masks)
+                meshes = []
+                for mask_item, object_id in zip(st.session_state.imported_masks, ids):
+                    meshes.append((
+                        object_id,
+                        mask_to_mesh(
+                            mask_item.data,
+                            mask_item.affine,
+                            name=mask_item.name,
+                            provenance=mask_item.provenance,
+                            step_size=max(1, int(mesh_step)),
+                        ),
+                    ))
+                max_frame = max(
+                    [int(native_frames)]
+                    + [m.end_frame for m in st.session_state.blender_motions]
+                )
+                with tempfile.TemporaryDirectory(prefix="medforge-native3d-ui-") as tmp:
+                    output = Path(tmp) / "medforge-native3d.mp4"
+                    render_native_animation(
+                        meshes,
+                        st.session_state.blender_motions,
+                        output,
+                        settings=NativeRenderSettings(
+                            fps=int(native_fps),
+                            frame_start=1,
+                            frame_end=max_frame,
+                            width=960,
+                            height=540,
+                        ),
+                    )
+                    st.session_state.native3d_video_bytes = output.read_bytes()
+                st.success("Native MedForge 3D MP4 rendered without Blender.")
+            except Exception as exc:
+                st.error(f"Native 3D render failed: {exc}")
+
+        if not ffmpeg_available():
+            st.warning("Native 3D export needs local FFmpeg for final MP4 assembly.")
+
+        if st.session_state.native3d_video_bytes:
+            st.video(st.session_state.native3d_video_bytes)
+            st.download_button(
+                "⬇ Download native MedForge 3D MP4",
+                data=st.session_state.native3d_video_bytes,
+                file_name="medforge-native3d.mp4",
+                mime="video/mp4",
+                use_container_width=True,
             )
 
     st.warning(
