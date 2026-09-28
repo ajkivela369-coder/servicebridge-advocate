@@ -120,6 +120,50 @@ class ForgeSDK:
             return self._http("GET", "/v1/cache/status")
         return ForgeCore().cache_status()
 
+    def backup_status(self) -> dict[str, Any]:
+        if self.core_url:
+            return self._http("GET", "/v1/backup/status")
+        from .recovery import load_recovery_status
+        core = ForgeCore()
+        return load_recovery_status(core.paths.root / "recovery" / "latest.json")
+
+    def verify_backup(self, pack_path: str) -> dict[str, Any]:
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/backup/verify",
+                {"pack_path": pack_path},
+            )
+        from servicebridge.local_runtime.offline import verify_offline_pack
+        return verify_offline_pack(pack_path)
+
+    def recovery_drill(
+        self,
+        pack_path: str,
+        *,
+        network_isolation_confirmed: bool = False,
+        primary_executable: str = "ollama",
+    ) -> dict[str, Any]:
+        if self.core_url:
+            return self._http(
+                "POST",
+                "/v1/recovery/drill",
+                {
+                    "pack_path": pack_path,
+                    "network_isolation_confirmed": bool(network_isolation_confirmed),
+                    "primary_executable": primary_executable,
+                },
+            )
+        from .recovery import run_recovery_drill
+        core = ForgeCore()
+        return run_recovery_drill(
+            pack_path,
+            report_path=core.paths.root / "recovery" / "latest.json",
+            primary_executable=primary_executable,
+            network_isolation_confirmed=network_isolation_confirmed,
+        ).to_dict()
+
+
 
 
     # --- Standard execution surface used by all Forge-backed apps ---
