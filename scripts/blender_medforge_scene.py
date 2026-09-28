@@ -193,7 +193,28 @@ def main():
                 pass
             set_origin_to_geometry(obj)
             all_objects.append(obj)
-        imported_by_id[item["object_id"]] = imported
+
+        # Keep derived geometry separate from illustrative motion. The controller
+        # carries keyframes; meshes remain children with their provenance intact.
+        center = Vector((0.0, 0.0, 0.0))
+        for obj in imported:
+            center += obj.location
+        center /= max(1, len(imported))
+
+        controller = bpy.data.objects.new(f'RIG_{item["object_id"]}', None)
+        controller.empty_display_type = "PLAIN_AXES"
+        controller.empty_display_size = 8.0
+        controller.location = center
+        controller["medforge_control_role"] = "ILLUSTRATIVE / HYPOTHESIZED MOTION RIG"
+        controller["medforge_structure_id"] = item["object_id"]
+        bpy.context.scene.collection.objects.link(controller)
+
+        for obj in imported:
+            world = obj.matrix_world.copy()
+            obj.parent = controller
+            obj.matrix_world = world
+
+        imported_by_id[item["object_id"]] = [controller]
 
     bpy.context.view_layer.update()
     add_camera_and_lights(all_objects)
