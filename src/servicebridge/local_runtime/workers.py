@@ -60,6 +60,18 @@ def worker_capabilities() -> list[WorkerCapability]:
             "http-local",
             "Availability is determined by the runtime health check at port 8188.",
         ),
+        WorkerCapability(
+            "paddleocr",
+            importlib.util.find_spec("paddleocr") is not None,
+            "python-local",
+            "Local OCR/document parsing. Pre-provision model weights for fully offline use.",
+        ),
+        WorkerCapability(
+            "pypdf",
+            importlib.util.find_spec("pypdf") is not None,
+            "python-local",
+            "Local embedded-text extraction from PDFs.",
+        ),
     ]
 
 
