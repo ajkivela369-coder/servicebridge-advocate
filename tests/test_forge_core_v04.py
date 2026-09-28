@@ -194,8 +194,11 @@ class OneBackendFourAppsTests(unittest.TestCase):
     def test_grimforge_pipeline_uses_forge_for_tts_and_final_render(self):
         repo = Path(__file__).resolve().parents[1]
         text = (repo / "apps/grimforge-war-theater/local_pipeline.py").read_text(encoding="utf-8")
-        self.assertIn('ForgeSDK.for_app("grimforge").render_video', text)
+        self.assertIn('forge = ForgeSDK.for_app("grimforge")', text)
+        self.assertIn("forge.render_video(", text)
         self.assertIn("forge.tts(", text)
+        self.assertIn("forge.cache_lookup(", text)
+        self.assertIn("forge.cache_put_bytes(", text)
         self.assertNotIn("generate_speech_local_auto(", text)
 
 
