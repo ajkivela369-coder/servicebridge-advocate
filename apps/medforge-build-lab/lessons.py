@@ -165,10 +165,10 @@ LESSONS = [
         "plain": "Compare the DICOM volume and imported mask using their real-world RAS coordinates instead of assuming matching array dimensions means matching anatomy.",
         "why": "A NIfTI file may reorder or flip voxel axes while still describing the same physical anatomy. Shape-only matching can produce dangerously wrong overlays.",
         "input": "DICOM z-y-x shape + DICOM affine + NIfTI shape + NIfTI affine",
-        "output": "Affine validity, voxel spacing, centers, physical overlap, and a spatial-overlay readiness decision",
+        "output": "Affine validity, voxel spacing, centers, physical overlap, and a geometry-compatibility decision",
         "failure": "Two unrelated volumes happen to have the same dimensions and are overlaid anyway.",
-        "fix": "Require finite invertible affines and sufficient patient-space overlap before automatic resampling.",
-        "check": "Tests include a deliberately transposed NIfTI mask that still aligns correctly through its affine, plus a distant mask that is blocked.",
+        "fix": "Require finite invertible affines and sufficient patient-space overlap, then require explicit confirmation that the mask belongs to or was co-registered with the selected source before showing an overlay.",
+        "check": "Tests include a deliberately transposed NIfTI mask that still aligns correctly through its affine, a distant mask that is blocked, and the UI keeps overlay disabled until the pairing is explicitly confirmed.",
     },
     {
         "id": "14",
@@ -219,7 +219,7 @@ LESSONS = [
         "input": "Imported masks + explicit motion tracks + render settings",
         "output": "Blender-ready ZIP containing scene.json, OBJ meshes, renderer script, and evidence-boundary README",
         "failure": "Raw DICOM leaks into the renderer or the animation loses the distinction between derived anatomy and illustrative motion.",
-        "fix": "Exclude DICOM entirely and carry evidence-class metadata into every object/motion and into the scene-level rules.",
+        "fix": "Exclude DICOM entirely, carry evidence-class metadata into every object/motion and into the scene-level rules, and burn ILLUSTRATIVE / DERIVED into rendered Blender frames.",
         "check": "Bundle tests verify no .dcm files, the script is present, motions are explicit, and the source-DICOM flag is false.",
     },
     {
@@ -247,6 +247,19 @@ LESSONS = [
         "failure": "The native renderer applies different motion math than the Blender handoff or loses the illustrative label.",
         "fix": "Use the same mm/degree tracks and render a permanent ILLUSTRATIVE / DERIVED label into every frame.",
         "check": "Unit tests verify motion interpolation and rigid-body rotation/translation around the mesh center.",
+    },,
+    {
+        "id": "20",
+        "title": "Measure geometric proximity without calling it compression",
+        "module": "med_proximity",
+        "function": "proximity_over_motion",
+        "plain": "Measure the nearest surface-to-surface distance between two derived meshes across the explicit animation frames.",
+        "why": "A mechanism video can show structures approaching each other, but distance alone does not establish force, deformation, vascular flow change, nerve irritation, pathology, or causation.",
+        "input": "Two patient-space meshes + optional explicit motion tracks + sampled frames",
+        "output": "Frame-by-frame nearest distance in millimeters plus the two closest RAS points",
+        "failure": "A small mesh distance is labeled as proven compression or impingement.",
+        "fix": "Call the result geometric proximity only, export the measurements, and keep clinical interpretation separate.",
+        "check": "Tests verify a known translation changes the measured distance by the expected number of millimeters.",
     },
 ]
 
@@ -267,5 +280,6 @@ PIPELINE = [
     "Blender Scene",
     "Local VLM",
     "Native 3D Fallback",
+    "Geometric Proximity",
     "Render / Export",
 ]

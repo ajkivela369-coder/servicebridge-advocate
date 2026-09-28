@@ -31,6 +31,7 @@ from med_blender import (
 from med_mesh import mask_to_mesh, mesh_surface_area_mm2
 from med_motion import build_motion, motion_from_dict
 from med_native3d import NativeRenderSettings, render_native_animation
+from med_proximity import proximity_over_motion
 from med_space import alignment_report, resample_mask_to_source
 from med_volume import (
     build_dicom_volume,
@@ -562,15 +563,22 @@ with tabs[2]:
                 st.json(spatial.to_dict())
                 if spatial.spatial_overlay_ready:
                     st.success(
-                        "The DICOM and NIfTI volumes overlap in patient RAS space. "
-                        "MedForge can resample the DERIVED mask into the source DICOM grid."
+                        "The DICOM and NIfTI volumes are geometrically compatible in patient RAS space. "
+                        "Geometry alone does not prove that this mask belongs to this exact source series."
+                    )
+                    pairing_confirmed = st.checkbox(
+                        "I confirm this mask was generated from this DICOM series or was explicitly co-registered to it",
+                        value=False,
+                        key=f"confirm_mask_pairing_{selected_mask.name}",
                     )
                     show_overlay = st.checkbox(
                         "Show affine-aligned source/mask overlay",
                         value=False,
                         key=f"show_aligned_overlay_{selected_mask.name}",
+                        disabled=not pairing_confirmed,
+                        help="Overlay stays disabled until the source↔mask pairing is explicitly confirmed.",
                     )
-                    if show_overlay:
+                    if show_overlay and pairing_confirmed:
                         try:
                             aligned_mask, _ = resample_mask_to_source(
                                 selected_mask.data,
@@ -965,6 +973,99 @@ with tabs[7]:
                     st.session_state.blender_motions.pop(idx)
                     st.session_state.blender_bundle_bytes = b""
                     st.rerun()
+
+        st.markdown("**Geometric proximity lab**")
+        st.caption(
+            "Measure nearest surface-to-surface distance between two DERIVED meshes across the explicit motion track. "
+            "This is geometry only—not tissue force, compression, vascular flow, nerve irritation, pathology, or causation."
+        )
+        if len(object_ids) >= 2:
+            p1, p2 = st.columns(2)
+            prox_a = p1.selectbox(
+                "Structure A",
+                object_ids,
+                index=0,
+                key="proximity_object_a",
+            )
+            prox_b = p2.selectbox(
+                "Structure B",
+                object_ids,
+                index=1 if len(object_ids) > 1 else 0,
+                key="proximity_object_b",
+            )
+            prox_samples = st.slider(
+                "Frames to sample",
+                min_value=3,
+                max_value=60,
+                value=12,
+                step=1,
+                key="proximity_frame_samples",
+            )
+            if st.button("Measure geometric proximity", key="measure_proximity"):
+                try:
+                    mesh_map = {}
+                    for mask_item, object_id in zip(st.session_state.imported_masks, object_ids):
+                        mesh_map[object_id] = mask_to_mesh(
+                            mask_item.data,
+                            mask_item.affine,
+                            name=mask_item.name,
+                            provenance=mask_item.provenance,
+                            step_size=max(1, int(mesh_step)),
+                        )
+                    motion_map = {m.structure_id: m for m in st.session_state.blender_motions}
+                    max_end = max(
+                        [90] + [m.end_frame for m in st.session_state.blender_motions]
+                    )
+                    frames = np.linspace(1, max_end, int(prox_samples), dtype=int)
+                    series = proximity_over_motion(
+                        prox_a,
+                        mesh_map[prox_a],
+                        prox_b,
+                        mesh_map[prox_b],
+                        motion_a=motion_map.get(prox_a),
+                        motion_b=motion_map.get(prox_b),
+                        frames=frames,
+                    )
+                    st.session_state["proximity_series"] = series.to_dict()
+                except Exception as exc:
+                    st.error(f"Could not measure proximity: {exc}")
+
+            if st.session_state.get("proximity_series"):
+                prox = st.session_state["proximity_series"]
+                st.metric(
+                    "Minimum geometric distance",
+                    f'{prox["minimum_distance_mm"]:.2f} mm',
+                    help="Nearest surface-to-surface vertex distance in the derived mesh geometry.",
+                )
+                st.caption(
+                    f'Minimum occurs at sampled frame {prox["minimum_frame"]}. '
+                    + prox["interpretation"]
+                )
+                prox_fig = go.Figure()
+                prox_fig.add_trace(
+                    go.Scatter(
+                        x=[int(x["frame"]) for x in prox["samples"]],
+                        y=[float(x["distance_mm"]) for x in prox["samples"]],
+                        mode="lines+markers",
+                        name="Nearest surface distance",
+                    )
+                )
+                prox_fig.update_layout(
+                    height=320,
+                    margin=dict(l=10, r=10, t=30, b=10),
+                    xaxis_title="Animation frame",
+                    yaxis_title="Distance (mm)",
+                )
+                st.plotly_chart(prox_fig, use_container_width=True)
+                st.download_button(
+                    "⬇ Download proximity measurements",
+                    data=json.dumps(prox, indent=2),
+                    file_name="medforge-geometric-proximity.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+        else:
+            st.info("Import at least two segmentation masks to compare geometric proximity.")
 
         st.markdown("**Blender handoff**")
         local_blender = blender_available()

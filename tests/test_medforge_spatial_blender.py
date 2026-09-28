@@ -28,6 +28,8 @@ mesh_mod = load("med_mesh_test", "med_mesh.py")
 masks_mod = load("med_masks_mesh_test", "med_masks.py")
 motion_mod = load("med_motion_test", "med_motion.py")
 blender_mod = load("med_blender_test", "med_blender.py")
+native_mod = load("med_native3d_test", "med_native3d.py")
+proximity_mod = load("med_proximity_test", "med_proximity.py")
 
 
 class MedForgeSpatialTests(unittest.TestCase):
@@ -118,6 +120,18 @@ class MedForgeMeshBlenderTests(unittest.TestCase):
         self.assertIn("\nv ", "\n" + obj)
         self.assertIn("\nf ", "\n" + obj)
 
+    def test_singular_affine_is_rejected_before_mesh_export(self):
+        mask = self.make_mask()
+        singular = mask.affine.copy()
+        singular[:3, 2] = 0.0
+        with self.assertRaises(ValueError):
+            mesh_mod.mask_to_mesh(
+                mask.data,
+                singular,
+                name=mask.name,
+                provenance=mask.provenance,
+            )
+
     def test_motion_is_explicitly_illustrative(self):
         motion = motion_mod.build_motion(
             "vertebra",
@@ -153,6 +167,98 @@ class MedForgeMeshBlenderTests(unittest.TestCase):
             self.assertFalse(scene["evidence_rules"]["source_dicom_included"])
             self.assertFalse(scene["evidence_rules"]["motion_is_inferred_by_software"])
             self.assertEqual(scene["motions"][0]["structure_id"], object_id)
+            blender_script = zf.read("blender_medforge_scene.py").decode("utf-8")
+            self.assertIn("ILLUSTRATIVE / DERIVED", blender_script)
+            self.assertIn("use_stamp_note", blender_script)
+
+    def test_native_motion_math_uses_same_explicit_track(self):
+        vertices = np.array([
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+        ])
+        motion = motion_mod.build_motion(
+            "vertebra",
+            translation_mm_xyz=(4.0, 0.0, 0.0),
+            rotation_deg_xyz=(0.0, 0.0, 0.0),
+            start_frame=1,
+            end_frame=5,
+        )
+        halfway = native_mod.transform_vertices(vertices, motion, 3)
+        np.testing.assert_allclose(halfway, vertices + np.array([2.0, 0.0, 0.0]))
+        final = native_mod.transform_vertices(vertices, motion, 5)
+        np.testing.assert_allclose(final, vertices + np.array([4.0, 0.0, 0.0]))
+
+    def test_native_rotation_occurs_about_mesh_center(self):
+        vertices = np.array([
+            [-1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ])
+        motion = motion_mod.build_motion(
+            "vertebra",
+            rotation_deg_xyz=(0.0, 0.0, 90.0),
+            start_frame=1,
+            end_frame=2,
+        )
+        rotated = native_mod.transform_vertices(vertices, motion, 2)
+        np.testing.assert_allclose(
+            rotated,
+            np.array([[0.0, -1.0, 0.0], [0.0, 1.0, 0.0]]),
+            atol=1e-6,
+        )
+
+    def test_geometric_proximity_changes_with_explicit_motion(self):
+        mesh_a = mesh_mod.MeshData(
+            name="a",
+            vertices_ras_mm=np.array([
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ], dtype=np.float32),
+            faces=np.zeros((0, 3), dtype=np.int32),
+            source_voxels=2,
+            provenance="synthetic",
+        )
+        mesh_b = mesh_mod.MeshData(
+            name="b",
+            vertices_ras_mm=np.array([
+                [10.0, 0.0, 0.0],
+                [10.0, 1.0, 0.0],
+            ], dtype=np.float32),
+            faces=np.zeros((0, 3), dtype=np.int32),
+            source_voxels=2,
+            provenance="synthetic",
+        )
+        motion_b = motion_mod.build_motion(
+            "b",
+            translation_mm_xyz=(-4.0, 0.0, 0.0),
+            start_frame=1,
+            end_frame=5,
+        )
+        series = proximity_mod.proximity_over_motion(
+            "a",
+            mesh_a,
+            "b",
+            mesh_b,
+            motion_b=motion_b,
+            frames=[1, 3, 5],
+        )
+        self.assertAlmostEqual(series.samples[0].distance_mm, 10.0, places=6)
+        self.assertAlmostEqual(series.samples[1].distance_mm, 8.0, places=6)
+        self.assertAlmostEqual(series.samples[2].distance_mm, 6.0, places=6)
+        self.assertEqual(series.minimum_frame, 5)
+        self.assertIn("does not measure tissue force", series.interpretation)
+
+    def test_proximity_requires_two_distinct_structures(self):
+        mesh = mesh_mod.MeshData(
+            name="a",
+            vertices_ras_mm=np.array([[0.0, 0.0, 0.0]], dtype=np.float32),
+            faces=np.zeros((0, 3), dtype=np.int32),
+            source_voxels=1,
+            provenance="synthetic",
+        )
+        with self.assertRaises(ValueError):
+            proximity_mod.proximity_over_motion(
+                "a", mesh, "a", mesh, frames=[1]
+            )
 
     def test_blender_command_is_background_local(self):
         command = blender_mod.blender_bundle_command(

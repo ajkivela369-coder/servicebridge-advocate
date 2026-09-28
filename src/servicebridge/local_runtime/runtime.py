@@ -124,7 +124,13 @@ DEFAULT_SERVICES = {
         "kind": "3d_render",
         "executable": "blender",
         "endpoint": "",
-        "notes": "Local 3D scene builder, animation, and renderer.",
+        "notes": "Optional advanced local 3D scene builder/renderer; native MedForge 3D remains available without it.",
+    },
+    "totalsegmentator": {
+        "kind": "medical_segmentation",
+        "executable": "TotalSegmentator",
+        "endpoint": "",
+        "notes": "Optional local CT/MR anatomy segmentation worker.",
     },
 }
 

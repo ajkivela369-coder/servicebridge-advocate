@@ -46,6 +46,8 @@ def mask_to_mesh(mask, affine_ras, *, name: str, provenance: str, step_size: int
     affine = np.asarray(affine_ras, dtype=np.float64)
     if affine.shape != (4, 4) or not np.isfinite(affine).all():
         raise ValueError("A finite 4x4 NIfTI affine is required.")
+    if abs(float(np.linalg.det(affine[:3, :3]))) <= 1e-9:
+        raise ValueError("NIfTI affine must be invertible; singular geometry cannot be meshed safely.")
 
     try:
         from skimage.measure import marching_cubes

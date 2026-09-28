@@ -19,6 +19,7 @@ if str(REPO / "src") not in sys.path:
 from med_mesh import MeshData
 from med_motion import motion_from_dict
 from med_native3d import NativeRenderSettings, render_native_animation
+from servicebridge.local_runtime.archive import safe_extract_zip
 
 
 def load_obj(path: Path, *, name: str, provenance: str) -> MeshData:
@@ -53,7 +54,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="medforge-native-bundle-") as tmp:
         root = Path(tmp)
         with zipfile.ZipFile(bundle) as zf:
-            zf.extractall(root)
+            safe_extract_zip(zf, root)
         spec = json.loads((root / "scene.json").read_text())
 
         meshes = []
