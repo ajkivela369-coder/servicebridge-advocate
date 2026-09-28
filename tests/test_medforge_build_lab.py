@@ -26,6 +26,7 @@ med_io = load("medforge_io_lesson_test", MED / "med_io.py")
 med_masks = load("medforge_masks_lesson_test", MED / "med_masks.py")
 med_mesh = load("medforge_mesh_lesson_test", MED / "med_mesh.py")
 med_motion = load("medforge_motion_lesson_test", MED / "med_motion.py")
+med_native3d = load("medforge_native3d_lesson_test", MED / "med_native3d.py")
 med_space = load("medforge_space_lesson_test", MED / "med_space.py")
 med_volume = load("medforge_volume_lesson_test", MED / "med_volume.py")
 med_segmentation = load("medforge_seg_lesson_test", MED / "med_segmentation.py")
@@ -38,6 +39,7 @@ MODULES = {
     "med_masks": med_masks,
     "med_mesh": med_mesh,
     "med_motion": med_motion,
+    "med_native3d": med_native3d,
     "med_space": med_space,
     "med_volume": med_volume,
     "med_segmentation": med_segmentation,
@@ -47,7 +49,7 @@ MODULES = {
 
 class MedForgeBuildLabTests(unittest.TestCase):
     def test_every_lesson_points_to_live_medforge_code(self):
-        self.assertGreaterEqual(len(lessons.LESSONS), 17)
+        self.assertGreaterEqual(len(lessons.LESSONS), 19)
         for lesson in lessons.LESSONS:
             self.assertIn(lesson["module"], MODULES)
             self.assertTrue(
@@ -61,6 +63,7 @@ class MedForgeBuildLabTests(unittest.TestCase):
         self.assertIn("Mechanism", lessons.PIPELINE)
         self.assertIn("Spatial Alignment", lessons.PIPELINE)
         self.assertIn("Blender Scene", lessons.PIPELINE)
+        self.assertIn("Native 3D Fallback", lessons.PIPELINE)
         self.assertIn("Render / Export", lessons.PIPELINE)
 
 
