@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  servicebridge:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,3 +22,37 @@ jobs:
       - run: python scripts/check_public_repo.py
       - run: python -m unittest discover -s tests -v
       - run: python -m compileall -q src portfolio/evidence-auditor/legacy-streamlit portfolio/evidence-auditor/00_CURRENT_APP/reference portfolio/grimforge-studio
+
+  forge-suite:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: forge-suite/current
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        working-directory: .
+      - name: Install Forge test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r _FORGE_INTERNAL/runtime/requirements.txt
+          python -m pip install httpx
+      - name: Compile Forge Python
+        run: |
+          python -m compileall -q _FORGE_INTERNAL/runtime/forge_core
+          python -m compileall -q _FORGE_INTERNAL/runtime/forge_base
+          python -m compileall -q _FORGE_INTERNAL/verification
+      - name: Feature fallback/offline gate
+        run: python _FORGE_INTERNAL/runtime/forge_base/feature_gate.py
+      - name: Forge Learn synchronization
+        run: python _FORGE_INTERNAL/runtime/forge_base/learning_sync.py
+      - name: Product UI regression gate
+        run: python _FORGE_INTERNAL/runtime/forge_base/ui_regression_gate.py
+      - name: Evidence, assistant, PDF, recovery and media fixture workflows
+        run: python _FORGE_INTERNAL/verification/test_workflows.py
+      - name: GrimForge 3D / 2.5D / 2D assembly fixtures
+        run: python _FORGE_INTERNAL/verification/v055_animation_modes_test.py
