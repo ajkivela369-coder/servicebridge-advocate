@@ -607,8 +607,9 @@ def veyr_advice(action: str, episode: Episode | None, pro: bool = False) -> str:
         )
     if action == "What is missing for final episode":
         return (
-            "The Streamlit build can create the episode structure and playable animatic now. "
-            "A true full-motion MP4 still needs connected video/TTS/audio/render providers or a local render worker."
+            "Deterministic Forge is the local no-credit fallback for a finished MP4: source/still/Blender clips, "
+            "local narration or silence, captions, audio mix, and FFmpeg assembly. Higher-end local generative "
+            "video is optional when compatible Diffusers/ComfyUI models and hardware are installed."
         )
     return "I can help with pacing, scale, geography, continuity, commander arc, sound, tactical reversals, weak-scene diagnosis, or final QC."
 
