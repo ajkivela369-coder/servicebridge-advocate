@@ -11,7 +11,16 @@ from servicebridge.local_runtime import (
     RuntimeMode,
     RuntimePolicy,
 )
-from servicebridge.local_runtime.media import concat_command, still_to_video_command
+from servicebridge.local_runtime.media import (
+    burn_subtitles_command,
+    concat_command,
+    image_sequence_command,
+    mux_audio_command,
+    still_to_video_command,
+)
+from servicebridge.local_runtime.memory import LocalEmbeddingClient, LocalVectorStore, cosine_similarity
+from servicebridge.local_runtime.documents import _collect_text
+from servicebridge.local_runtime.gateway import GatewayConfig
 from servicebridge.providers import provider_for_runtime
 
 
@@ -96,6 +105,57 @@ class LocalRuntimeMediaTests(unittest.TestCase):
         self.assertEqual(command[0], "ffmpeg")
         self.assertIn("concat.txt", command)
         self.assertIn("movie.mp4", command)
+
+    def test_mux_caption_and_sequence_commands_stay_local(self):
+        mux = mux_audio_command("video.mp4", "voice.wav", "mixed.mp4")
+        caps = burn_subtitles_command("mixed.mp4", "captions.srt", "captioned.mp4")
+        seq = image_sequence_command("frame_%04d.png", "movie.mp4")
+        self.assertEqual(mux[0], "ffmpeg")
+        self.assertEqual(caps[0], "ffmpeg")
+        self.assertEqual(seq[0], "ffmpeg")
+        self.assertIn("loudnorm=I=-16", mux)
+        self.assertTrue(any("subtitles=" in x for x in caps))
+
+
+class LocalRuntimeMemoryTests(unittest.TestCase):
+    def test_cosine_similarity_and_local_vector_store(self):
+        self.assertAlmostEqual(cosine_similarity([1, 0], [1, 0]), 1.0)
+        self.assertAlmostEqual(cosine_similarity([1, 0], [0, 1]), 0.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            with LocalVectorStore(Path(tmp) / "vectors.sqlite3") as store:
+                store.upsert("a", "alpha", [1, 0], {"source": "A"})
+                store.upsert("b", "beta", [0, 1], {"source": "B"})
+                hits = store.search([0.9, 0.1], limit=2)
+                self.assertEqual(hits[0].item_id, "a")
+                self.assertEqual(hits[0].metadata["source"], "A")
+
+    def test_embedding_client_creditless_blocks_external_endpoint(self):
+        with self.assertRaises(PermissionError):
+            LocalEmbeddingClient(
+                endpoint="https://api.example.com/v1/embeddings",
+                policy=RuntimePolicy(mode=RuntimeMode.CREDITLESS),
+            )
+
+    def test_ocr_text_collector_handles_current_result_shape(self):
+        payload = {
+            "res": {
+                "rec_texts": ["first line", "second line"],
+                "nested": {"rec_text": "third line"},
+            }
+        }
+        self.assertEqual(
+            _collect_text(payload),
+            ["first line", "second line", "third line"],
+        )
+
+
+class LocalRuntimeGatewayTests(unittest.TestCase):
+    def test_gateway_defaults_to_creditless_loopback(self):
+        cfg = GatewayConfig()
+        self.assertEqual(cfg.mode, RuntimeMode.CREDITLESS)
+        cfg.policy().assert_url_allowed("http://127.0.0.1:8080/v1/chat/completions")
+        with self.assertRaises(PermissionError):
+            cfg.policy().assert_url_allowed("https://api.example.com/v1/chat")
 
 
 if __name__ == "__main__":
