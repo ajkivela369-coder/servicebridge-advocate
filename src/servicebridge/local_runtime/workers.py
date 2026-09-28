@@ -78,6 +78,12 @@ def worker_capabilities() -> list[WorkerCapability]:
             "python-local",
             "Direct local image/video pipelines when torch and local model weights are installed.",
         ),
+        WorkerCapability(
+            "kokoro",
+            importlib.util.find_spec("kokoro") is not None,
+            "python-local",
+            "Higher-quality local TTS; Creditless adapter forces model-hub offline mode.",
+        ),
     ]
 
 
