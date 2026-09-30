@@ -12,6 +12,17 @@ The individual portfolio folders below remain useful project history and demonst
 
 ## Applications
 
+### [SearchSignal — SEO + GEO Operations Lab](searchsignal/)
+**Live:** https://forgesearcher.floot.app/
+
+A working higher-education web-operations portfolio app with a secure server-side public-URL crawler, explainable SEO/GEO scoring, content-optimization drafts, schema.org JSON-LD tooling, roadmap prioritization, analytics/CSV workflows, WordPress-support scenarios, training modules, and a technical lab. Working features, connector-ready integrations, and learning-only surfaces are explicitly separated.
+
+### [AJ Job Fisher](aj-job-fisher/)
+**Live:** https://aj-job-fisher-a2507o.v2.appdeploy.ai/
+
+A job-search control center with weighted fit scoring, duplicate detection, guardrails for remote/pay/travel/credentials, job-URL ingestion, application-package preparation, queue/evidence tracking, and explicit stop conditions for questions or commitments that require human review.
+
+
 ### [NeuroEval](handshake-neuroeval/)
 Biology and neuroscience response evaluation with transparent scoring for concept coverage, mechanistic reasoning, uncertainty calibration, evidence language, clarity, and unsupported certainty.
 
@@ -56,7 +67,7 @@ An independent healthcare UX research portfolio study built around a fictional m
 
 ## Portfolio quality control
 
-Every cataloged project is covered by a reusable GitHub Actions quality gate in [Portfolio QC](../.github/workflows/portfolio-qc.yml). The gate verifies that catalog paths and READMEs exist, local portfolio links resolve, CareFlow keeps its accessibility/provenance markers and self-contained demo boundary, and the Forge Suite retains its explicit implementation-candidate / live-validation boundary.
+Every cataloged project is covered by a reusable GitHub Actions quality gate in [Portfolio QC](../.github/workflows/portfolio-qc.yml). The full rubric and current verification matrix are documented in [Portfolio Quality Control](QUALITY_CONTROL.md). The gate inventories app/source paths, checks README encoding and provenance, parses manifests, compiles Python, runs evaluator tests, builds the Vite portfolio apps, and smoke-tests all listed public deployments.
 
 A passing static/fixture gate does **not** convert unverified live-engine, clinical, media-quality, or user-research claims into verified results. Those remain labeled separately and require the relevant real-world acceptance work.
 
