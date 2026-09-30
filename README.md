@@ -4,6 +4,16 @@
 **Employer-facing portfolio:** https://aj-kivela-portfolio.lovable.app
 
 [![CI](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml)
+[![Portfolio QC](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/portfolio-qc.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/portfolio-qc.yml)
+
+## Portfolio highlights
+
+- **SearchSignal — SEO + GEO Operations Lab:** https://forgesearcher.floot.app/ — live public-URL auditing with explainable SEO/GEO scores, structured-data tooling, content optimization, roadmap/analytics workflows, and WordPress support/training demonstrations.
+- **Application portfolio index:** [portfolio/README.md](portfolio/README.md)
+- **Portfolio quality-control contract and status:** [portfolio/QUALITY_CONTROL.md](portfolio/QUALITY_CONTROL.md)
+- **Employer-facing portfolio:** https://aj-kivela-portfolio.lovable.app/
+
+SearchSignal and the other portfolio applications are independent project work. Demo data, connector-ready integrations, source-only prototypes, and live production functionality are labeled separately rather than being represented as paid employment or unverified production experience.
 
 <!-- FORGE-SUITE-CURRENT:START -->
 ## Current Forge Suite — v0.5.6
