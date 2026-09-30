@@ -8,6 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PORTFOLIO = ROOT / "portfolio"
 
 CATALOG = {
+    "SearchSignal": "searchsignal",
+    "AJ Job Fisher": "aj-job-fisher",
+    "CareFlow Research Lab": "careflow-research-lab",
     "NeuroEval": "handshake-neuroeval",
     "HealthQA Auditor": "meridial-healthqa",
     "Evidence Auditor Pro": "evidence-auditor",
@@ -18,17 +21,18 @@ CATALOG = {
     "GrimForge Studio": "grimforge-studio",
     "StudyForge": "studyforge",
     "WildTake Studio": "wildtake-studio",
-    "CareFlow Research Lab": "careflow-research-lab",
 }
 
 errors: list[str] = []
 checks: list[str] = []
+
 
 def require(condition: bool, message: str) -> None:
     if condition:
         checks.append(message)
     else:
         errors.append(message)
+
 
 portfolio_readme = PORTFOLIO / "README.md"
 require(portfolio_readme.is_file(), "portfolio/README.md exists")
@@ -43,11 +47,9 @@ for name, rel in CATALOG.items():
         body = readme.read_text(encoding="utf-8", errors="replace")
         require(len(body.strip()) >= 120, f"{name}: README has substantive content")
 
-# Catalog synchronization: every QC app should be visible in the portfolio README.
 for name in CATALOG:
     require(name.lower() in text.lower(), f"{name}: listed in portfolio catalog")
 
-# Verify local Markdown links from the portfolio catalog.
 for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
     target = target.strip()
     if not target or "://" in target or target.startswith("#") or target.startswith("mailto:"):
@@ -55,7 +57,6 @@ for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
     path = (PORTFOLIO / target.split("#", 1)[0]).resolve()
     require(path.exists(), f"portfolio README local link exists: {target}")
 
-# CareFlow has additional recruiter-facing and safety/provenance requirements.
 careflow = PORTFOLIO / "careflow-research-lab" / "index.html"
 require(careflow.is_file(), "CareFlow: self-contained app exists")
 if careflow.is_file():
@@ -81,17 +82,30 @@ if careflow.is_file():
     require('src="app.js"' not in body and 'href="styles.css"' not in body,
             "CareFlow: committed demo is self-contained")
 
-# Portfolio claims must preserve provenance and avoid representing independent work as employment.
+searchsignal = PORTFOLIO / "searchsignal" / "README.md"
+require(searchsignal.is_file(), "SearchSignal: README exists")
+if searchsignal.is_file():
+    body = searchsignal.read_text(encoding="utf-8", errors="replace").lower()
+    for marker in ("https://forgesearcher.floot.app/", "independent portfolio", "connector-ready", "not affiliated"):
+        require(marker in body, f"SearchSignal truth/status marker present: {marker}")
+    require((PORTFOLIO / "searchsignal/source/endpoints/audit_POST.ts").is_file(),
+            "SearchSignal: audit endpoint source snapshot exists")
+    require((PORTFOLIO / "searchsignal/source/pages/_index.tsx").is_file(),
+            "SearchSignal: UI source snapshot exists")
+
 require("not claims of paid ai employment" in text.lower(),
         "portfolio provenance: independent projects are not represented as paid AI employment")
+require("QUALITY_CONTROL.md" in text,
+        "portfolio catalog links the QC contract")
 
 root_readme = (ROOT / "README.md").read_text(encoding="utf-8", errors="replace")
 require("implementation candidate" in root_readme.lower(),
         "Forge: README preserves implementation-candidate boundary")
 require("require target-pc acceptance" in root_readme.lower(),
         "Forge: README preserves pending live-validation boundary")
+require("forgesearcher.floot.app" in root_readme.lower(),
+        "root README links the newest SearchSignal live app")
 
-# Common accidental-private-artifact paths should never be committed to this public portfolio.
 for forbidden in ("private_data", "records", "case_files", "uploads"):
     path = ROOT / forbidden
     require(not path.exists(), f"public repo: forbidden private path absent: {forbidden}")
