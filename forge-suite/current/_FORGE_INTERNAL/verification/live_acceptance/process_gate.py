@@ -27,6 +27,13 @@ required = {
         "ForgeHome",
         'ValidateSet("before","after")',
     ],
+    ROOT / "_FORGE_INTERNAL/verification/live_acceptance/create_acceptance_run.py": [
+        "pending_live_evidence",
+        "visual-scorecard.json",
+        "narrator-scorecard.json",
+        "windows-scorecard.json",
+        "critical_defects",
+    ],
     ROOT.parents[1] / "portfolio/careflow-research-lab/REAL_PARTICIPANT_STUDY_PROTOCOL.md": [
         "No PHI",
         "Observation",
