@@ -7,6 +7,7 @@ on:
       - 'scripts/audit_portfolio.py'
       - 'scripts/portfolio_qc.py'
       - 'scripts/live_portfolio_smoke.py'
+      - 'scripts/create_appdeploy_client_stub.mjs'
       - 'README.md'
       - '.github/workflows/portfolio-qc.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - 'scripts/audit_portfolio.py'
       - 'scripts/portfolio_qc.py'
       - 'scripts/live_portfolio_smoke.py'
+      - 'scripts/create_appdeploy_client_stub.mjs'
       - 'README.md'
       - '.github/workflows/portfolio-qc.yml'
   workflow_dispatch:
@@ -70,11 +72,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install and build
-        working-directory: ${{ matrix.project }}
-        run: |
-          npm install --no-audit --no-fund
-          npm run build
+      - name: Install hosted-app dependencies
+        run: npm install --prefix "${{ matrix.project }}" --no-audit --no-fund
+      - name: Supply AppDeploy host module for CI resolution
+        run: node scripts/create_appdeploy_client_stub.mjs "${{ matrix.project }}"
+      - name: Production build validation
+        run: npm run build --prefix "${{ matrix.project }}"
 
   public-smoke:
     runs-on: ubuntu-latest
