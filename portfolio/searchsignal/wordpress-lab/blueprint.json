@@ -1,0 +1,18 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "latest"
+  },
+  "features": {
+    "networking": true
+  },
+  "landingPage": "/wp-admin/network/",
+  "steps": [
+    { "step": "enableMultisite" },
+    { "step": "login", "username": "admin" },
+    { "step": "wp-cli", "command": "wp site create --slug=admissions --title='Admissions Demo' --email=admin@example.com" },
+    { "step": "wp-cli", "command": "wp site create --slug=research --title='Research Demo' --email=admin@example.com" },
+    { "step": "wp-cli", "command": "wp site create --slug=student-affairs --title='Student Affairs Demo' --email=admin@example.com" }
+  ]
+}
