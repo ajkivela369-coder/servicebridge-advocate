@@ -82,6 +82,13 @@ if careflow.is_file():
     require('src="app.js"' not in body and 'href="styles.css"' not in body,
             "CareFlow: committed demo is self-contained")
 
+careflow_protocol = PORTFOLIO / "careflow-research-lab" / "REAL_PARTICIPANT_STUDY_PROTOCOL.md"
+require(careflow_protocol.is_file(), "CareFlow: real-participant study protocol exists")
+if careflow_protocol.is_file():
+    protocol = careflow_protocol.read_text(encoding="utf-8", errors="replace").lower()
+    for marker in ("no phi", "observation", "interpretation", "contradictory evidence", "real participant study"):
+        require(marker in protocol, f"CareFlow real-study control present: {marker}")
+
 searchsignal = PORTFOLIO / "searchsignal" / "README.md"
 require(searchsignal.is_file(), "SearchSignal: README exists")
 if searchsignal.is_file():
