@@ -52,6 +52,8 @@ jobs:
         run: python _FORGE_INTERNAL/runtime/forge_base/learning_sync.py
       - name: Product UI regression gate
         run: python _FORGE_INTERNAL/runtime/forge_base/ui_regression_gate.py
+      - name: Live acceptance process gate
+        run: python _FORGE_INTERNAL/verification/live_acceptance/process_gate.py
       - name: Evidence, assistant, PDF, recovery and media fixture workflows
         run: python _FORGE_INTERNAL/verification/test_workflows.py
       - name: GrimForge 3D / 2.5D / 2D assembly fixtures

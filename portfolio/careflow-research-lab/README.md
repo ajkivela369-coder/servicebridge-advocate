@@ -25,3 +25,9 @@ Research planning; semi-structured interview framework; contextual-inquiry promp
 ## Quality boundary
 
 The seeded pilot evidence is simulated. It demonstrates process and product-research execution, not completed research with real BetterRX users or a claim of BetterRX employment. Real-participant findings would require recruitment, consent, sessions, analysis, and validation.
+
+## Real-participant validation path
+
+The next research-quality gate is defined in [REAL_PARTICIPANT_STUDY_PROTOCOL.md](REAL_PARTICIPANT_STUDY_PROTOCOL.md). It specifies eligibility, consent, no-PHI handling, neutral moderation, task metrics, observation-vs-interpretation separation, contradictory-evidence retention, traceability, synthesis rules, and the exact boundary for converting simulated pilot material into real-participant findings.
+
+The portfolio should continue to show simulated and real evidence side by side rather than silently replacing one with the other.
