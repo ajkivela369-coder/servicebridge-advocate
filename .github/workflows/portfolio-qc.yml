@@ -1,29 +1,87 @@
-name: Portfolio QC
+name: Portfolio Quality Control
 
 on:
   push:
     paths:
-      - "portfolio/**"
-      - "scripts/audit_portfolio.py"
-      - "README.md"
-      - ".github/workflows/portfolio-qc.yml"
+      - 'portfolio/**'
+      - 'scripts/audit_portfolio.py'
+      - 'scripts/portfolio_qc.py'
+      - 'scripts/live_portfolio_smoke.py'
+      - 'README.md'
+      - '.github/workflows/portfolio-qc.yml'
   pull_request:
     paths:
-      - "portfolio/**"
-      - "scripts/audit_portfolio.py"
-      - "README.md"
-      - ".github/workflows/portfolio-qc.yml"
+      - 'portfolio/**'
+      - 'scripts/audit_portfolio.py'
+      - 'scripts/portfolio_qc.py'
+      - 'scripts/live_portfolio_smoke.py'
+      - 'README.md'
+      - '.github/workflows/portfolio-qc.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  portfolio-quality:
+  repository-qc:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - name: Portfolio quality gate
+          python-version: '3.11'
+      - name: Portfolio catalog and provenance gate
         run: python scripts/audit_portfolio.py
+      - name: Inventory, syntax, manifest, and encoding checks
+        run: python scripts/portfolio_qc.py
+
+  evaluator-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project:
+          - portfolio/handshake-neuroeval
+          - portfolio/meridial-healthqa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install and test
+        working-directory: ${{ matrix.project }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest
+          pytest -q
+          python metrics.py
+
+  vite-builds:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project:
+          - portfolio/aj-job-fisher
+          - portfolio/evidence-auditor/00_CURRENT_APP/appdeploy
+          - portfolio/grimforge-studio/appdeploy
+          - portfolio/studyforge/appdeploy
+          - portfolio/wildtake-studio/appdeploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and build
+        working-directory: ${{ matrix.project }}
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+  public-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check live portfolio deployments
+        run: python scripts/live_portfolio_smoke.py
