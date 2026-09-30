@@ -1,6 +1,6 @@
 # Forge v0.5.6 — Workflow Recovery + Defense PDF Restoration acceptance status
 
-**Release status: implementation candidate. Live Windows regression fixes are implemented; real Blender/ComfyUI/voice quality still requires target-PC acceptance.**
+**Release status: implementation candidate. Automated and fixture gates pass. The live-acceptance process is now defined and CI-protected, but real Blender/ComfyUI visual quality, narrator quality, and Windows target-PC behavior remain pending until preserved live runs meet the published thresholds.**
 
 | Requirement | Status |
 |---|---|
@@ -14,4 +14,8 @@
 | Evidence / media workflow fixtures | 35 checks passed after v0.5.6 recovery additions. |
 | UI regression gate | Passed. |
 | Forge Learn sync | 28 required / 28 covered / 100%. |
-| Windows upgrade, real Blender scenes, real ComfyUI generations, real Kokoro quality | Pending target-PC acceptance; do not describe as verified yet. |
+| Live acceptance procedure | Defined in [LIVE_ACCEPTANCE_RUNBOOK.md](LIVE_ACCEPTANCE_RUNBOOK.md) and protected by CI process checks. This verifies the procedure exists; it does not mark the live tests passed. |
+| Real Blender / ComfyUI visual quality | **Pending live run + human review.** Pass requires mean >= 4.0/5, no category below 3, zero critical defects, preserved engine/model/workflow metadata and reviewed final sequences. |
+| Real narrator quality | **Pending live run + human review.** Pass requires mean >= 4.0/5, intelligibility and naturalness >= 4, no clipping/dropouts, and no silent provider/voice substitution. |
+| Windows install / upgrade / recovery | **Pending target-PC run.** Before/after manifests, preserved Forge Home/Vault/settings/outputs, restart behavior, shortcut state and degraded-engine behavior must be reviewed. |
+| CareFlow real-participant findings | Tracked separately in the portfolio study. Simulated findings remain simulated until the real-participant protocol is completed. |
