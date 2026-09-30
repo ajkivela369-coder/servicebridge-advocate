@@ -5,12 +5,17 @@ A growing collection of compact, auditable AI applications spanning neuroscience
 <!-- FORGE-SUITE-PORTFOLIO:START -->
 ## Current integrated Forge Suite
 
-The newest integrated implementation is **Forge v0.5.6**, mirrored at **[`../forge-suite/current/`](../forge-suite/current/)**. It unifies Forge Workspace, Elias, Evidence Auditor, MedForge, GrimForge, and Forge Learn behind one local Forge Core while preserving each app's distinct workflow and identity.
+The newest integrated implementation is **Forge v0.5.6+**, mirrored at **[`../forge-suite/current/`](../forge-suite/current/)**. It unifies Forge Workspace, Elias, Evidence Auditor, MedForge, GrimForge, Forge Learn, and the newer Forge Builder work behind one local Forge Core while preserving each app's distinct workflow and identity.
 
 The individual portfolio folders below remain useful project history and demonstrations. Where they differ, **`forge-suite/current/` is the controlling current local implementation**.
 <!-- FORGE-SUITE-PORTFOLIO:END -->
 
 ## Applications
+
+### Forge Builder
+**Public standalone repo:** https://github.com/ajkivela369-coder/forge-builder
+
+A local-first prompt-to-app workspace with replaceable model/provider adapters, sandboxed project generation, editable source, local preview, Git snapshots, QA gates, and explicitly authorized deployment paths. The integrated Forge development line now also includes provider-neutral routing, project sandboxing, snapshot endpoints, static validation, and real browser smoke checks.
 
 ### [SearchSignal — SEO + GEO Operations Lab](searchsignal/)
 **Live:** https://forgesearcher.floot.app/
