@@ -1,0 +1,34 @@
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: ${WP_DB_PASSWORD:-searchsignal-local-only}
+      MARIADB_ROOT_PASSWORD: ${WP_DB_ROOT_PASSWORD:-searchsignal-root-local-only}
+    volumes:
+      - searchsignal_db:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8088:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD:-searchsignal-local-only}
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_ALLOW_MULTISITE', true);
+        define('WP_DEBUG', true);
+    volumes:
+      - searchsignal_wp:/var/www/html
+      - ./apache/site.conf:/etc/apache2/sites-available/000-default.conf:ro
+
+volumes:
+  searchsignal_db:
+  searchsignal_wp:
