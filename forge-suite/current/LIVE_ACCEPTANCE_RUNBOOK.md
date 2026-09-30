@@ -33,6 +33,14 @@ Required metadata:
 - Reviewer name/initials and review date.
 - Scores, defects, screenshots or recordings, and final disposition.
 
+Start a standardized run packet from `forge-suite/current/` with:
+
+```bash
+python _FORGE_INTERNAL/verification/live_acceptance/create_acceptance_run.py --product GrimForge --route 2.5d --engine ComfyUI --model "<workflow/model>"
+```
+
+For narrator testing, add `--voice "<voice id>"`. The generator creates a manifest and all scorecards before any result is judged.
+
 Recommended local layout:
 
 ```
