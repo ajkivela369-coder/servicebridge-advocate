@@ -1,0 +1,29 @@
+name: Portfolio QC
+
+on:
+  push:
+    paths:
+      - "portfolio/**"
+      - "scripts/audit_portfolio.py"
+      - "README.md"
+      - ".github/workflows/portfolio-qc.yml"
+  pull_request:
+    paths:
+      - "portfolio/**"
+      - "scripts/audit_portfolio.py"
+      - "README.md"
+      - ".github/workflows/portfolio-qc.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  portfolio-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Portfolio quality gate
+        run: python scripts/audit_portfolio.py

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="CareFlow Research Lab — an independent healthcare UX research portfolio project by AJ Kivela." />
+  <title>CareFlow Research Lab — AJ Kivela</title>
+  <style>
+:root {
+  --bg: #f5f7f8;
+  --panel: #ffffff;
+  --ink: #17323c;
+  --muted: #647a82;
+  --line: #dfe7e9;
+  --accent: #0d7377;
+  --accent-soft: #e7f4f3;
+  --blue: #245c87;
+  --blue-soft: #eaf1f8;
+  --amber: #a56713;
+  --amber-soft: #fff4df;
+  --danger: #9f4235;
+  --danger-soft: #faece9;
+  --success: #2c6e49;
+  --success-soft: #eaf5ef;
+  --shadow: 0 14px 42px rgba(17, 52, 64, .07);
+  --radius: 14px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit}
+a{color:inherit}
+.app-shell{min-height:100vh;display:grid;grid-template-columns:268px 1fr}
+.sidebar{position:sticky;top:0;height:100vh;background:#102d36;color:#f4fbfb;padding:28px 20px 22px;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.08)}
+.brand-block{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+.brand-mark{width:44px;height:44px;border-radius:12px;background:#d5f1ee;color:#123740;display:grid;place-items:center;font-weight:800;letter-spacing:.03em}
+.brand-name{font-size:17px;font-weight:800}.brand-sub{font-size:12px;color:#a9c1c7;margin-top:2px}
+.provenance-pill{border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:7px 10px;font-size:11px;color:#cfe3e6;margin-bottom:22px;align-self:flex-start}
+.nav-list{display:grid;gap:6px}
+.nav-btn{border:0;background:transparent;color:#bad0d4;text-align:left;padding:10px 12px;border-radius:9px;cursor:pointer;display:flex;gap:10px;align-items:center;font-weight:650;font-size:13px}
+.nav-btn:hover{background:rgba(255,255,255,.06);color:white}.nav-btn.active{background:#1b4753;color:white}.nav-index{opacity:.55;font-size:11px;width:17px}
+.sidebar-footer{margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:18px;color:#9eb7bc;font-size:11px;line-height:1.45}.sidebar-footer p{margin:10px 0 0}
+.safe-badge{display:flex;align-items:center;gap:7px;color:#d7efeb;font-weight:700}.dot{width:8px;height:8px;border-radius:50%;background:#5fc7a8;box-shadow:0 0 0 4px rgba(95,199,168,.12)}
+.main{min-width:0}.topbar{height:94px;background:rgba(245,247,248,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:18px 34px;position:sticky;top:0;z-index:20}
+.eyebrow{text-transform:uppercase;font-size:10px;letter-spacing:.14em;color:var(--muted);font-weight:800}.topbar h1{font-size:27px;margin:4px 0 0;letter-spacing:-.035em}
+.top-actions{display:flex;gap:10px;align-items:center}.ghost-btn,.primary-btn,.soft-btn,.danger-btn{border-radius:9px;padding:9px 13px;border:1px solid var(--line);font-weight:750;font-size:12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}.ghost-btn{background:white;color:var(--ink)}.primary-btn{background:var(--accent);border-color:var(--accent);color:white}.soft-btn{background:var(--accent-soft);color:#115b5e;border-color:#cce5e3}.danger-btn{background:var(--danger-soft);color:var(--danger);border-color:#eed2cc}
+.content{padding:32px 34px 72px;max-width:1480px;margin:0 auto}
+.hero-grid{display:grid;grid-template-columns:1.4fr .8fr;gap:18px}.hero-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:var(--shadow)}.hero-card h2{font-size:34px;letter-spacing:-.04em;line-height:1.08;margin:10px 0 14px;max-width:800px}.hero-card p{color:var(--muted);font-size:15px;line-height:1.65;max-width:820px}.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.chip{font-size:11px;font-weight:750;padding:6px 9px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#466069}.chip.teal{background:var(--accent-soft);color:#125d5f;border-color:#c9e5e2}.chip.amber{background:var(--amber-soft);color:var(--amber);border-color:#efd9aa}.chip.blue{background:var(--blue-soft);color:var(--blue);border-color:#cfdeed}
+.provenance-card{background:#123740;color:white;border-radius:18px;padding:24px;display:flex;flex-direction:column;justify-content:space-between}.provenance-card p{color:#c5dade;line-height:1.6}.provenance-card .big-label{font-size:13px;color:#8fc7c0;font-weight:800}.provenance-card strong{font-size:22px;line-height:1.25}.provenance-list{display:grid;gap:8px;margin-top:20px}.provenance-row{font-size:12px;color:#d5e6e8;display:flex;gap:8px}.check{color:#73d3b8}
+.section-title{display:flex;justify-content:space-between;gap:14px;align-items:flex-end;margin:34px 0 14px}.section-title h2{margin:0;font-size:19px;letter-spacing:-.02em}.section-title p{margin:3px 0 0;color:var(--muted);font-size:12px}
+.pipeline{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}.pipeline-step{background:white;border:1px solid var(--line);padding:14px 10px;border-radius:10px;min-height:92px}.pipeline-step b{display:block;font-size:12px;margin-bottom:8px}.pipeline-step span{font-size:10px;color:var(--muted);line-height:1.4}.pipeline-num{font-size:10px!important;color:var(--accent)!important;font-weight:800;display:block;margin-bottom:8px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.metric{background:white;border:1px solid var(--line);border-radius:12px;padding:18px}.metric .label{font-size:11px;color:var(--muted);font-weight:700}.metric .value{font-size:28px;font-weight:850;margin:5px 0}.metric .note{font-size:10px;color:var(--muted)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.panel{background:white;border:1px solid var(--line);border-radius:var(--radius);padding:20px}.panel h3{margin:0 0 10px;font-size:15px}.panel p,.panel li{font-size:12px;line-height:1.55;color:#526970}.panel ul{padding-left:18px;margin:8px 0}.panel .kicker{font-size:10px;color:var(--accent);font-weight:850;text-transform:uppercase;letter-spacing:.1em}
+.artifact{background:white;border:1px solid var(--line);border-radius:12px;padding:18px}.artifact h3{margin:4px 0 8px;font-size:15px}.artifact p{font-size:12px;color:var(--muted);line-height:1.55}.artifact-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:850;color:var(--accent)}
+.table-wrap{overflow:auto;background:white;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:#f9fbfb}tr:last-child td{border-bottom:0}.status{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:10px;font-weight:800}.status.ready{background:var(--success-soft);color:var(--success)}.status.pending{background:var(--amber-soft);color:var(--amber)}.status.blocked{background:var(--danger-soft);color:var(--danger)}
+.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.toolbar-left,.toolbar-right{display:flex;gap:8px;align-items:center}.search{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:white;min-width:250px;color:var(--ink)}
+.dialog{border:1px solid var(--line);border-radius:16px;padding:0;box-shadow:0 24px 70px rgba(9,35,44,.25);width:min(620px,92vw)}.dialog::backdrop{background:rgba(8,34,42,.42)}.dialog form{padding:22px}.dialog-head{display:flex;justify-content:space-between;align-items:flex-start}.dialog h2{margin:4px 0 14px}.icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:white;font-size:21px;cursor:pointer}.dialog label{display:grid;gap:6px;font-size:11px;font-weight:800;color:#405a62;margin:12px 0}.dialog input,.dialog select,.dialog textarea,.inline-input{width:100%;border:1px solid #ccd9dc;border-radius:9px;padding:10px;background:white;color:var(--ink)}.dialog textarea{min-height:80px;resize:vertical}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.warning-copy{background:var(--amber-soft);border:1px solid #efd9aa;border-radius:9px;padding:10px 12px;color:#7d5818;font-size:11px}
+.study-layout{display:grid;grid-template-columns:340px 1fr;gap:16px}.moderator{background:#123740;color:white;border-radius:14px;padding:18px;height:max-content;position:sticky;top:116px}.moderator h3{margin:0 0 5px}.moderator p{color:#bfd2d6;font-size:11px;line-height:1.5}.task-list{display:grid;gap:8px;margin:18px 0}.task-btn{width:100%;text-align:left;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.04);color:#d7e7e9;padding:11px;border-radius:9px;cursor:pointer;font-size:11px}.task-btn.active{background:#d5f1ee;color:#17323c;border-color:#d5f1ee}.task-btn.complete:after{content:'✓';float:right;font-weight:900;color:#45b892}.timer-box{display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(255,255,255,.06);border-radius:10px}.timer{font-variant-numeric:tabular-nums;font-size:24px;font-weight:850}.moderator-actions{display:flex;gap:8px;margin-top:10px}.moderator .soft-btn{background:#d5f1ee;color:#17323c;border:0}.moderator .ghost-btn{background:transparent;color:#e5f1f2;border-color:rgba(255,255,255,.18)}
+.prototype{background:#e9eef0;border:1px solid var(--line);border-radius:14px;padding:14px}.prototype-window{background:#fff;border:1px solid #cfdadc;border-radius:12px;min-height:640px;overflow:hidden;box-shadow:var(--shadow)}.proto-top{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.proto-top strong{font-size:15px}.proto-meta{font-size:10px;color:var(--muted)}.proto-content{display:grid;grid-template-columns:230px 1fr;min-height:585px}.request-list{border-right:1px solid var(--line);padding:12px;background:#f8fafb}.request-card{background:white;border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:8px;cursor:pointer}.request-card:hover,.request-card.active{border-color:#78aaa8;box-shadow:0 0 0 2px #e2f2f0}.request-card .name{font-weight:800;font-size:11px}.request-card .small{font-size:9px;color:var(--muted);margin-top:4px}.request-card .mini-status{font-size:9px;font-weight:800;margin-top:8px}.req-detail{padding:20px}.blocker-banner{background:var(--amber-soft);border:1px solid #efd9aa;border-left:4px solid #c5811a;border-radius:9px;padding:12px 13px;margin-bottom:14px}.blocker-banner b{display:block;font-size:11px;margin-bottom:3px}.blocker-banner span{font-size:10px;color:#75571f}.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.detail-item{border:1px solid var(--line);border-radius:9px;padding:12px}.detail-item .label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}.detail-item .value{font-size:12px;font-weight:750;margin-top:4px}.activity{margin-top:16px}.activity h4{font-size:11px;margin:0 0 8px}.activity-row{display:grid;grid-template-columns:14px 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:10px;color:#526970}.activity-dot{width:8px;height:8px;border-radius:50%;background:#8cb8b5;margin-top:3px}.handoff{margin-top:16px;background:#f7fafb;border:1px solid var(--line);border-radius:10px;padding:14px}.handoff h4{font-size:11px;margin:0 0 8px}.handoff-controls{display:grid;grid-template-columns:1fr auto;gap:8px}.proto-select{border:1px solid #cbd7da;border-radius:8px;padding:8px;font-size:10px}.ready-panel{margin-top:12px;border-radius:9px;background:var(--success-soft);border:1px solid #cce5d7;padding:12px;color:#2f6949;font-size:10px}.confidence{margin-top:12px}.confidence label{font-size:10px;font-weight:750;color:#c6d9dc}.confidence input{width:100%}
+.note-card{background:white;border:1px solid var(--line);border-radius:11px;padding:15px}.note-head{display:flex;justify-content:space-between;gap:8px}.note-meta{font-size:9px;color:var(--muted)}.note-card .observation{font-size:12px;line-height:1.55;margin:10px 0}.quote{padding:9px 11px;border-left:3px solid #9fc3c0;background:#f7faf9;font-size:11px;color:#4d666d;font-style:italic}.interpretation{margin-top:10px;padding-top:10px;border-top:1px dashed #d8e1e3;font-size:10px;color:#71858b}.tag-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.tag{font-size:9px;background:#eff4f5;padding:4px 6px;border-radius:999px;color:#5b7077}
+.theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.theme-card{background:white;border:1px solid var(--line);border-radius:12px;padding:18px;cursor:pointer;transition:.15s}.theme-card:hover{transform:translateY(-1px);box-shadow:var(--shadow)}.theme-card h3{font-size:14px;margin:0 0 8px}.theme-card p{font-size:11px;color:var(--muted);line-height:1.5}.evidence-bar{height:5px;background:#edf2f3;border-radius:4px;overflow:hidden;margin:12px 0}.evidence-bar span{display:block;height:100%;background:var(--accent)}.theme-meta{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}.trace-drawer{margin-top:14px;background:#123740;color:white;border-radius:12px;padding:18px}.trace-drawer h3{margin:0 0 8px}.trace-drawer p,.trace-drawer li{font-size:11px;color:#c8dadd;line-height:1.5}
+.finding{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:start;background:white;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:10px}.finding-num{width:36px;height:36px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:850;font-size:12px}.finding h3{font-size:14px;margin:0 0 6px}.finding p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}.finding aside{min-width:150px;text-align:right}.severity{font-size:10px;font-weight:850}.severity.high{color:var(--danger)}.severity.med{color:var(--amber)}
+.matrix{position:relative;height:340px;background:white;border:1px solid var(--line);border-radius:12px;margin-top:14px;padding:22px}.matrix:before,.matrix:after{content:'';position:absolute;background:#e5ecee}.matrix:before{width:1px;top:26px;bottom:38px;left:50%}.matrix:after{height:1px;left:42px;right:25px;top:50%}.axis-x{position:absolute;bottom:12px;left:45%;font-size:9px;color:var(--muted)}.axis-y{position:absolute;left:8px;top:44%;transform:rotate(-90deg);font-size:9px;color:var(--muted)}.matrix-dot{position:absolute;transform:translate(-50%,-50%);padding:8px 10px;border-radius:999px;background:#dff1ee;border:1px solid #b8dcd6;font-size:9px;font-weight:800;white-space:nowrap}.before-after{display:grid;grid-template-columns:1fr 1fr;gap:14px}.concept{background:white;border:1px solid var(--line);border-radius:12px;padding:18px}.concept.before{border-top:4px solid #d7a050}.concept.after{border-top:4px solid #4fa07a}.concept h3{margin:0 0 10px;font-size:14px}.concept ul{font-size:11px;color:#5d7278;line-height:1.6;padding-left:18px}
+.repo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.repo-card{background:white;border:1px solid var(--line);border-radius:11px;padding:16px}.repo-card h3{font-size:13px;margin:6px 0}.repo-card p{font-size:10px;color:var(--muted);line-height:1.45}.repo-meta{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:13px}.repo-actions{display:flex;gap:6px;margin-top:10px}.repo-actions button{border:1px solid var(--line);background:white;border-radius:7px;padding:6px 8px;font-size:9px;font-weight:750;cursor:pointer}
+.case-section{display:grid;grid-template-columns:210px 1fr;gap:26px;padding:26px 0;border-top:1px solid var(--line)}.case-section:first-child{border-top:0;padding-top:0}.case-section h2{font-size:16px;margin:0}.case-section .body{font-size:13px;color:#4f656c;line-height:1.65}.case-section .body strong{color:var(--ink)}.skills-table td:first-child{font-weight:800;color:var(--ink)}
+.callout{background:var(--blue-soft);border:1px solid #d2e1ef;border-radius:12px;padding:15px;color:#34566d;font-size:11px;line-height:1.55}.ai-callout{background:#f2eef8;border:1px solid #dfd4ef}.ai-callout strong{color:#5b437d}
+@media(max-width:1050px){.app-shell{grid-template-columns:220px 1fr}.pipeline{grid-template-columns:repeat(4,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}.study-layout{grid-template-columns:1fr}.moderator{position:static}.repo-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:780px){.app-shell{display:block}.sidebar{position:static;height:auto;padding:18px}.nav-list{grid-template-columns:repeat(3,1fr)}.sidebar-footer{display:none}.provenance-pill{margin-bottom:12px}.topbar{position:static;height:auto;padding:18px;gap:14px;align-items:flex-start}.top-actions{flex-wrap:wrap;justify-content:flex-end}.content{padding:20px 16px 50px}.hero-grid,.grid-2,.grid-3,.before-after{grid-template-columns:1fr}.pipeline{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:1fr 1fr}.theme-grid{grid-template-columns:1fr}.repo-grid{grid-template-columns:1fr}.proto-content{grid-template-columns:1fr}.request-list{border-right:0;border-bottom:1px solid var(--line)}.case-section{grid-template-columns:1fr;gap:8px}.form-grid{grid-template-columns:1fr}.topbar h1{font-size:22px}}
+
+</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <div class="brand-block">
+        <div class="brand-mark">CF</div>
+        <div>
+          <div class="brand-name">CareFlow</div>
+          <div class="brand-sub">Research Lab</div>
+        </div>
+      </div>
+      <div class="provenance-pill">Independent portfolio study</div>
+      <nav id="nav" class="nav-list"></nav>
+      <div class="sidebar-footer">
+        <div class="safe-badge"><span class="dot"></span> Demo data · No PHI</div>
+        <p>Built to demonstrate healthcare UX research practice—not employer or client work.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Healthcare UX Research Portfolio</div>
+          <h1 id="pageTitle">Overview</h1>
+        </div>
+        <div class="top-actions">
+          <button class="ghost-btn" id="exportBtn">Export study JSON</button>
+          <a class="primary-btn" href="https://aj-kivela-portfolio.lovable.app/" target="_blank" rel="noreferrer">AJ's portfolio ↗</a>
+        </div>
+      </header>
+      <section id="content" class="content" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <dialog id="participantDialog" class="dialog">
+    <form method="dialog" id="participantForm">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">Research Ops</div>
+          <h2>Add simulated participant</h2>
+        </div>
+        <button value="cancel" class="icon-btn" aria-label="Close">×</button>
+      </div>
+      <p class="warning-copy">Use fictional/demo information only. Do not enter patient information or PHI.</p>
+      <label>Name <input name="name" required placeholder="e.g., P07 — Jordan" /></label>
+      <label>Role
+        <select name="role" required>
+          <option>Hospice nurse</option><option>Care coordinator</option><option>Clinical administrator</option>
+        </select>
+      </label>
+      <label>Experience band
+        <select name="experience"><option>0–2 years</option><option>3–7 years</option><option>8+ years</option></select>
+      </label>
+      <label>Scheduled date <input name="date" type="date" /></label>
+      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button value="default" class="primary-btn">Add participant</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="noteDialog" class="dialog">
+    <form method="dialog" id="noteForm">
+      <div class="dialog-head"><div><div class="eyebrow">Evidence Capture</div><h2>Add observation</h2></div><button value="cancel" class="icon-btn">×</button></div>
+      <label>Participant <select name="participant" id="noteParticipant"></select></label>
+      <label>Task <select name="task"><option>Task 1 · Find delayed request</option><option>Task 2 · Identify prerequisite</option><option>Task 3 · Route next action</option><option>Task 4 · Confirm fulfillment readiness</option></select></label>
+      <label>Observed behavior <textarea name="observation" required placeholder="Write only what was directly observed."></textarea></label>
+      <label>Direct quote <textarea name="quote" placeholder="Optional simulated quote"></textarea></label>
+      <label>Researcher interpretation <textarea name="interpretation" placeholder="Keep inference separate from observation."></textarea></label>
+      <div class="form-grid">
+        <label>Note type <select name="type"><option>Behavior</option><option>Pain point</option><option>Workaround</option><option>Expectation</option><option>Opportunity</option></select></label>
+        <label>Severity <select name="severity"><option>Low</option><option>Medium</option><option>High</option></select></label>
+        <label>Evidence confidence <select name="confidence"><option>Low</option><option selected>Medium</option><option>High</option></select></label>
+      </div>
+      <label>Tags <input name="tags" placeholder="status, blocker, ownership" /></label>
+      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button value="default" class="primary-btn">Save observation</button></div>
+    </form>
+  </dialog>
+
+<script>
+const sections = [
+  ['overview','Overview'],['brief','Research Brief'],['participants','Participants'],['study','Study Room'],['notes','Notes'],['synthesis','Synthesis'],['findings','Findings'],['repository','Repository'],['case','Case Study']
+];
+
+const seedParticipants = [
+  {name:'P01 · Maya',role:'Hospice nurse',exp:'8+ years',date:'2026-09-18',consent:'Confirmed',status:'Complete'},
+  {name:'P02 · Luis',role:'Care coordinator',exp:'3–7 years',date:'2026-09-19',consent:'Confirmed',status:'Complete'},
+  {name:'P03 · Erin',role:'Clinical administrator',exp:'8+ years',date:'2026-09-20',consent:'Confirmed',status:'Complete'},
+  {name:'P04 · Noah',role:'Hospice nurse',exp:'3–7 years',date:'2026-09-23',consent:'Confirmed',status:'Scheduled'},
+  {name:'P05 · Priya',role:'Care coordinator',exp:'8+ years',date:'2026-09-24',consent:'Pending',status:'Scheduled'},
+  {name:'P06 · Sam',role:'Clinical administrator',exp:'0–2 years',date:'2026-09-25',consent:'Pending',status:'Recruiting'}
+];
+const seedNotes = [
+  {participant:'P01 · Maya',task:'Task 1',type:'Behavior',severity:'High',confidence:'High',tags:['status','blocker'],observation:'Scanned the status column twice, then opened three requests before identifying the one blocked by missing information.',quote:'I need to know what is stopping it before I need the rest of the chart.',interpretation:'Blocker information may need stronger hierarchy than broad status labels.'},
+  {participant:'P02 · Luis',task:'Task 3',type:'Pain point',severity:'High',confidence:'High',tags:['ownership','handoff'],observation:'Paused after selecting the next action because the current owner and next owner appeared in different interface regions.',quote:'Who has it right now? That is the thing I am trying to answer.',interpretation:'Users may treat ownership as a core status attribute, not secondary metadata.'},
+  {participant:'P03 · Erin',task:'Task 4',type:'Expectation',severity:'Medium',confidence:'Medium',tags:['confirmation','certainty'],observation:'Looked for an explicit confirmation state after resolving the final prerequisite and did not trust the generic “Processing” label.',quote:'I would want something that tells me we are actually clear now.',interpretation:'A dedicated fulfillment-ready confirmation could reduce uncertainty.'},
+  {participant:'P01 · Maya',task:'Task 2',type:'Workaround',severity:'Medium',confidence:'High',tags:['scan','notes'],observation:'Used the free-text activity history to infer the missing prerequisite rather than the structured status panel.',quote:'The notes are where I find the real answer.',interpretation:'Structured blocker data is not currently trusted or visible enough.'},
+  {participant:'P02 · Luis',task:'Task 1',type:'Behavior',severity:'Medium',confidence:'Medium',tags:['status','language'],observation:'Interpreted “Pending” as waiting on pharmacy rather than waiting on the care team, then backtracked after reading activity history.',quote:'Pending on who?',interpretation:'Status vocabulary lacks actor-specific meaning.'},
+  {participant:'P03 · Erin',task:'Task 3',type:'Opportunity',severity:'Medium',confidence:'Medium',tags:['ownership','action'],observation:'Completed routing quickly once a visible “Next action” control was introduced in the concept variation.',quote:'This is clearer because it tells me the handoff, not just the record.',interpretation:'Pairing owner and next action may improve handoff comprehension.'}
+];
+
+let state = {
+  current:'overview',
+  participants: JSON.parse(localStorage.getItem('cfParticipants')||'null') || seedParticipants,
+  notes: JSON.parse(localStorage.getItem('cfNotes')||'null') || seedNotes,
+  selectedTheme:0,
+  selectedRequest:0,
+  task:0,
+  taskDone:[false,false,false,false],
+  timer:0,
+  timerRunning:false,
+  timerHandle:null,
+  confidence:3
+};
+
+const requests = [
+  {name:'REQ-1048 · Simulated patient A',med:'Morphine concentrate 20 mg/mL',status:'Blocked',statusClass:'blocked',risk:'High delay risk',blocker:'Signed comfort-kit order missing',owner:'Hospice nurse',next:'Clinical administrator',age:'42 min',ready:false,activity:['Request submitted by care coordinator','Pharmacy eligibility verified','Order signature still missing']},
+  {name:'REQ-1047 · Simulated patient B',med:'Lorazepam 0.5 mg',status:'In review',statusClass:'pending',risk:'Standard',blocker:'None',owner:'Clinical administrator',next:'Pharmacy',age:'18 min',ready:false,activity:['Request submitted','Clinical review started']},
+  {name:'REQ-1046 · Simulated patient C',med:'Haloperidol 2 mg/mL',status:'Ready',statusClass:'ready',risk:'On track',blocker:'None',owner:'Pharmacy',next:'Fulfillment',age:'11 min',ready:true,activity:['Request submitted','All prerequisites verified','Ready for fulfillment']}
+];
+
+const themes = [
+  {title:'Status language is too ambiguous',summary:'Generic labels force users to infer who is waiting on whom.',support:4,confidence:88,roles:'Nurse · Coordinator · Admin',evidence:['P02 misread “Pending” as pharmacy-owned.','P03 sought actor-specific confirmation.','P01 relied on activity history instead of status.']},
+  {title:'Ownership is hard to see',summary:'Current owner and next owner are cognitively separated during handoffs.',support:3,confidence:84,roles:'Coordinator · Admin',evidence:['P02 paused to reconcile owner fields.','P03 completed routing faster with a visible next-action control.']},
+  {title:'Users scan for blockers before details',summary:'Time-sensitive work starts with “what is stopping this?” rather than full-record review.',support:4,confidence:91,roles:'Nurse · Coordinator',evidence:['P01 opened multiple requests searching for the blocker.','P01 quote: “I need to know what is stopping it...”']},
+  {title:'Handoff confirmation reduces uncertainty',summary:'Users want a discrete “ready” state after the final prerequisite is resolved.',support:3,confidence:79,roles:'Admin · Nurse',evidence:['P03 did not trust generic “Processing.”','Concept test showed faster closure recognition with a ready state.']}
+];
+
+const findings = [
+  {title:'Expose the blocker before secondary request detail',evidence:'Participants repeatedly scanned status and activity history to answer what was preventing progress.',roles:'Nurse, coordinator',severity:'High',conf:'High',recommendation:'Add a persistent blocker banner with the missing prerequisite and responsible role.',impact:'Less time spent opening records to diagnose delay risk.',validate:'Test with real users and compare task time/error rate.'},
+  {title:'Make ownership actor-specific',evidence:'“Pending” was interpreted differently depending on the participant’s mental model.',roles:'Coordinator, admin',severity:'High',conf:'High',recommendation:'Replace broad status language with Current owner + Next action.',impact:'Fewer handoff misreads and less backtracking.',validate:'Concept test actor-specific vs generic labels.'},
+  {title:'Confirm fulfillment readiness explicitly',evidence:'Participants looked for a clear closure state after prerequisites were resolved.',roles:'Admin, nurse',severity:'Medium',conf:'Medium',recommendation:'Show a dedicated “Ready for fulfillment” confirmation with timestamp.',impact:'Higher confidence at the end of a handoff.',validate:'Measure confidence and duplicate-check behavior.'},
+  {title:'Preserve activity history as evidence, not primary navigation',evidence:'Users used history to recover missing context, but it increased search cost.',roles:'All roles',severity:'Medium',conf:'Medium',recommendation:'Keep audit trail intact while elevating structured blocker/owner data above it.',impact:'Faster scanning without losing traceability.',validate:'Moderated task comparison in realistic workflow.'}
+];
+
+function save(){ localStorage.setItem('cfParticipants',JSON.stringify(state.participants)); localStorage.setItem('cfNotes',JSON.stringify(state.notes)); }
+function esc(s=''){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+function chip(txt,cls=''){ return `<span class="chip ${cls}">${esc(txt)}</span>`; }
+function nav(){
+  const n=document.getElementById('nav'); n.innerHTML=sections.map((s,i)=>`<button class="nav-btn ${state.current===s[0]?'active':''}" data-section="${s[0]}"><span class="nav-index">0${i+1}</span>${s[1]}</button>`).join('');
+  n.querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.section));
+}
+function go(id){state.current=id;document.getElementById('pageTitle').textContent=sections.find(s=>s[0]===id)[1];nav();render();window.scrollTo({top:0,behavior:'smooth'});}
+function sectionTitle(title,desc,action=''){return `<div class="section-title"><div><h2>${title}</h2><p>${desc}</p></div>${action}</div>`}
+function overview(){return `
+<div class="hero-grid">
+  <div class="hero-card"><div class="eyebrow">Independent UX Research + Product Study</div><h2>Reducing uncertainty in time-sensitive medication handoffs.</h2><p>CareFlow Research Lab is a self-directed healthcare SaaS research case study. It demonstrates how I frame research questions, structure moderated studies, capture evidence, synthesize themes, and translate findings into product decisions—while keeping observation, interpretation, and AI assistance clearly separated.</p><div class="hero-meta">${chip('2-week sprint','teal')}${chip('Discovery + evaluative','blue')}${chip('Mixed-method framework')}${chip('Simulated pilot evidence','amber')}</div></div>
+  <div class="provenance-card"><div><div class="big-label">PORTFOLIO PROVENANCE</div><strong>Real research workflow. Simulated pilot data.</strong><p>This is not work performed for BetterRX or any client. The interface, study plan, demo participants, quotes, and pilot metrics are fictional artifacts created to demonstrate research practice.</p></div><div class="provenance-list"><div class="provenance-row"><span class="check">✓</span>No employer/client relationship implied</div><div class="provenance-row"><span class="check">✓</span>No real patient information</div><div class="provenance-row"><span class="check">✓</span>Evidence provenance stays visible</div></div></div>
+</div>
+${sectionTitle('Research pipeline','A repeatable workflow from question framing to decision support.')}
+<div class="pipeline">${['Brief|Frame decision + risks','Recruit/Scenario|Define roles + screen','Interview|Context + mental models','Test|Observe task behavior','Observe|Separate fact + inference','Synthesize|Cluster + trace evidence','Recommend|Prioritize changes','Share|Report + repository'].map((x,i)=>{let [a,b]=x.split('|');return `<div class="pipeline-step"><span class="pipeline-num">0${i+1}</span><b>${a}</b><span>${b}</span></div>`}).join('')}</div>
+${sectionTitle('Simulated study snapshot','Pilot metrics are illustrative—not claims about real users.')}
+<div class="metrics"><div class="metric"><div class="label">Demo participants</div><div class="value">6</div><div class="note">3 role types · simulated</div></div><div class="metric"><div class="label">Structured observations</div><div class="value">${state.notes.length}</div><div class="note">Observation ≠ interpretation</div></div><div class="metric"><div class="label">Synthesized themes</div><div class="value">4</div><div class="note">Each traceable to source notes</div></div><div class="metric"><div class="label">Concept changes</div><div class="value">3</div><div class="note">Blocker · ownership · confirmation</div></div></div>
+${sectionTitle('Competencies demonstrated','Mapped directly to artifacts in this project.')}
+<div class="grid-3"><div class="artifact"><div class="artifact-label">Research planning</div><h3>Brief + discussion guide</h3><p>Decision framing, methods rationale, recruiting criteria, bias controls, task design, and success signals.</p></div><div class="artifact"><div class="artifact-label">Generative + evaluative</div><h3>Interview + usability framework</h3><p>Context questions, think-aloud moderation, task success, confidence, concept evaluation, and behavioral notes.</p></div><div class="artifact"><div class="artifact-label">Research operations</div><h3>Repository + reusable artifacts</h3><p>Participant tracker, structured notes, traceable themes, findings report, decision log, and exportable study data.</p></div></div>`}
+
+function brief(){return `
+<div class="grid-2">
+<div class="panel"><div class="kicker">Decision to inform</div><h3>What should the medication-request workspace surface first?</h3><p>Determine which information architecture and handoff cues best help care-team members recognize delay risk, understand responsibility, and move a request forward with confidence.</p></div>
+<div class="panel"><div class="kicker">Primary question</div><h3>How might we reduce uncertainty and handoff friction?</h3><p>Focus on a time-sensitive medication request as it moves among hospice nurses, care coordinators, clinical administrators, and pharmacy-facing workflows.</p></div></div>
+${sectionTitle('Secondary questions','Designed to uncover mental models before validating interface changes.')}
+<div class="grid-3">${[
+['Recognition','How do users decide which request needs attention first?'],['Ownership','How do users determine who owns the next action?'],['Blockers','Where do users look to learn what is preventing progress?'],['Language','Which status terms are interpreted consistently across roles?'],['Closure','What signals make a user trust that a handoff is complete?'],['Workarounds','What external notes, calls, or memory aids replace missing product clarity?']].map(x=>`<div class="artifact"><div class="artifact-label">${x[0]}</div><h3>${x[1]}</h3></div>`).join('')}</div>
+${sectionTitle('Method plan','Qualitative depth with lightweight task metrics.')}
+<div class="table-wrap"><table><thead><tr><th>Method</th><th>Why</th><th>Signal</th><th>Artifact</th></tr></thead><tbody>
+<tr><td><strong>Semi-structured interview</strong></td><td>Understand role context, language, and workarounds</td><td>Recurring mental models + exceptions</td><td>Discussion guide + notes</td></tr>
+<tr><td><strong>Contextual inquiry prompts</strong></td><td>Anchor answers in realistic handoff behavior</td><td>Sequence, dependencies, tool switching</td><td>Workflow observations</td></tr>
+<tr><td><strong>Moderated usability test</strong></td><td>Observe recognition, routing, and closure</td><td>Completion, wrong turns, time, confidence</td><td>Task metrics</td></tr>
+<tr><td><strong>Concept evaluation</strong></td><td>Compare clearer blocker/owner patterns</td><td>Preference with reasoning, not preference alone</td><td>Before/after findings</td></tr>
+</tbody></table></div>
+${sectionTitle('Participant framework','Target roles and recruiting guardrails.')}
+<div class="grid-2"><div class="panel"><h3>Include</h3><ul><li>Hospice nurses who coordinate time-sensitive medication needs</li><li>Care coordinators who manage cross-role follow-up</li><li>Clinical administrators who review prerequisites, routing, or fulfillment readiness</li><li>Mix of lower and higher experience bands</li></ul></div><div class="panel"><h3>Exclude / control</h3><ul><li>No real patient data in portfolio sessions</li><li>No participants evaluating their own employer’s proprietary workflow</li><li>No leading explanation of the intended blocker/ownership model before tasks</li><li>Separate usability failure from domain unfamiliarity</li></ul></div></div>
+${sectionTitle('Session structure','Reusable 45-minute moderated guide.')}
+<div class="table-wrap"><table><thead><tr><th>Phase</th><th>Minutes</th><th>Moderator prompt</th></tr></thead><tbody>
+<tr><td>Opening + consent</td><td>3</td><td>This is a fictional workflow. I am testing the interface, not you. Please think aloud.</td></tr>
+<tr><td>Context interview</td><td>10</td><td>Tell me about the last time a medication request was delayed. What did you need to know first?</td></tr>
+<tr><td>Task set</td><td>20</td><td>Find the request most at risk → identify blocker → route next action → confirm readiness.</td></tr>
+<tr><td>Concept comparison</td><td>7</td><td>Compare the original and revised status/ownership patterns. What changed in your interpretation?</td></tr>
+<tr><td>Close</td><td>5</td><td>What felt missing, surprising, or overly complicated? What would you change first?</td></tr>
+</tbody></table></div>
+${sectionTitle('Rigor + ethics','Controls that protect evidence quality.')}
+<div class="grid-3"><div class="panel"><h3>Observation vs inference</h3><p>Behavioral notes are stored separately from researcher interpretation so themes can be traced back to what actually occurred.</p></div><div class="panel"><h3>Contradictory evidence</h3><p>Synthesis explicitly records exceptions and unresolved questions rather than forcing every note into a dominant theme.</p></div><div class="panel"><h3>Privacy</h3><p>Portfolio demo data is fictional. A real study would use approved consent, secure storage, minimum necessary data, and organizational privacy requirements.</p></div></div>`}
+
+function participants(){return `${sectionTitle('Participant operations','Simulated recruiting and session-tracking workflow.',`<button class="primary-btn" id="addParticipant">+ New participant</button>`)}<div class="callout">All entries below are fictional portfolio data. This tracker demonstrates recruiting and scheduling structure without representing real BetterRX users or customers.</div><div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Participant</th><th>Role</th><th>Experience</th><th>Scheduled</th><th>Consent</th><th>Session</th></tr></thead><tbody>${state.participants.map(p=>`<tr><td><strong>${esc(p.name)}</strong></td><td>${esc(p.role)}</td><td>${esc(p.exp)}</td><td>${esc(p.date||'TBD')}</td><td><span class="status ${p.consent==='Confirmed'?'ready':'pending'}">${esc(p.consent)}</span></td><td><span class="status ${p.status==='Complete'?'ready':p.status==='Recruiting'?'blocked':'pending'}">${esc(p.status)}</span></td></tr>`).join('')}</tbody></table></div>`}
+
+function study(){const r=requests[state.selectedRequest];return `
+<div class="callout">Simulated moderated study environment. The patient and request data below are fictional and contain no PHI.</div>
+<div class="study-layout" style="margin-top:14px">
+  <aside class="moderator"><div class="eyebrow" style="color:#82bdb8">Moderator console</div><h3>Task ${state.task+1} of 4</h3><p>${['Find the request most at risk of delay.','Identify the missing prerequisite.','Route the next action to the responsible role.','Confirm the request is ready for fulfillment.'][state.task]}</p><div class="task-list">${['Find delayed request','Identify prerequisite','Route next action','Confirm fulfillment readiness'].map((t,i)=>`<button class="task-btn ${state.task===i?'active':''} ${state.taskDone[i]?'complete':''}" data-task="${i}">${i+1}. ${t}</button>`).join('')}</div><div class="timer-box"><div><div class="eyebrow" style="color:#93bfc0">Elapsed</div><div class="timer" id="timer">${fmtTime(state.timer)}</div></div><button class="soft-btn" id="timerToggle">${state.timerRunning?'Pause':'Start'}</button></div><div class="moderator-actions"><button class="ghost-btn" id="markTask">Mark complete</button><button class="ghost-btn" id="wrongTurn">+ Wrong turn</button></div><div class="confidence"><label>Post-task confidence: <span id="confValue">${state.confidence}/5</span></label><input id="confidence" type="range" min="1" max="5" value="${state.confidence}"></div><div class="callout" style="margin-top:14px;background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.11);color:#d6e5e7"><strong>Think-aloud prompt</strong><br>“Please keep telling me what you are looking for, what you expect to happen, and anything that feels unclear.”</div></aside>
+  <div class="prototype"><div class="prototype-window"><div class="proto-top"><div><strong>Medication Coordination</strong><div class="proto-meta">Fictional product concept · simulated workflow</div></div>${chip('Care team queue','teal')}</div><div class="proto-content"><div class="request-list">${requests.map((x,i)=>`<div class="request-card ${state.selectedRequest===i?'active':''}" data-request="${i}"><div class="name">${esc(x.name)}</div><div class="small">${esc(x.med)}</div><div class="mini-status" style="color:${x.statusClass==='blocked'?'#a34b3c':x.statusClass==='ready'?'#2d754e':'#a36b16'}">● ${esc(x.status)} · ${esc(x.age)}</div></div>`).join('')}</div><div class="req-detail"><div class="blocker-banner"><b>${r.blocker==='None'?'No active blocker':'BLOCKER · '+esc(r.blocker)}</b><span>${r.blocker==='None'?'Request is moving through its current stage.':'Next responsible role: '+esc(r.next)}</span></div><div class="detail-grid"><div class="detail-item"><div class="label">Current owner</div><div class="value">${esc(r.owner)}</div></div><div class="detail-item"><div class="label">Next action</div><div class="value">${esc(r.next)}</div></div><div class="detail-item"><div class="label">Delay risk</div><div class="value">${esc(r.risk)}</div></div><div class="detail-item"><div class="label">Status</div><div class="value">${esc(r.status)}</div></div></div><div class="activity"><h4>Activity history</h4>${r.activity.map(a=>`<div class="activity-row"><span class="activity-dot"></span><span>${esc(a)}</span></div>`).join('')}</div><div class="handoff"><h4>Route next action</h4><div class="handoff-controls"><select class="proto-select" id="routeSelect"><option>Hospice nurse</option><option>Care coordinator</option><option selected>Clinical administrator</option><option>Pharmacy</option></select><button class="primary-btn" id="routeBtn">Assign</button></div>${r.ready?`<div class="ready-panel"><strong>✓ Ready for fulfillment</strong><br>All required prerequisites are complete. Handoff confirmed.</div>`:''}</div></div></div></div></div>
+</div>`}
+
+function notes(){return `${sectionTitle('Observation log','Structured notes preserve the boundary between what happened and what it might mean.',`<button class="primary-btn" id="addNote">+ Add observation</button>`)}<div class="grid-2">${state.notes.map(n=>`<div class="note-card"><div class="note-head"><div>${chip(n.type,n.severity==='High'?'amber':'')}</div><div class="note-meta">${esc(n.participant)} · ${esc(n.task)} · ${esc(n.confidence)} confidence</div></div><div class="observation"><strong>Observed:</strong> ${esc(n.observation)}</div>${n.quote?`<div class="quote">“${esc(n.quote)}”</div>`:''}<div class="interpretation"><strong>Researcher interpretation:</strong> ${esc(n.interpretation||'—')}</div><div class="tag-row">${(n.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div></div>`).join('')}</div>`}
+
+function synthesis(){const t=themes[state.selectedTheme];return `${sectionTitle('Affinity synthesis','Themes retain note counts, role spread, confidence, contradictions, and traceability.')}<div class="theme-grid">${themes.map((x,i)=>`<div class="theme-card" data-theme="${i}"><h3>${esc(x.title)}</h3><p>${esc(x.summary)}</p><div class="evidence-bar"><span style="width:${x.confidence}%"></span></div><div class="theme-meta"><span>${x.support} supporting observations</span><span>${x.confidence}% confidence</span></div><div class="tag-row"><span class="tag">${esc(x.roles)}</span></div></div>`).join('')}</div><div class="trace-drawer"><div class="eyebrow" style="color:#83bbb9">Evidence traceability</div><h3>${esc(t.title)}</h3><p>Supporting evidence shown below is simulated pilot material. In a live study, each item would link to session source, timestamp, consent-safe note, and task context.</p><ul>${t.evidence.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div>${sectionTitle('Responsible AI synthesis aid','AI can accelerate organization without becoming the source of truth.')}<div class="callout ai-callout"><strong>Human-in-the-loop rule:</strong> AI may suggest clusters, labels, duplicate notes, or draft summaries. It may not invent a participant quote, convert researcher inference into observed behavior, suppress contradictory evidence, or upgrade confidence without a traceable source. Every synthesized claim remains reviewable against evidence.</div>`}
+
+function findingsView(){return `${sectionTitle('Executive findings','Actionable themes translated into product recommendations with confidence and validation needs.')}<div>${findings.map((f,i)=>`<div class="finding"><div class="finding-num">0${i+1}</div><div><h3>${esc(f.title)}</h3><p><strong>Evidence:</strong> ${esc(f.evidence)}<br><strong>Recommendation:</strong> ${esc(f.recommendation)}<br><strong>Expected impact:</strong> ${esc(f.impact)}<br><strong>Validation needed:</strong> ${esc(f.validate)}</p></div><aside><div class="severity ${f.severity==='High'?'high':'med'}">${esc(f.severity)} severity</div><div class="note-meta">${esc(f.conf)} confidence<br>${esc(f.roles)}</div></aside></div>`).join('')}</div>${sectionTitle('Impact vs implementation effort','Illustrative prioritization—not delivery estimates.')}<div class="matrix"><div class="axis-x">Implementation effort →</div><div class="axis-y">User impact →</div><div class="matrix-dot" style="left:28%;top:24%">Blocker banner</div><div class="matrix-dot" style="left:42%;top:31%">Owner + next action</div><div class="matrix-dot" style="left:61%;top:42%">Ready confirmation</div><div class="matrix-dot" style="left:70%;top:69%">History redesign</div></div>${sectionTitle('Concept change','The research changes the information hierarchy—not merely the visual styling.')}<div class="before-after"><div class="concept before"><h3>Before</h3><ul><li>Generic “Pending / Processing” statuses</li><li>Current owner hidden in secondary metadata</li><li>Blockers discoverable mainly through activity history</li><li>No explicit end-of-handoff confirmation</li></ul></div><div class="concept after"><h3>After</h3><ul><li>Visible blocker banner with missing prerequisite</li><li>Current owner and next action paired together</li><li>Delay risk surfaced in the scan path</li><li>Clear “Ready for fulfillment” confirmation</li></ul></div></div>${sectionTitle('Limitations + next study','What this portfolio pilot cannot establish.')}<div class="grid-2"><div class="panel"><h3>Limitations</h3><p>Demo users and evidence are simulated, so no behavioral result should be interpreted as validated customer insight. The workflow is intentionally generic and does not model a specific company’s proprietary process.</p></div><div class="panel"><h3>Next with real participants</h3><p>Recruit 6–8 clinicians/admins, run moderated task sessions, compare actor-specific status concepts, measure task success/time/confidence, capture contradictory role patterns, and review findings with Product + Design before implementation.</p></div></div>`}
+
+const artifacts=[
+['Research brief','Plan','Decision framing, questions, methods, risks, and success signals.'],['Discussion guide','Plan','Opening, context prompts, probes, tasks, and closing.'],['Participant screener','Recruit','Role and experience inclusion/exclusion criteria.'],['Session notes','Run','Observed behavior, quotes, interpretations, severity, and tags.'],['Task metrics','Run','Completion, elapsed time, wrong turns, and confidence.'],['Synthesis themes','Synthesize','Clusters, contradictions, confidence, and source traceability.'],['Findings report','Share','Evidence-backed recommendations and validation needs.'],['Decision log','Share','What changed, why, and what remains unresolved.'],['Presentation summary','Share','Executive narrative for Product, Design, and stakeholders.']
+];
+function repository(){return `${sectionTitle('Research repository','Lightweight, searchable, reusable artifacts for Product and Design.')}<div class="toolbar"><div class="toolbar-left"><input id="repoSearch" class="search" placeholder="Search artifacts…"></div><div class="toolbar-right">${chip('Owner · AJ Kivela','teal')}${chip('Independent portfolio study')}</div></div><div class="repo-grid" id="repoGrid">${renderRepo(artifacts)}</div>`}
+function renderRepo(items){return items.map((a,i)=>`<div class="repo-card"><div class="artifact-label">${esc(a[1])}</div><h3>${esc(a[0])}</h3><p>${esc(a[2])}</p><div class="repo-meta"><span>Sep 2026</span><span>AJ Kivela</span></div><div class="repo-meta"><span>Independent portfolio study</span><span>v1.${i+1}</span></div><div class="repo-actions"><button data-export="${esc(a[0])}">Export Markdown</button></div></div>`).join('')}
+
+function caseStudy(){return `
+<div class="hero-card" style="margin-bottom:18px"><div class="eyebrow">Recruiter-facing case study</div><h2>CareFlow Research Lab</h2><p>An independent healthcare UX research study exploring how information hierarchy, ownership cues, and blocker visibility can reduce handoff uncertainty in a fictional time-sensitive medication workflow.</p><div class="hero-meta">${chip('Independent study','teal')}${chip('Healthcare SaaS')}${chip('Mixed methods')}${chip('No PHI','blue')}</div></div>
+<div class="case-section"><h2>Problem</h2><div class="body">Time-sensitive care coordination can create ambiguity when a request is technically “in progress” but the interface does not make the <strong>blocker, current owner, or next action</strong> easy to scan. I designed a study around that decision problem rather than starting from a screen redesign.</div></div>
+<div class="case-section"><h2>My role</h2><div class="body"><strong>Independent UX Research + Product Study.</strong> I created the brief, research questions, discussion guide, moderated task framework, note schema, synthesis model, findings structure, and interactive product concept. This is a portfolio project—not paid BetterRX work, client research, or a claim of real participant outcomes.</div></div>
+<div class="case-section"><h2>Research plan</h2><div class="body">The plan combines semi-structured interviewing, contextual inquiry prompts, moderated usability testing, concept evaluation, task completion/time/wrong-turn signals, and post-task confidence. Recruiting spans hospice nurse, care coordinator, and clinical administrator perspectives.</div></div>
+<div class="case-section"><h2>What I built</h2><div class="body">A complete research operating environment: participant tracker, moderator console, realistic medication coordination prototype, evidence-safe note capture, affinity themes, source traceability, executive findings, impact/effort framing, and a reusable repository of research artifacts.</div></div>
+<div class="case-section"><h2>Simulated pilot</h2><div class="body">The seeded evidence illustrates a plausible pattern: people first ask what is blocking progress, then who owns the next action, then whether the handoff is truly complete. <strong>These are simulated observations used to demonstrate synthesis mechanics, not validated customer findings.</strong></div></div>
+<div class="case-section"><h2>Rigor</h2><div class="body">Observed behavior and researcher interpretation are stored separately. Themes expose supporting-note counts and contradictory evidence. Recommendations carry confidence and validation needs. The system is designed so a stakeholder can move from recommendation → theme → note → task context instead of trusting a detached summary.</div></div>
+<div class="case-section"><h2>Responsible AI</h2><div class="body">AI is positioned as a synthesis aid, not an evidence generator. It may suggest clusters or draft summaries, but human review controls final themes. The workflow explicitly prohibits invented quotes, hidden contradictions, or turning inference into observation.</div></div>
+<div class="case-section"><h2>Skills demonstrated</h2><div class="body"><div class="table-wrap"><table class="skills-table"><thead><tr><th>Competency</th><th>Evidence in this project</th></tr></thead><tbody>${[
+['Research planning','Decision brief, methods rationale, risks, success signals'],['Interviewing framework','Semi-structured guide + probing strategy'],['Contextual inquiry','Workflow and workaround prompts anchored in realistic scenarios'],['Usability testing','Moderator console, think-aloud tasks, task metrics'],['Concept evaluation','Before/after information hierarchy comparison'],['Mixed-method thinking','Qualitative evidence + task time/wrong turns/confidence'],['Synthesis','Affinity themes with traceability and contradictory evidence'],['Research operations','Participant tracking, templates, reusable repository'],['Healthcare workflow reasoning','Care-team roles, blockers, handoffs, medication delay scenario'],['Documentation + presentation','Structured findings, decision framing, recruiter case study'],['AI-assisted research governance','Human-reviewed synthesis guardrails and provenance']].map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</tbody></table></div></div></div>
+<div class="case-section"><h2>Next with real users</h2><div class="body">Recruit 6–8 eligible clinicians/admins, complete live moderated sessions, analyze cross-role differences, test status language against task accuracy and confidence, and share a decision-oriented readout with Product + Design. This is where portfolio demonstration becomes validated research.</div></div>
+<div class="case-section"><h2>Links</h2><div class="body"><a href="https://aj-kivela-portfolio.lovable.app/" target="_blank">AJ’s portfolio ↗</a> &nbsp;·&nbsp; <a href="https://github.com/ajkivela369-coder/servicebridge-advocate" target="_blank">GitHub ↗</a></div></div>`}
+
+function render(){let html='';if(state.current==='overview')html=overview();if(state.current==='brief')html=brief();if(state.current==='participants')html=participants();if(state.current==='study')html=study();if(state.current==='notes')html=notes();if(state.current==='synthesis')html=synthesis();if(state.current==='findings')html=findingsView();if(state.current==='repository')html=repository();if(state.current==='case')html=caseStudy();document.getElementById('content').innerHTML=html;bind();}
+
+function bind(){
+  const ap=document.getElementById('addParticipant');if(ap)ap.onclick=()=>document.getElementById('participantDialog').showModal();
+  const an=document.getElementById('addNote');if(an){an.onclick=()=>{document.getElementById('noteParticipant').innerHTML=state.participants.map(p=>`<option>${esc(p.name)}</option>`).join('');document.getElementById('noteDialog').showModal();}}
+  document.querySelectorAll('[data-theme]').forEach(x=>x.onclick=()=>{state.selectedTheme=+x.dataset.theme;render();});
+  document.querySelectorAll('[data-request]').forEach(x=>x.onclick=()=>{state.selectedRequest=+x.dataset.request;render();});
+  document.querySelectorAll('[data-task]').forEach(x=>x.onclick=()=>{state.task=+x.dataset.task;render();});
+  const tt=document.getElementById('timerToggle');if(tt)tt.onclick=toggleTimer;
+  const mt=document.getElementById('markTask');if(mt)mt.onclick=()=>{state.taskDone[state.task]=true;if(state.task<3)state.task++;render();};
+  const wt=document.getElementById('wrongTurn');if(wt)wt.onclick=()=>{wt.textContent='Wrong turn noted ✓';setTimeout(()=>wt.textContent='+ Wrong turn',900)};
+  const conf=document.getElementById('confidence');if(conf)conf.oninput=e=>{state.confidence=+e.target.value;document.getElementById('confValue').textContent=state.confidence+'/5'};
+  const route=document.getElementById('routeBtn');if(route)route.onclick=()=>{route.textContent='Assigned ✓';route.disabled=true;};
+  const rs=document.getElementById('repoSearch');if(rs)rs.oninput=e=>{const q=e.target.value.toLowerCase();document.getElementById('repoGrid').innerHTML=renderRepo(artifacts.filter(a=>a.join(' ').toLowerCase().includes(q)));bindRepoButtons();};
+  bindRepoButtons();
+}
+function bindRepoButtons(){document.querySelectorAll('[data-export]').forEach(b=>b.onclick=()=>downloadText(slug(b.dataset.export)+'.md',artifactMarkdown(b.dataset.export)));}
+function artifactMarkdown(name){return `# ${name}\n\nOwner: AJ Kivela\nProvenance: Independent portfolio study\nData policy: Demo/simulated data only; no PHI.\n\nThis artifact is part of CareFlow Research Lab, a healthcare UX research portfolio project.\n`;}
+function slug(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+function fmtTime(s){return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+function toggleTimer(){state.timerRunning=!state.timerRunning;if(state.timerRunning){state.timerHandle=setInterval(()=>{state.timer++;const t=document.getElementById('timer');if(t)t.textContent=fmtTime(state.timer)},1000)}else clearInterval(state.timerHandle);const b=document.getElementById('timerToggle');if(b)b.textContent=state.timerRunning?'Pause':'Start';}
+function downloadText(filename,text){const blob=new Blob([text],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();URL.revokeObjectURL(a.href)}
+function exportStudy(){downloadText('careflow-research-lab-study.json',JSON.stringify({project:'CareFlow Research Lab',owner:'AJ Kivela',provenance:'Independent portfolio study',data_policy:'Demo/simulated data only; no PHI',participants:state.participants,notes:state.notes,themes,findings},null,2));}
+
+document.getElementById('participantForm').addEventListener('submit',e=>{if(e.submitter?.value==='cancel')return;const fd=new FormData(e.currentTarget);state.participants.push({name:fd.get('name'),role:fd.get('role'),exp:fd.get('experience'),date:fd.get('date'),consent:'Pending',status:'Recruiting'});save();setTimeout(()=>{go('participants')},0)});
+document.getElementById('noteForm').addEventListener('submit',e=>{if(e.submitter?.value==='cancel')return;const fd=new FormData(e.currentTarget);state.notes.unshift({participant:fd.get('participant'),task:fd.get('task').split(' · ')[0],observation:fd.get('observation'),quote:fd.get('quote'),interpretation:fd.get('interpretation'),type:fd.get('type'),severity:fd.get('severity'),confidence:fd.get('confidence'),tags:String(fd.get('tags')||'').split(',').map(s=>s.trim()).filter(Boolean)});save();setTimeout(()=>go('notes'),0)});
+document.getElementById('exportBtn').onclick=exportStudy;
+nav();render();
+
+</script>
+</body>
+</html>
