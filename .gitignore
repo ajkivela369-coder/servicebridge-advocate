@@ -35,3 +35,7 @@ build/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local live-acceptance evidence (may contain large machine-specific artifacts)
+acceptance-results/
+**/acceptance-results/
