@@ -11,6 +11,7 @@
 - **SearchSignal — SEO + GEO Operations Lab:** https://forgesearcher.floot.app/ — live public-URL auditing with explainable SEO/GEO scores, structured-data tooling, content optimization, roadmap/analytics workflows, and WordPress support/training demonstrations.
 - **Application portfolio index:** [portfolio/README.md](portfolio/README.md)
 - **Portfolio quality-control contract and status:** [portfolio/QUALITY_CONTROL.md](portfolio/QUALITY_CONTROL.md)
+- **Step-by-step app build/upgrade index:** [portfolio/BUILD_AND_UPGRADE_INDEX.md](portfolio/BUILD_AND_UPGRADE_INDEX.md)
 - **Employer-facing portfolio:** https://aj-kivela-portfolio.lovable.app/
 
 SearchSignal and the other portfolio applications are independent project work. Demo data, connector-ready integrations, source-only prototypes, and live production functionality are labeled separately rather than being represented as paid employment or unverified production experience.
@@ -26,7 +27,6 @@ The repository now mirrors the current integrated local Forge Suite under **[`fo
 - **MedForge** — medical image/mechanism teaching workflows, generated visuals, and Blender-backed 3D studio paths.
 - **GrimForge** — full-episode creative pipeline with explicit **3D / 2.5D / 2D** routes, narration, captions, and MP4 assembly.
 - **Forge Learn** — synchronized teaching companion covering shipping capabilities and failure modes.
-- **Forge Builder** — local-first prompt-to-app workspace with provider-neutral model routing, project sandboxing, local previews, Git snapshots, QA gates, and explicit deployment authorization.
 
 **Current status:** implementation candidate. Automated structural/fixture gates pass. A repeatable [live acceptance runbook](forge-suite/current/LIVE_ACCEPTANCE_RUNBOOK.md) now defines the evidence and thresholds for Blender/ComfyUI visual quality, narrator quality, and Windows target-PC behavior; those live gates remain pending until real runs meet the published criteria.
 

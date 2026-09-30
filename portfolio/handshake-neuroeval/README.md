@@ -44,6 +44,10 @@ The dashboard exposes the rubric dimensions, deterministic flags, reviewer stren
 
 High-quality AI evaluation is more than deciding whether an answer sounds right. Reviewers need repeatable criteria, explicit uncertainty, traceable failure modes, benchmark cases, and examples that can be compared across models. NeuroEval turns those expectations into a compact reference implementation.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step implementation, benchmark, CI, and deployment trail.
+
 ## Scope
 
 Portfolio and research demonstration only. This is not a diagnostic or clinical decision-support system and does not provide patient-specific medical advice.

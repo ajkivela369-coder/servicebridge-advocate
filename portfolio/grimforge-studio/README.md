@@ -34,6 +34,10 @@ Simple → Pro preserves the current episode and generated scene work.
 - The combined blend influences episode generation/remixing and is saved with the cloud project.
 - Floating **Archivist Veyr** remains available throughout the studio.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step evolution from the prototype through Simple/Pro, Reference Lab, and the current Forge 3D/2.5D/2D pipeline.
+
 ## Originality boundary
 Imported channels and sites influence abstract production traits only. GrimForge explicitly avoids copying scripts, jokes, catchphrases, thumbnails, artwork, creator identity, voices, or distinctive protected expression.
 

@@ -11,6 +11,10 @@ Source snapshot for the next StudyForge release.
 - Floating **Forge Tutor** copilot with access to the current guide, QBank, weak topics, and reference profile.
 - Exam Coach scoring and weak-area remediation remain part of the workflow.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step evolution and the current source-versus-live boundary.
+
 ## Originality boundary
 Reference sources are inspiration for abstract teaching/production patterns only. The app is intentionally designed not to reproduce scripts, proprietary questions, catchphrases, creator identity, artwork, or other distinctive protected expression.
 

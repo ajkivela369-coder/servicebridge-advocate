@@ -18,6 +18,10 @@ Next-release source for WildTake Studio.
 
 These are high-level production references, not cloning targets.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step Reference Lab, Copilot, rights, and source-upgrade trail.
+
 ## Originality / rights boundary
 The app must not copy scripts, voice identity, catchphrases, thumbnails, artwork, creator persona, or other distinctive protected expression. Reference sources inform abstract production patterns only.
 

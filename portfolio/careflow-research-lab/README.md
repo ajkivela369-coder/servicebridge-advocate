@@ -6,6 +6,10 @@ CareFlow Research Lab is an interview-ready healthcare UX research portfolio pro
 
 It demonstrates a complete research workflow: research planning, participant operations, moderated usability testing, evidence capture, task/confidence metrics, synthesis, evidence traceability, findings, research repository, and recruiter-facing case-study communication.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step research-product build and the transition from simulated pilot evidence toward real-participant validation.
+
 ## Portfolio provenance
 
 - Independent portfolio study; not employment or client work.

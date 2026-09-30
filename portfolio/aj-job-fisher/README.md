@@ -25,6 +25,10 @@ Mandatory-stop examples include medical/disability questions, background-check a
 
 The AppDeploy app itself does not independently sign into third-party job boards or bypass CAPTCHA/MFA. True browser-based submission requires an authenticated browser workflow/integration. The automation must never report an application as submitted without confirmation evidence.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step implementation and upgrade trail.
+
 ## Source
 
 This directory mirrors the deployed AppDeploy source snapshot and is intended for version control, review, and future development.

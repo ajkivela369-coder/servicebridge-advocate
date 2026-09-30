@@ -6,6 +6,10 @@
 
 This directory has been cleaned up so the current Elias application is the obvious entry point. The previous Streamlit implementation is preserved under [`legacy-streamlit/`](./legacy-streamlit/) rather than competing with the current build at the top level.
 
+## Build + upgrade history
+
+See [`BUILD_AND_UPGRADE.md`](./BUILD_AND_UPGRADE.md) for the step-by-step evolution, verification boundaries, and current acceptance status.
+
 ## What the current app does
 
 Elias is the master evidence-intelligence workspace for complex VA, disability, medical, service, and administrative records. **Evidence Auditor is the flagship audit workspace inside Elias**, not a separate patient-data silo. NeuroEval, HealthQA, Packet Builder, Citation Auditor, and Document Copilot are being consolidated as specialist modes behind the same floating Copilot and shared case record.

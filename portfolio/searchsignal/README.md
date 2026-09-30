@@ -39,6 +39,10 @@ On 2026-09-30, the production homepage returned HTTP 200, the deployed assets lo
 
 See [Portfolio Quality Control](../QUALITY_CONTROL.md) for the shared QC contract and automation.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step implementation and upgrade trail, including what is verified live versus connector-ready.
+
 ## Provenance
 
 Independent portfolio demonstration by AJ Kivela. Not affiliated with or endorsed by Dartmouth College or the Geisel School of Medicine. Demo/sample metrics are labeled as such, and unconnected integrations are not represented as live.

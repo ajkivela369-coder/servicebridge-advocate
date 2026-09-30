@@ -12,6 +12,10 @@ It lets a reviewer create and export evaluation items containing:
 
 It also reports dataset coverage and validation gaps and exports JSON/JSONL suitable for downstream evaluation pipelines.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step implementation and benchmark-authoring trail.
+
 ## Run
 
 ```bash

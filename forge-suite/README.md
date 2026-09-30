@@ -21,6 +21,10 @@ All six surfaces use **Forge Core** for shared model routing, local storage/Vaul
 
 Blender and FFmpeg are shared dependencies, not per-app copies. ComfyUI is an optional local image/video layer.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](current/BUILD_AND_UPGRADE.md) for the step-by-step evolution of the six-product Forge architecture and the current acceptance sequence.
+
 ## Acceptance boundary
 
 This source is an **implementation candidate**, not a claim that every optional engine is production-validated on every PC.

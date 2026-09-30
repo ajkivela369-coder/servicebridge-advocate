@@ -13,6 +13,10 @@ pip install -r requirements.txt
 streamlit run dashboard.py
 ```
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step implementation and deployment trail.
+
 ## Streamlit deployment
 
 Main file path:

@@ -45,6 +45,10 @@ The dashboard surfaces disposition, safety and quality scores, risk flags, revie
 
 A useful health-content evaluator should be conservative about patient-specific claims, explain why something was flagged, make escalation explicit, and allow its decisions to be audited. This repo uses deterministic checks as a reproducible baseline and keeps the architecture simple enough to extend with expert review, retrieval, or model-based judging.
 
+## Build + upgrade history
+
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step implementation, safety benchmark, CI, and deployment trail.
+
 ## Scope
 
 Portfolio and research demonstration only. This software is not medical advice, diagnosis, triage, treatment software, or a medical device and should not be used to make patient-care decisions.

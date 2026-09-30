@@ -63,6 +63,10 @@ See [ELIAS_EVIDENCE_CLOUD_V9_ROADMAP.md](./ELIAS_EVIDENCE_CLOUD_V9_ROADMAP.md) f
 8. Open **Voice Studio**, preview a Device voice, and test Neural if it is connected.
 9. Open **Packet Studio** and compare **One-click Create** with the full manual generation controls.
 
+## Build + upgrade history
+
+See the portfolio-level [BUILD_AND_UPGRADE.md](../BUILD_AND_UPGRADE.md) for the step-by-step evolution from the legacy Streamlit app to the unified Elias/Evidence Auditor architecture.
+
 ## Deployment note
 
 The current production edition is deployed through AppDeploy and uses AppDeploy-provided auth, AI, storage, and API SDK capabilities. **The AppDeploy deployment is the authoritative production snapshot.** The `source/` directory is kept for public inspection and implementation reference as the product evolves.

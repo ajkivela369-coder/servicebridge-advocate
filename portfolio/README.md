@@ -5,17 +5,12 @@ A growing collection of compact, auditable AI applications spanning neuroscience
 <!-- FORGE-SUITE-PORTFOLIO:START -->
 ## Current integrated Forge Suite
 
-The newest integrated implementation is **Forge v0.5.6+**, mirrored at **[`../forge-suite/current/`](../forge-suite/current/)**. It unifies Forge Workspace, Elias, Evidence Auditor, MedForge, GrimForge, Forge Learn, and the newer Forge Builder work behind one local Forge Core while preserving each app's distinct workflow and identity.
+The newest integrated implementation is **Forge v0.5.6**, mirrored at **[`../forge-suite/current/`](../forge-suite/current/)**. It unifies Forge Workspace, Elias, Evidence Auditor, MedForge, GrimForge, and Forge Learn behind one local Forge Core while preserving each app's distinct workflow and identity.
 
 The individual portfolio folders below remain useful project history and demonstrations. Where they differ, **`forge-suite/current/` is the controlling current local implementation**.
 <!-- FORGE-SUITE-PORTFOLIO:END -->
 
 ## Applications
-
-### Forge Builder
-**Public standalone repo:** https://github.com/ajkivela369-coder/forge-builder
-
-A local-first prompt-to-app workspace with replaceable model/provider adapters, sandboxed project generation, editable source, local preview, Git snapshots, QA gates, and explicitly authorized deployment paths. The integrated Forge development line now also includes provider-neutral routing, project sandboxing, snapshot endpoints, static validation, and real browser smoke checks.
 
 ### [SearchSignal — SEO + GEO Operations Lab](searchsignal/)
 **Live:** https://forgesearcher.floot.app/
@@ -60,6 +55,10 @@ A rights-aware short-form wildlife/animal commentary studio with timed action be
 
 ### [CareFlow Research Lab](careflow-research-lab/)
 An independent healthcare UX research portfolio study built around a fictional medication-coordination workflow. It demonstrates research planning, interview/contextual-inquiry frameworks, moderated usability testing, task/confidence metrics, structured observation capture, affinity synthesis, evidence traceability, findings prioritization, research-repository design, and responsible AI-assisted synthesis. Seeded study data are explicitly simulated; the project does not claim BetterRX employment, client work, real participants, or real-world outcome metrics.
+
+## Build + upgrade histories
+
+The portfolio now keeps a step-by-step build and upgrade record for every cataloged app. Start with [BUILD + UPGRADE INDEX](BUILD_AND_UPGRADE_INDEX.md). The employer-facing presentation layer has its own [website build + upgrade history](WEBSITE_BUILD_AND_UPGRADE.md). Each app history separates implementation, automated verification, live deployment evidence, and target-PC or human-research acceptance.
 
 ## Design principles
 

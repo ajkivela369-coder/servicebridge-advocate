@@ -71,6 +71,7 @@ prompt = str(spec.get('prompt', '')).lower()
 out_mp4 = Path(spec['output_mp4'])
 out_png = Path(spec['output_png'])
 out_blend = Path(spec['output_blend'])
+frames_dir = Path(spec['frames_dir'])
 seconds = max(2.0, min(float(spec.get('seconds', 6)), 30.0))
 fps = 24
 frames = max(48, int(seconds * fps))
@@ -90,6 +91,8 @@ scene.render.resolution_percentage = 100
 scene.render.fps = fps
 scene.frame_start = 1
 scene.frame_end = frames
+if scene.world is None:
+    scene.world = bpy.data.worlds.new('Forge World')
 scene.world.color = (0.008, 0.012, 0.022)
 
 def mat(name, color, metal=0.0, rough=.45, emit=0.0):
@@ -194,16 +197,21 @@ cam=bpy.context.object; scene.camera=cam; point_camera(cam,target); cam.data.len
 cam.keyframe_insert(data_path='location',frame=1); cam.keyframe_insert(data_path='rotation_euler',frame=1)
 cam.location=cam_end; point_camera(cam,target); cam.keyframe_insert(data_path='location',frame=frames); cam.keyframe_insert(data_path='rotation_euler',frame=frames)
 if cam.animation_data and cam.animation_data.action:
-    for fc in cam.animation_data.action.fcurves:
+    action = cam.animation_data.action
+    # Blender 5.x changed Action internals; older releases expose fcurves directly.
+    # Default keyframe interpolation is already Bezier, so skip this optional polish
+    # when the compatibility attribute is unavailable.
+    for fc in getattr(action, 'fcurves', []):
         for kp in fc.keyframe_points: kp.interpolation='BEZIER'
 
 out_blend.parent.mkdir(parents=True,exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=str(out_blend))
 scene.frame_set(1)
 scene.render.image_settings.file_format='PNG'; scene.render.filepath=str(out_png); bpy.ops.render.render(write_still=True)
-scene.render.image_settings.file_format='FFMPEG'; scene.render.ffmpeg.format='MPEG4'; scene.render.ffmpeg.codec='H264'; scene.render.ffmpeg.constant_rate_factor='MEDIUM'; scene.render.ffmpeg.audio_codec='AAC'; scene.render.filepath=str(out_mp4)
+frames_dir.mkdir(parents=True, exist_ok=True)
+scene.render.image_settings.file_format='PNG'; scene.render.use_file_extension=True; scene.render.filepath=str(frames_dir / 'frame-')
 bpy.ops.render.render(animation=True)
-print('FORGE_BLENDER_OUTPUT='+str(out_mp4))
+print('FORGE_BLENDER_FRAMES='+str(frames_dir))
 '''
 
 
@@ -220,7 +228,8 @@ def render(kind: str, prompt: str = "", seconds: float = 6.0, output_name: str =
     mp4 = OUTPUTS / f"{safe}-{run_id}.mp4"
     png = OUTPUTS / f"{safe}-{run_id}.png"
     blend = OUTPUTS / f"{safe}-{run_id}.blend"
-    spec = {"kind": kind, "prompt": prompt[:16000], "seconds": max(2, min(float(seconds), 30)), "output_mp4": str(mp4), "output_png": str(png), "output_blend": str(blend)}
+    frames_dir = work / "frames"
+    spec = {"kind": kind, "prompt": prompt[:16000], "seconds": max(2, min(float(seconds), 30)), "output_mp4": str(mp4), "output_png": str(png), "output_blend": str(blend), "frames_dir": str(frames_dir)}
     spec_path = work / "spec.json"
     spec_path.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     script = work / "forge_blender_render.py"
@@ -232,6 +241,15 @@ def render(kind: str, prompt: str = "", seconds: float = 6.0, output_name: str =
     if p.returncode != 0:
         tail = log.read_text(encoding="utf-8", errors="replace")[-4000:]
         raise RuntimeError("Blender render failed. " + tail)
+    frame_files = sorted(frames_dir.glob("frame-*.png"))
+    if not frame_files:
+        raise RuntimeError("Blender finished but produced no animation frames.")
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError("Blender rendered frames, but external FFmpeg is unavailable for MP4 assembly.")
+    progress("Encoding Blender frames to MP4 with external FFmpeg")
+    subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-framerate", "24", "-i", str(frames_dir / "frame-%04d.png"), "-c:v", "libx264", "-preset", "fast", "-crf", "19", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(mp4)], check=True, timeout=1200)
+    shutil.rmtree(frames_dir, ignore_errors=True)
     missing = [str(x) for x in (mp4, png, blend) if not x.exists() or x.stat().st_size == 0]
     if missing:
         raise RuntimeError("Blender finished but expected outputs are missing: " + ", ".join(missing))
