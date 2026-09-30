@@ -26,6 +26,7 @@ The repository now mirrors the current integrated local Forge Suite under **[`fo
 - **MedForge** — medical image/mechanism teaching workflows, generated visuals, and Blender-backed 3D studio paths.
 - **GrimForge** — full-episode creative pipeline with explicit **3D / 2.5D / 2D** routes, narration, captions, and MP4 assembly.
 - **Forge Learn** — synchronized teaching companion covering shipping capabilities and failure modes.
+- **Forge Builder** — local-first prompt-to-app workspace with provider-neutral model routing, project sandboxing, local previews, Git snapshots, QA gates, and explicit deployment authorization.
 
 **Current status:** implementation candidate. Automated structural/fixture gates pass. A repeatable [live acceptance runbook](forge-suite/current/LIVE_ACCEPTANCE_RUNBOOK.md) now defines the evidence and thresholds for Blender/ComfyUI visual quality, narrator quality, and Windows target-PC behavior; those live gates remain pending until real runs meet the published criteria.
 
