@@ -27,9 +27,9 @@ The repository now mirrors the current integrated local Forge Suite under **[`fo
 - **GrimForge** — full-episode creative pipeline with explicit **3D / 2.5D / 2D** routes, narration, captions, and MP4 assembly.
 - **Forge Learn** — synchronized teaching companion covering shipping capabilities and failure modes.
 
-**Current status:** implementation candidate. Automated structural/fixture gates pass; real Windows upgrade behavior, Blender/ComfyUI output quality, and local narrator quality still require target-PC acceptance.
+**Current status:** implementation candidate. Automated structural/fixture gates pass. A repeatable [live acceptance runbook](forge-suite/current/LIVE_ACCEPTANCE_RUNBOOK.md) now defines the evidence and thresholds for Blender/ComfyUI visual quality, narrator quality, and Windows target-PC behavior; those live gates remain pending until real runs meet the published criteria.
 
-See [Forge Suite current source](forge-suite/current/), [acceptance status](forge-suite/current/ACCEPTANCE_STATUS.md), and [product blueprint](forge-suite/current/PRODUCT_COMPLETION_BLUEPRINT.md).
+See [Forge Suite current source](forge-suite/current/), [acceptance status](forge-suite/current/ACCEPTANCE_STATUS.md), [live acceptance runbook](forge-suite/current/LIVE_ACCEPTANCE_RUNBOOK.md), and [product blueprint](forge-suite/current/PRODUCT_COMPLETION_BLUEPRINT.md).
 
 Older Elias, Evidence Auditor, and GrimForge folders remain in the repository as development history.
 <!-- FORGE-SUITE-CURRENT:END -->
