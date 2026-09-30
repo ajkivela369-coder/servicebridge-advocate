@@ -72,6 +72,8 @@ jobs:
           node-version: '22'
       - name: Install and build
         working-directory: ${{ matrix.project }}
+        env:
+          PORTFOLIO_QC_APPDEPLOY_SHIM: '1'
         run: |
           npm install --no-audit --no-fund
           npm run build
