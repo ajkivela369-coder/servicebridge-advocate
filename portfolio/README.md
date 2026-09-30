@@ -42,6 +42,9 @@ An adaptive MLT/ABOR study coach with source-grounded study-pack generation, Exa
 ### [WildTake Studio](wildtake-studio/)
 A rights-aware short-form wildlife/animal commentary studio with timed action beats, original AI commentary packs, a weighted Reference Lab for public channels/sites, curated production presets, and the floating Wild Copilot. Reference sources shape abstract pacing, hooks, structure, humor density, and educational framing—not scripts, voices, catchphrases, artwork, or creator identity.
 
+### [CareFlow Research Lab](careflow-research-lab/)
+An independent healthcare UX research portfolio study built around a fictional medication-coordination workflow. It demonstrates research planning, interview/contextual-inquiry frameworks, moderated usability testing, task/confidence metrics, structured observation capture, affinity synthesis, evidence traceability, findings prioritization, research-repository design, and responsible AI-assisted synthesis. Seeded study data are explicitly simulated; the project does not claim BetterRX employment, client work, real participants, or real-world outcome metrics.
+
 ## Design principles
 
 - Transparent, inspectable baselines rather than hidden claims of model intelligence.
@@ -50,6 +53,12 @@ A rights-aware short-form wildlife/animal commentary studio with timed action be
 - Portfolio examples use synthetic or de-identified data where privacy matters.
 - Creative tools distinguish inspiration from imitation and track asset rights before publication.
 - Projects are demonstrations of hands-on AI-evaluation and production work, not claims of paid AI employment or production clinical/legal systems.
+
+## Portfolio quality control
+
+Every cataloged project is covered by a reusable GitHub Actions quality gate in [Portfolio QC](../.github/workflows/portfolio-qc.yml). The gate verifies that catalog paths and READMEs exist, local portfolio links resolve, CareFlow keeps its accessibility/provenance markers and self-contained demo boundary, and the Forge Suite retains its explicit implementation-candidate / live-validation boundary.
+
+A passing static/fixture gate does **not** convert unverified live-engine, clinical, media-quality, or user-research claims into verified results. Those remain labeled separately and require the relevant real-world acceptance work.
 
 ## Direction
 
