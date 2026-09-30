@@ -108,8 +108,8 @@ require("QUALITY_CONTROL.md" in text,
 root_readme = (ROOT / "README.md").read_text(encoding="utf-8", errors="replace")
 require("implementation candidate" in root_readme.lower(),
         "Forge: README preserves implementation-candidate boundary")
-require("require target-pc acceptance" in root_readme.lower(),
-        "Forge: README preserves pending live-validation boundary")
+require("live acceptance runbook" in root_readme.lower() and "live gates remain pending" in root_readme.lower(),
+        "Forge: README preserves defined-but-pending live-validation boundary")
 require("forgesearcher.floot.app" in root_readme.lower(),
         "root README links the newest SearchSignal live app")
 
