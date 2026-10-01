@@ -20,3 +20,7 @@
 18. Added a six-test Node QA gate covering syntax, health, interview workflow presence, private-network blocking, public auditing, site scanning, and redirect validation.
 19. Deployed the standalone interview build publicly at https://searchsignal-geisel-interview.vercel.app/ and verified the homepage, assets, health endpoint, audit endpoint, site scan, and redirect validator from the hosted deployment.
 20. Mirrored the standalone source into `interview-build/` so hiring reviewers can inspect the exact code behind the public interview demo without confusing it with the pending Floot v2 source parity work.
+
+21. Made Geisel Interview Mode the default landing screen and added a dated public-site evidence snapshot so a reviewer sees the concrete problem before navigating the tool.
+22. Added a ready-to-review Geisel homepage fix pack: public-evidence summary, editorial meta-description draft, minimal truthful WebPage JSON-LD draft, contextual link-review guidance, copy controls, and downloadable JSON evidence. No production change is claimed or attempted.
+23. Disconnected the standalone Vercel interview project from the incorrect monorepo auto-deploy path after catching a root-directory 404 regression; restored the verified manual production deployment and stable alias.

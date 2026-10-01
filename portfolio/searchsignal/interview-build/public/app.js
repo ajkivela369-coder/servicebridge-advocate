@@ -77,8 +77,12 @@ function interview(){
   const auditDetail=d
     ? '<b>'+esc(d.title||'Audited page')+'</b><div class="muted mini">SEO '+d.scores.seo+'/100 · GEO '+d.scores.geo+'/100 · '+d.findings.length+' findings</div>'
     : '<b>Geisel public homepage</b><div class="muted mini">No internal systems or private data required.</div>';
+  const geiselMetaDraft="Explore MD education, health sciences master's programs, research, news, events, centers, and affiliated hospitals at Geisel School of Medicine at Dartmouth.";
+  const geiselSchemaDraft={"@context":"https://schema.org","@type":"WebPage","name":"Geisel School of Medicine at Dartmouth","url":"https://geiselmed.dartmouth.edu/","isPartOf":{"@type":"WebSite","name":"Geisel School of Medicine at Dartmouth","url":"https://geiselmed.dartmouth.edu/"}};
   view.innerHTML=
-    '<div class="card section"><div class="eyebrow">INTERVIEW CASE STUDY</div><h2>How I would approach Geisel\'s web-visibility work</h2><p>Start with observable evidence, rank the work transparently, make safe changes, help content owners, then measure whether the change helped.</p><div class="header-actions"><button id="startCaseAudit" class="primary">1. Run live public-page audit</button><button data-go="site" class="secondary">2. Run bounded site scan</button><button data-go="roadmap" class="secondary">3. Open prioritization engine</button></div><p class="muted mini">Independent portfolio demonstration. Public data only; no Dartmouth credentials, analytics access, or production administration is implied.</p></div>'+
+    '<div class="card section"><div class="eyebrow">INTERVIEW CASE STUDY</div><h2>How I would approach Geisel\'s web-visibility work</h2><p>Start with observable evidence, rank the work transparently, make safe changes, help content owners, then measure whether the change helped.</p><div class="header-actions"><button id="startCaseAudit" class="primary">Run live public-page audit</button><button data-go="site" class="secondary">Run bounded site scan</button><button data-go="roadmap" class="secondary">Open prioritization engine</button></div><p class="muted mini">Work-in-progress independent portfolio prototype. Public data only; no Dartmouth credentials, analytics access, or production administration is implied.</p></div>'+
+    '<div class="card section"><div class="eyebrow">PUBLIC GEISEL SNAPSHOT · OCT 1, 2026</div><h2>What SearchSignal already found</h2><p class="muted">A fresh public homepage audit plus a bounded six-page same-origin sample. These are observable web signals, not claims about Geisel\'s internal priorities.</p><div class="grid three" style="margin-top:14px"><div><div class="metric">80</div><b>SEO rubric</b><p class="muted mini">Homepage snapshot</p></div><div><div class="metric">41</div><b>GEO readiness</b><p class="muted mini">Homepage snapshot</p></div><div><div class="metric">0</div><b>Fetch errors</b><p class="muted mini">6-page sample</p></div></div><div class="table-wrap" style="margin-top:14px"><table><tr><th>Observed signal</th><th>Public evidence</th><th>Practical next move</th></tr><tr><td><b>Missing meta description</b></td><td>Homepage audit did not detect one.</td><td>Write a specific plain-language summary for search snippets.</td></tr><tr><td><b>No JSON-LD detected</b></td><td>No schema types detected on the homepage.</td><td>Add truthful schema.org markup that matches visible content.</td></tr><tr><td><b>Placeholder / empty links</b></td><td>14 targets flagged on the homepage.</td><td>Review whether they are intentional controls; replace broken or placeholder hrefs.</td></tr><tr><td><b>Site-sample consistency</b></td><td>3/6 pages missing descriptions; 2/6 missing canonicals; 1/6 with an H1 issue.</td><td>Turn these into a prioritized, owner-aware cleanup queue.</td></tr></table></div><div class="callout" style="margin-top:14px"><b>The point:</b> the app turns a vague “improve web visibility” assignment into evidence, a ranked work queue, safe implementation boundaries, editor support, and measurable follow-up.</div></div>'+
+    '<div class="card section"><div class="eyebrow">READY-TO-REVIEW REMEDIATION</div><h2>Geisel homepage fix pack</h2><p>This does not publish anything to Dartmouth. It converts two verified public findings into implementation-ready drafts and turns the 14 link flags into a human-review task.</p><div class="grid two"><div><h3>Meta description draft</h3><div class="callout">'+esc(geiselMetaDraft)+'</div><p><button id="copyGeiselMeta" class="secondary">Copy meta description</button></p><p class="muted mini">Drafted only from information visible on the public homepage; editorial approval still required.</p></div><div><h3>Minimal WebPage JSON-LD draft</h3><pre>'+esc(JSON.stringify(geiselSchemaDraft,null,2))+'</pre><p><button id="copyGeiselSchema" class="secondary">Copy JSON-LD</button> <button data-go="schema" class="secondary">Open schema studio</button></p></div></div><div class="callout warn" style="margin-top:14px"><b>Link-review task:</b> SearchSignal flagged 14 empty/placeholder href targets. Some may be intentional JavaScript controls, so they should be inspected in context before any change. The fix is not “delete 14 links”; it is “review 14 flagged targets and repair only the unintended ones.”</div><div class="header-actions" style="margin-top:14px"><button id="downloadGeiselFixPack" class="primary">Download fix pack</button><span class="muted mini">Includes evidence, drafts, and review notes.</span></div></div>'+
     '<div class="grid three section">'+
       '<div class="card"><div class="stepnum">01</div><h3>Inspect</h3>'+auditState+'<p>'+auditDetail+'</p><p class="muted">Technical SEO, content structure, schema, links, accessibility signals, and AI-answer extractability.</p></div>'+
       '<div class="card"><div class="stepnum">02</div><h3>Prioritize</h3>'+status('work','Working model')+'<p><b>Why this work first?</b></p><p class="muted">Balance visibility gap, competition, demand/capacity pressure, institutional impact, staff capacity, and implementation effort.</p></div>'+
@@ -97,6 +101,27 @@ function interview(){
       const button=document.getElementById('auditBtn');
       if(button) button.click();
     },0);
+  };
+  const copyText=async(id,textValue)=>{
+    await navigator.clipboard.writeText(textValue);
+    const button=document.getElementById(id);
+    const prior=button.textContent;
+    button.textContent='Copied';
+    setTimeout(()=>button.textContent=prior,1200);
+  };
+  document.getElementById('copyGeiselMeta').onclick=()=>copyText('copyGeiselMeta',geiselMetaDraft);
+  document.getElementById('copyGeiselSchema').onclick=()=>copyText('copyGeiselSchema',JSON.stringify(geiselSchemaDraft,null,2));
+  document.getElementById('downloadGeiselFixPack').onclick=()=>{
+    const pack={
+      generated:'2026-10-01',
+      target:'https://geiselmed.dartmouth.edu/',
+      boundary:'Independent public-data portfolio draft. Review and approval required before any production change.',
+      observed:{seo:80,geo:41,homepageFindings:['Missing meta description','No JSON-LD detected','14 empty/placeholder href targets flagged for contextual review'],siteSample:{pages:6,fetchErrors:0,missingDescriptions:3,missingCanonicals:2,h1Issues:1}},
+      proposed:{metaDescription:geiselMetaDraft,jsonLd:geiselSchemaDraft,linkReview:'Inspect the 14 flagged href targets in context; repair only unintended empty/placeholder links.'}
+    };
+    const blob=new Blob([JSON.stringify(pack,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='geisel-homepage-fix-pack-2026-10-01.json';a.click();URL.revokeObjectURL(url);
   };
 }
 
@@ -406,4 +431,4 @@ function coverage(){
     '<div class="callout section" style="margin-top:16px"><b>Accuracy boundary:</b> SearchSignal demonstrates real auditing logic, structured-data generation, prioritization, support workflows and technical concepts. It does not present unconnected Search Console, Analytics, WordPress, Apache, PHP or MariaDB systems as production experience.</div>';
 }
 
-show('dashboard');
+show('interview');

@@ -52,6 +52,8 @@ test('interview workflow and priority engine ship in the client', async () => {
   assert.match(js, /Demand \/ capacity pressure/);
   assert.match(js, /Run live public-page audit/);
   assert.match(js, /Run bounded site scan/);
+  assert.match(js, /Geisel homepage fix pack/);
+  assert.match(js, /Download fix pack/);
 });
 
 test('private network audit targets are blocked', async () => {
