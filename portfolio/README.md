@@ -13,9 +13,11 @@ The individual portfolio folders below remain useful project history and demonst
 ## Applications
 
 ### [SearchSignal — SEO + GEO Operations Lab](searchsignal/)
-**Live:** https://forgesearcher.floot.app/
+**Geisel interview build:** https://searchsignal-geisel-interview.vercel.app/
 
-A working higher-education web-operations portfolio app with a secure server-side public-URL crawler, explainable SEO/GEO scoring, content-optimization drafts, schema.org JSON-LD tooling, roadmap prioritization, analytics/CSV workflows, WordPress-support scenarios, training modules, and a technical lab. Working features, connector-ready integrations, and learning-only surfaces are explicitly separated.
+**Published v2:** https://forgesearcher.floot.app/
+
+A working higher-education web-operations portfolio app with secure public-URL auditing, bounded same-site crawling, linked-document inventory, redirect-chain validation, explainable SEO/GEO scoring, content/schema tooling, editable prioritization, analytics CSV workflows, WordPress support/training, and explicit technical-escalation boundaries. The Geisel interview edition provides a five-minute hiring-manager walkthrough; the published Floot v2 remains a separate live surface while its latest source parity is pending.
 
 ### [AJ Job Fisher](aj-job-fisher/)
 **Live:** https://aj-job-fisher-a2507o.v2.appdeploy.ai/

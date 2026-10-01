@@ -1,0 +1,12 @@
+{
+  "name": "searchsignal-seo-geo-operations-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.js", "test": "node --test tests/smoke.mjs", "qa": "node --check server.js && node --check public/app.js && npm test" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "express": "^4.21.2"
+  }
+}

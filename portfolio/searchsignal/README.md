@@ -1,8 +1,10 @@
 # SearchSignal — SEO + GEO Operations Lab
 
-**Live app:** https://forgesearcher.floot.app/
+**Geisel interview build:** https://searchsignal-geisel-interview.vercel.app/
 
-SearchSignal is an independent portfolio project demonstrating higher-education web operations across traditional SEO, generative/AI engine optimization (GEO), structured data, content optimization, analytics workflows, WordPress support, training, and technical change boundaries.
+**Published v2:** https://forgesearcher.floot.app/
+
+SearchSignal is an independent portfolio project demonstrating higher-education web operations across traditional SEO, generative/AI engine optimization (GEO), structured data, content optimization, analytics workflows, WordPress support, training, and technical change boundaries. The standalone Geisel interview build adds a guided hiring-manager walkthrough, bounded site intelligence, document inventory, redirect validation, editable prioritization, and repeatable Node QA.
 
 ## What is working
 
@@ -20,7 +22,9 @@ Google Search Console, Google Analytics, self-hosted WordPress, and WordPress.co
 
 The independent local Apache/PHP/MariaDB Multisite lab passed 24 automated checks, followed by browser verification of departmental navigation and authenticated Network Admin. The separate Playground Blueprint also launched successfully. See [lab acceptance](wordpress-lab/ACCEPTANCE.md). This is hands-on training evidence, not production administration employment.
 
-## Source snapshot
+## Source snapshots
+
+The [`interview-build/`](interview-build/) directory is the current standalone, inspectable source for the public Geisel interview build. It includes its own server, client, deployment config, smoke tests, build history, and five-minute walkthrough.
 
 The `source/` directory contains an earlier six-file Floot implementation snapshot. Current v2 parity is blocked pending source access; see [V2 synchronization status](V2_SYNC_STATUS.md):
 

@@ -19,6 +19,9 @@ exports/
 ocr_output/
 vector_store/
 
+# JavaScript / Node
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]

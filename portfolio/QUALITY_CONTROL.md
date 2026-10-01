@@ -15,12 +15,12 @@ A portfolio app is eligible for **QC PASS** only when the checks applicable to t
 
 Automation lives in `.github/workflows/portfolio-qc.yml`, `scripts/portfolio_qc.py`, and `scripts/live_portfolio_smoke.py`.
 
-## Current audit — 2026-09-30
+## Current audit — 2026-10-01
 
 | Project | Delivery | Current QC evidence |
 |---|---|---|
 | Main employer portfolio | Live web | Production HTTP/title/meta/assets smoke passed |
-| SearchSignal | Live web + GitHub source snapshot | Production smoke passed; live audit endpoint returned SEO/GEO scores; private-target protection verified in implementation |
+| SearchSignal | Two live web surfaces + inspectable interview source | Geisel interview build: 6/6 Node QA passed; hosted homepage/assets/health/audit/site-scan/redirect checks passed; public Geisel audit + bounded crawl + HTTP→HTTPS redirect acceptance passed. Published Floot v2 remains live; latest v2 source parity is tracked separately as pending. |
 | AJ Job Fisher | Live web + source | Production HTTP/title/meta smoke passed; Vite build covered by portfolio QC |
 | Elias + Evidence Auditor | Live web + source | Production HTTP/title/meta smoke passed; core repo CI and evidence tests covered separately |
 | NeuroEval | Live web + source/tests | Production smoke passed; pytest + benchmark CI |

@@ -9,6 +9,7 @@ import urllib.request
 
 APPS = {
     "Main portfolio": "https://aj-kivela-portfolio.lovable.app/",
+    "SearchSignal Interview": "https://searchsignal-geisel-interview.vercel.app/",
     "SearchSignal": "https://forgesearcher.floot.app/",
     "AJ Job Fisher": "https://aj-job-fisher-a2507o.v2.appdeploy.ai/",
     "CiteGuard": "https://citeguard-06vkq0.v2.appdeploy.ai/",
@@ -99,3 +100,38 @@ except urllib.error.HTTPError as exc:
     if exc.code != 400 or not re.search(r"private|local", body, re.I):
         raise
 print("PASS SearchSignal private-network rejection")
+
+INTERVIEW = "https://searchsignal-geisel-interview.vercel.app"
+
+interview_audit = json.dumps({"url": "https://example.com/"}).encode()
+with request(INTERVIEW + "/api/audit", data=interview_audit, method="POST") as response:
+    payload = json.loads(response.read().decode("utf-8"))
+    if getattr(response, "status", None) != 200:
+        raise AssertionError("SearchSignal Interview: audit endpoint failed")
+    if not isinstance(payload.get("scores", {}).get("seo"), int) or not isinstance(payload.get("scores", {}).get("geo"), int):
+        raise AssertionError("SearchSignal Interview: audit endpoint missing SEO/GEO scores")
+print("PASS SearchSignal Interview audit endpoint")
+
+site_body = json.dumps({"url": "https://example.com/", "limit": 2}).encode()
+with request(INTERVIEW + "/api/site-scan", data=site_body, method="POST") as response:
+    payload = json.loads(response.read().decode("utf-8"))
+    if getattr(response, "status", None) != 200 or payload.get("summary", {}).get("pagesCrawled", 0) < 1:
+        raise AssertionError("SearchSignal Interview: site scan did not return a page inventory")
+print("PASS SearchSignal Interview site scan")
+
+redirect_body = json.dumps({"url": "https://example.com/"}).encode()
+with request(INTERVIEW + "/api/redirect-check", data=redirect_body, method="POST") as response:
+    payload = json.loads(response.read().decode("utf-8"))
+    if getattr(response, "status", None) != 200 or not payload.get("chain"):
+        raise AssertionError("SearchSignal Interview: redirect validator returned no chain")
+print("PASS SearchSignal Interview redirect validator")
+
+interview_private = json.dumps({"url": "http://127.0.0.1/"}).encode()
+try:
+    request(INTERVIEW + "/api/audit", data=interview_private, method="POST")
+    raise AssertionError("SearchSignal Interview: private-network target was unexpectedly accepted")
+except urllib.error.HTTPError as exc:
+    body = exc.read().decode("utf-8", errors="replace")
+    if exc.code != 400 or not re.search(r"private|blocked|local", body, re.I):
+        raise
+print("PASS SearchSignal Interview private-network rejection")

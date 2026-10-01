@@ -8,7 +8,7 @@
 
 ## Portfolio highlights
 
-- **SearchSignal — SEO + GEO Operations Lab:** https://forgesearcher.floot.app/ — live public-URL auditing with explainable SEO/GEO scores, structured-data tooling, content optimization, roadmap/analytics workflows, and WordPress support/training demonstrations.
+- **SearchSignal — SEO + GEO Operations Lab:** [Geisel interview build](https://searchsignal-geisel-interview.vercel.app/) · [published v2](https://forgesearcher.floot.app/) — live public-URL auditing, bounded site intelligence, document/redirect checks, explainable SEO/GEO scoring, prioritization, structured-data/content tooling, analytics workflows, and WordPress support/training.
 - **Application portfolio index:** [portfolio/README.md](portfolio/README.md)
 - **Portfolio quality-control contract and status:** [portfolio/QUALITY_CONTROL.md](portfolio/QUALITY_CONTROL.md)
 - **Step-by-step app build/upgrade index:** [portfolio/BUILD_AND_UPGRADE_INDEX.md](portfolio/BUILD_AND_UPGRADE_INDEX.md)
