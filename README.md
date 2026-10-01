@@ -51,7 +51,7 @@ timeline, evidence map, question list, and careful draft. It was shaped by years
 experience navigating fragmented medical care, National Guard service records, VA claims,
 disability programs, and inaccessible administrative systems.
 
-This is an early, open-source foundation—not a medical device, law firm, accredited veterans'
+This is an early proprietary foundation—not a medical device, law firm, accredited veterans'
 representative, or benefits decision-maker.
 
 ## Why this project exists
@@ -185,7 +185,7 @@ ServiceBridge Advocate is an early-stage technology and social-impact venture. I
 business model, organizational structure, policies, pricing, partnerships, technical architecture,
 and funding strategy may evolve as the project develops.
 
-The MIT License applies to code and other material expressly distributed under that license.
+Current proprietary materials are governed by the repository LICENSE. Third-party components remain governed by their own licenses; earlier versions validly distributed under prior licenses remain subject to those prior terms.
 It does not, by itself, grant rights to ServiceBridge trademarks, branding, unpublished
 confidential know-how, future proprietary components, datasets, or patent rights beyond what
 applicable law and the license provide.
@@ -213,4 +213,4 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+Proprietary — all rights reserved. See [LICENSE](LICENSE).
