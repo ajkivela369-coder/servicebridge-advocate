@@ -8,3 +8,7 @@
 6. Captured the key deployed implementation in a reviewable source snapshot.
 7. Added production smoke tests and verified the live homepage plus public audit endpoint on 2026-09-30.
 8. Current boundary: authenticated Search Console, Analytics, and WordPress connectors remain connector-ready, not claimed as live integrations.
+9. Validated the local Apache/PHP/MariaDB WordPress Multisite lab with 24 automated checks, then tested all three departmental navigation links in a browser.
+10. Inspected authenticated local Network Admin and its four-site list; removed the temporary test administrator afterward.
+11. Launched the committed Playground Blueprint in a fresh browser and verified authenticated Network Admin plus three departmental subsites, without the earlier database error.
+12. Added [acceptance evidence](wordpress-lab/ACCEPTANCE.md) and an explicit [v2 sync status](V2_SYNC_STATUS.md). Full live-source parity remains blocked by Floot's daily source-access allowance.

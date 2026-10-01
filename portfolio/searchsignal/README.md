@@ -18,11 +18,11 @@ SearchSignal is an independent portfolio project demonstrating higher-education 
 
 Google Search Console, Google Analytics, self-hosted WordPress, and WordPress.com are shown as connector-ready only. They are **not presented as authenticated production integrations** in the public demo.
 
-Apache, PHP, WordPress template hierarchy, and MariaDB/MySQL examples live in a clearly labeled technical-learning lab. They demonstrate working knowledge and safe-change boundaries rather than claiming production server administration experience.
+The independent local Apache/PHP/MariaDB Multisite lab passed 24 automated checks, followed by browser verification of departmental navigation and authenticated Network Admin. The separate Playground Blueprint also launched successfully. See [lab acceptance](wordpress-lab/ACCEPTANCE.md). This is hands-on training evidence, not production administration employment.
 
 ## Source snapshot
 
-The `source/` directory mirrors the key implementation from the current Floot-hosted build:
+The `source/` directory contains an earlier six-file Floot implementation snapshot. Current v2 parity is blocked pending source access; see [V2 synchronization status](V2_SYNC_STATUS.md):
 
 - `source/pages/_index.tsx` — application UI and portfolio workflows
 - `source/pages/_index.module.css` — responsive interface styling

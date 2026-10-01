@@ -1,0 +1,154 @@
+﻿{
+    "checked_at_utc": "2026-10-01T01:03:44+00:00",
+    "scope": "Local independent training lab",
+    "wordpress_version": "7.1.2",
+    "checks": [
+        {
+            "name": "multisite_enabled",
+            "status": "pass",
+            "evidence": true
+        },
+        {
+            "name": "database_connection",
+            "status": "pass",
+            "evidence": "10.11.19-MariaDB"
+        },
+        {
+            "name": "/admissions/ exists",
+            "status": "pass",
+            "evidence": 1
+        },
+        {
+            "name": "/admissions/ published_page",
+            "status": "pass",
+            "evidence": [
+                "MD Admissions Overview",
+                "Sample Page"
+            ]
+        },
+        {
+            "name": "/admissions/ pretty_permalinks",
+            "status": "pass",
+            "evidence": "/%year%/%monthnum%/%day%/%postname%/"
+        },
+        {
+            "name": "/admissions/ menu_items_exist",
+            "status": "pass",
+            "evidence": 1
+        },
+        {
+            "name": "/admissions/ database_tables",
+            "status": "pass",
+            "evidence": "wp_2_posts"
+        },
+        {
+            "name": "/admissions/ page_http",
+            "status": "pass",
+            "evidence": {
+                "url": "http://127.0.0.1:8088/admissions/md-admissions-overview/",
+                "status": 200
+            }
+        },
+        {
+            "name": "/admissions/ page_content",
+            "status": "pass",
+            "evidence": "MD Admissions Overview"
+        },
+        {
+            "name": "image_with_alt_text",
+            "status": "pass",
+            "evidence": [
+                "SearchSignal multisite training image"
+            ]
+        },
+        {
+            "name": "/research/ exists",
+            "status": "pass",
+            "evidence": 1
+        },
+        {
+            "name": "/research/ published_page",
+            "status": "pass",
+            "evidence": [
+                "Research Programs",
+                "Sample Page"
+            ]
+        },
+        {
+            "name": "/research/ pretty_permalinks",
+            "status": "pass",
+            "evidence": "/%year%/%monthnum%/%day%/%postname%/"
+        },
+        {
+            "name": "/research/ menu_items_exist",
+            "status": "pass",
+            "evidence": 1
+        },
+        {
+            "name": "/research/ database_tables",
+            "status": "pass",
+            "evidence": "wp_3_posts"
+        },
+        {
+            "name": "/research/ page_http",
+            "status": "pass",
+            "evidence": {
+                "url": "http://127.0.0.1:8088/research/research-programs/",
+                "status": 200
+            }
+        },
+        {
+            "name": "/research/ page_content",
+            "status": "pass",
+            "evidence": "Research Programs"
+        },
+        {
+            "name": "/student-affairs/ exists",
+            "status": "pass",
+            "evidence": 1
+        },
+        {
+            "name": "/student-affairs/ published_page",
+            "status": "pass",
+            "evidence": [
+                "Student Support",
+                "Sample Page"
+            ]
+        },
+        {
+            "name": "/student-affairs/ pretty_permalinks",
+            "status": "pass",
+            "evidence": "/%year%/%monthnum%/%day%/%postname%/"
+        },
+        {
+            "name": "/student-affairs/ menu_items_exist",
+            "status": "pass",
+            "evidence": 1
+        },
+        {
+            "name": "/student-affairs/ database_tables",
+            "status": "pass",
+            "evidence": "wp_4_posts"
+        },
+        {
+            "name": "/student-affairs/ page_http",
+            "status": "pass",
+            "evidence": {
+                "url": "http://127.0.0.1:8088/student-affairs/student-support/",
+                "status": 200
+            }
+        },
+        {
+            "name": "/student-affairs/ page_content",
+            "status": "pass",
+            "evidence": "Student Support"
+        }
+    ],
+    "failed": 0,
+    "pending": [
+        "Rendered navigation inspection",
+        "Authenticated Network Admin UI inspection",
+        "WordPress Playground Blueprint validation",
+        "SearchSignal crawler integration"
+    ]
+}

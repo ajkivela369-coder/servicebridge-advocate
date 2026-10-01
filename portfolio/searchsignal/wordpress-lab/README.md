@@ -20,4 +20,4 @@ Use the lab for hands-on WordPress work: page creation/editing, heading hierarch
 
 WordPress Playground runs WordPress/PHP in a browser/WebAssembly environment and uses SQLite rather than MariaDB/MySQL. It is useful for real WordPress and Multisite administration practice, but it **does not prove Apache or MariaDB production administration**.
 
-A separate Apache + MariaDB lab can be added when a suitable local container/Linux runtime is installed. Until then, SearchSignal labels Apache/PHP/MariaDB as technical-lab knowledge rather than production experience.
+A separate local Apache/PHP/MariaDB Multisite lab is now running on Windows. Its 24 automated checks and browser navigation/Network Admin checks passed. See [acceptance evidence](ACCEPTANCE.md) for exact scope. The Playground launch and three subsites were also verified; these remain independent training environments.
