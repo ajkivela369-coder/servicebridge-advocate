@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import * as cheerio from 'cheerio';
 import dns from 'node:dns/promises';
 import net from 'node:net';
@@ -10,6 +10,15 @@ const PORT = process.env.PORT || 3000;
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 app.use(express.json({ limit: '200kb' }));
 app.use(express.static(path.join(ROOT, 'public')));
 
@@ -75,6 +84,50 @@ function weightedScore(checks) {
 function issue(severity, label, evidence, fix) { return { severity, label, evidence, fix }; }
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'SearchSignal' }));
+function clampFactor(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(1, Math.min(5, n)) : 1;
+}
+
+function priorityScore(item) {
+  const impact = clampFactor(item.impact);
+  const gap = clampFactor(item.gap);
+  const competition = clampFactor(item.competition);
+  const demand = clampFactor(item.demand);
+  const staff = clampFactor(item.staff);
+  const effort = clampFactor(item.effort);
+  const supportNeed = 6 - staff;
+  return (impact * 2) + (gap * 1.5) + competition + (demand * 1.5) + supportNeed - (effort * 1.25);
+}
+
+function priorityPhase(score) {
+  return score >= 24 ? 'Now' : score >= 18 ? 'Next' : 'Later';
+}
+
+function recommendationDraft(text) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 12000);
+  const first = clean.split(/[.!?]/)[0].slice(0, 155);
+  return {
+    opening: first ? first + '.' : '',
+    outline: ['What this page covers', 'Key facts', 'Process or requirements', 'FAQs', 'Sources or contact'],
+    geo: ['Explicit entity naming', 'Updated date', 'Responsible author/editor', 'Source links', 'Concise Q&A blocks', 'Truthful structured data'],
+    seo: ['Unique title', 'Descriptive meta description', 'One H1', 'Descriptive internal links', 'Meaningful alt text', 'Canonical review'],
+    boundary: 'Draft guidance only. A human editor should verify facts, claims, accessibility, and institutional policy before publication.'
+  };
+}
+
+app.post('/api/prioritize', (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items.slice(0, 50) : [];
+  const ranked = items.map((item, index) => {
+    const score = priorityScore(item);
+    return { index, score: Number(score.toFixed(1)), phase: priorityPhase(score) };
+  }).sort((a, b) => b.score - a.score);
+  res.json({ ranked });
+});
+
+app.post('/api/recommendations', (req, res) => {
+  res.json(recommendationDraft(req.body?.text));
+});
 
 app.post('/api/audit', async (req, res) => {
   try {
@@ -194,7 +247,10 @@ app.post('/api/audit', async (req, res) => {
       schema: { types: [...new Set(schemas)], invalidBlocks: invalidSchemaBlocks },
       signals: { wordpress, generator, author, published, modified, openGraph, twitter, questions, answerFirst, hasCitations },
       scores: { seo: weightedScore(seoRubric), geo: weightedScore(geoRubric) },
-      rubrics: { seo: seoRubric, geo: geoRubric },
+      rubrics: {
+        seo: seoRubric.map(({ name, ok }) => ({ name, ok })),
+        geo: geoRubric.map(({ name, ok }) => ({ name, ok }))
+      },
       findings
     });
   } catch (err) {

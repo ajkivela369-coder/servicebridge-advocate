@@ -11,7 +11,7 @@ This guide is the five-minute review path for a hiring conversation. SearchSigna
 5. Open **WordPress Support** and explain what can be handled at page/editor level versus what should be escalated to architecture/server owners.
 6. Open **Training Center** to show how a repeated support issue becomes reusable editor guidance.
 7. Open **Analytics & AI Visibility** and explain what would be measured after implementation.
-8. Open **Requirements Coverage** and GitHub to show what is working, connector-ready, learning-only, and independently built.
+8. Open **Requirements Coverage** to show what is working, connector-ready, learning-only, and independently built. Source remains private; selected implementation details can be reviewed by screen share if requested.
 
 ## Accuracy boundary
 

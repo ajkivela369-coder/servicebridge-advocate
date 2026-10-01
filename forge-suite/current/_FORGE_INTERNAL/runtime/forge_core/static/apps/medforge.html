@@ -37,4 +37,4 @@ async function renderLesson(){if(!teachSource.value.trim()){teachResult.textCont
 async function renderFlow(){const nodes=flowNodes.value.split(/\n+/).map(x=>x.trim()).filter(Boolean);if(nodes.length<2){flowResult.textContent='Add at least two steps.';return}flowResult.textContent='Rendering…';try{const d=await api('/api/diagram/animate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:flowTitle.value,nodes,output_name:flowOutput.value||'medforge-flow',seconds_per_step:+flowSeconds.value||1.2})});flowResult.innerHTML=`<div class="good">Flow rendered.</div>${outputLink(d)}`}catch(e){flowResult.textContent=e.message}}
 boot();
 </script><script src="/static/apps/forge-shared.js"></script>
-</body></html>
+<footer data-ip-notice="true" style="padding:14px 18px;text-align:center;font-size:12px;line-height:1.5;opacity:.72;border-top:1px solid rgba(127,127,127,.22)">© 2026 Alexander J. Kivela. Proprietary portfolio software. All rights reserved.</footer></body></html>

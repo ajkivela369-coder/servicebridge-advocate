@@ -103,3 +103,62 @@ test('redirect validator returns an explicit chain', async () => {
   assert.ok(data.chain.length >= 1);
   assert.equal(typeof data.finalStatus, 'number');
 });
+
+test('public audit response hides proprietary scoring weights', async () => {
+  const r = await fetch(`${base}/api/audit`, {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({url:'https://example.com/'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  for (const group of [data.rubrics.seo, data.rubrics.geo]) {
+    assert.ok(group.every(item => !Object.prototype.hasOwnProperty.call(item, 'weight')));
+  }
+});
+
+test('prioritization runs server-side', async () => {
+  const r = await fetch(`${base}/api/prioritize`, {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({items:[
+      {impact:5,gap:4,competition:5,demand:5,staff:3,effort:2},
+      {impact:2,gap:2,competition:2,demand:2,staff:4,effort:4}
+    ]})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.ranked.length, 2);
+  assert.equal(data.ranked[0].index, 0);
+  assert.equal(typeof data.ranked[0].score, 'number');
+  assert.ok(['Now','Next','Later'].includes(data.ranked[0].phase));
+});
+
+test('recommendation generation runs server-side', async () => {
+  const r = await fetch(`${base}/api/recommendations`, {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({text:'Geisel School of Medicine at Dartmouth offers medical and health sciences education.'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(typeof data.opening, 'string');
+  assert.ok(Array.isArray(data.geo));
+  assert.ok(Array.isArray(data.seo));
+});
+
+test('public client omits proprietary formulas and shows ownership notice', async () => {
+  const js = await (await fetch(`${base}/app.js`)).text();
+  assert.doesNotMatch(js, /impact\s*\*\s*2/i);
+  assert.doesNotMatch(js, /supportNeed\s*=|weight:\s*1[0-9]/i);
+  const html = await (await fetch(`${base}/`)).text();
+  assert.match(html, /© 2026 Alexander J\. Kivela/);
+  assert.match(html, /Proprietary portfolio software/);
+});
+
+test('security headers protect the public demo surface', async () => {
+  const page = await fetch(`${base}/`);
+  assert.equal(page.headers.has('x-powered-by'), false);
+  assert.match(page.headers.get('content-security-policy') || '', /default-src 'self'/);
+  assert.equal(page.headers.get('x-content-type-options'), 'nosniff');
+
+  const api = await fetch(`${base}/api/health`);
+  assert.equal(api.headers.get('cache-control'), 'no-store');
+});

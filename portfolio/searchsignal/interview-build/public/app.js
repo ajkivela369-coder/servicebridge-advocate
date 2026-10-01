@@ -158,7 +158,7 @@ async function runAudit(){
 }
 
 function checks(list){
-  return list.map((c)=>'<div class="check"><span class="'+(c.ok?'ok':'bad')+'">'+(c.ok?'✓':'×')+'</span><span>'+esc(c.name)+'</span><span>'+c.weight+'pt</span></div>').join('');
+  return list.map((c)=>'<div class="check"><span class="'+(c.ok?'ok':'bad')+'">'+(c.ok?'✓':'×')+'</span><span>'+esc(c.name)+'</span><span>'+(c.ok?'pass':'review')+'</span></div>').join('');
 }
 
 function renderAudit(d){
@@ -254,18 +254,27 @@ function optimizer(){
   view.innerHTML=
     '<div class="grid two">'+
       '<div class="card"><h2>Page copy or summary</h2><textarea id="copy">'+esc(seed)+'</textarea><button class="primary" id="optBtn" style="margin-top:9px">Generate draft recommendations</button></div>'+
-      '<div class="card" id="optOut"><h2>AI answer readiness preview</h2><p class="muted">Recommendations appear here. They are drafts only and are never published automatically.</p></div>'+
+      '<div class="card" id="optOut"><h2>AI answer readiness preview</h2><p class="muted">Recommendations are produced by the private server-side workflow and returned as editable drafts.</p></div>'+
     '</div>';
-  document.getElementById('optBtn').onclick=()=>{
-    const text=document.getElementById('copy').value.trim();
-    const first=text.split(/[.!?]/)[0].slice(0,155);
-    document.getElementById('optOut').innerHTML=
-      '<h2>Editable draft</h2>'+
-      '<p><b>Answer-first opening:</b> '+esc(first+(first?'.':''))+'</p>'+
-      '<p><b>Suggested outline:</b> What this page covers → key facts → process/requirements → FAQs → sources/contact.</p>'+
-      '<p><b>GEO additions:</b> explicit entity naming, updated date, responsible author/editor, source links, concise Q&A blocks, truthful structured data.</p>'+
-      '<p><b>SEO additions:</b> unique title, descriptive meta, one H1, descriptive internal links, meaningful alt text, canonical review.</p>'+
-      '<div class="callout">Draft guidance only. A human editor should verify facts, claims, accessibility, and institutional policy before publication.</div>';
+  document.getElementById('optBtn').onclick=async()=>{
+    const button=document.getElementById('optBtn');
+    button.disabled=true; button.textContent='Generating…';
+    try{
+      const response=await fetch('/api/recommendations',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:document.getElementById('copy').value.trim()})});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||'Recommendation generation failed');
+      document.getElementById('optOut').innerHTML=
+        '<h2>Editable draft</h2>'+
+        '<p><b>Answer-first opening:</b> '+esc(data.opening||'Add a concise opening that directly states the page purpose.')+'</p>'+
+        '<p><b>Suggested outline:</b> '+data.outline.map(esc).join(' → ')+'</p>'+
+        '<p><b>GEO additions:</b> '+data.geo.map(esc).join(', ')+'.</p>'+
+        '<p><b>SEO additions:</b> '+data.seo.map(esc).join(', ')+'.</p>'+
+        '<div class="callout">'+esc(data.boundary)+'</div>';
+    }catch(error){
+      document.getElementById('optOut').innerHTML='<h2>Recommendation error</h2><p>'+esc(error.message)+'</p>';
+    }finally{
+      button.disabled=false; button.textContent='Generate draft recommendations';
+    }
   };
 }
 
@@ -306,38 +315,42 @@ function roadmap(){
     ['impact','Impact'],['gap','Visibility gap'],['competition','Competition'],
     ['demand','Demand / capacity pressure'],['staff','Dept. web capacity'],['effort','Effort']
   ];
-  const score=(a)=>{
-    const supportNeed=6-a.staff;
-    return (a.impact*2)+(a.gap*1.5)+a.competition+(a.demand*1.5)+supportNeed-(a.effort*1.25);
-  };
-  const phase=(s)=>s>=24?'Now':s>=18?'Next':'Later';
   const cell=(a,i,f)=>'<input class="prio-input" type="number" min="1" max="5" value="'+a[f]+'" data-i="'+i+'" data-f="'+f+'" aria-label="'+f+' for '+esc(a.area)+'">';
+  let lastRanked=[];
   view.innerHTML=
-    '<div class="callout section"><b>Transparent model:</b> Impact ×2 + visibility gap ×1.5 + competition + demand/capacity pressure ×1.5 + support need − effort ×1.25. Department web capacity is inverted into support need, so low-capacity teams receive more weight. Every input is editable.</div>'+
+    '<div class="callout section"><b>Protected prioritization model:</b> the public interface exposes the decision factors and resulting rank, while the weighting logic stays server-side. Every input remains editable so assumptions can still be challenged.</div>'+
     '<div class="card section"><h2>Interview scenario inputs</h2><p class="muted">These starting values are illustrative—not Geisel internal data. In practice I would replace them with stakeholder priorities, Search Console/Analytics evidence, service demand, and available staff capacity.</p></div>'+
     '<div class="table-wrap"><table><thead><tr><th>Area</th><th>Work</th>'+factors.map((f)=>'<th>'+f[1]+'<div class="muted mini">1–5</div></th>').join('')+'<th>Phase</th><th>Score</th></tr></thead><tbody id="roadmapRows"></tbody></table></div>'+
     '<div class="section" style="margin-top:12px"><button class="secondary" id="copyRoadmap">Copy ranked roadmap</button> <button class="secondary" data-go="interview">Back to interview mode</button></div>';
-  const render=()=>{
-    const ranked=areas.map((a,i)=>({a,i,s:score(a)})).sort((x,y)=>y.s-x.s);
-    document.getElementById('roadmapRows').innerHTML=ranked.map(({a,i,s})=>
-      '<tr><td><b>'+esc(a.area)+'</b></td><td>'+esc(a.work)+'</td>'+
-      factors.map((f)=>'<td>'+cell(a,i,f[0])+'</td>').join('')+
-      '<td><span class="phase '+phase(s).toLowerCase()+'">'+phase(s)+'</span></td><td><b>'+s.toFixed(1)+'</b></td></tr>'
-    ).join('');
-    document.querySelectorAll('.prio-input').forEach((input)=>{
-      input.onchange=()=>{
-        const i=Number(input.dataset.i);
-        const f=input.dataset.f;
-        areas[i][f]=Math.max(1,Math.min(5,Number(input.value)||1));
-        render();
-      };
-    });
+  const render=async()=>{
+    const tbody=document.getElementById('roadmapRows');
+    tbody.innerHTML='<tr><td colspan="'+(factors.length+4)+'">Calculating priorities…</td></tr>';
+    try{
+      const response=await fetch('/api/prioritize',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({items:areas})});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||'Prioritization failed');
+      lastRanked=data.ranked.map((r)=>({a:areas[r.index],i:r.index,s:r.score,phase:r.phase}));
+      tbody.innerHTML=lastRanked.map(({a,i,s,phase})=>
+        '<tr><td><b>'+esc(a.area)+'</b></td><td>'+esc(a.work)+'</td>'+
+        factors.map((f)=>'<td>'+cell(a,i,f[0])+'</td>').join('')+
+        '<td><span class="phase '+phase.toLowerCase()+'">'+phase+'</span></td><td><b>'+Number(s).toFixed(1)+'</b></td></tr>'
+      ).join('');
+      document.querySelectorAll('.prio-input').forEach((input)=>{
+        input.onchange=()=>{
+          const i=Number(input.dataset.i);
+          const f=input.dataset.f;
+          areas[i][f]=Math.max(1,Math.min(5,Number(input.value)||1));
+          render();
+        };
+      });
+    }catch(error){
+      tbody.innerHTML='<tr><td colspan="'+(factors.length+4)+'"><span class="bad">'+esc(error.message)+'</span></td></tr>';
+    }
   };
   render();
   document.getElementById('copyRoadmap').onclick=function(){
-    const ranked=areas.map((a)=>({a,s:score(a)})).sort((x,y)=>y.s-x.s);
     const text=['SearchSignal priority roadmap — illustrative inputs']
-      .concat(ranked.map((x,n)=>(n+1)+'. '+x.a.area+' — '+x.a.work+' — '+phase(x.s)+' — '+x.s.toFixed(1)))
+      .concat(lastRanked.map((x,n)=>(n+1)+'. '+x.a.area+' — '+x.a.work+' — '+x.phase+' — '+Number(x.s).toFixed(1)))
       .join('\n');
     navigator.clipboard.writeText(text);
     this.textContent='Copied';
@@ -414,7 +427,7 @@ function coverage(){
     ['Site crawl / documents / redirects','Site Intelligence crawls a bounded same-origin sample, inventories linked PDF/Office documents, and traces redirect chains.',status('work','Working')],
     ['GEO / AI visibility','Explainable GEO rubric for answer-first structure, entities, citations, authorship, dates and extractability.',status('work','Working')],
     ['Structured data','JSON-LD studio plus live schema detection/validation signals.',status('work','Working')],
-    ['Prioritized phased roadmap','Transparent impact/reach/confidence/effort model with Now / Next / Later planning.',status('work','Working')],
+    ['Prioritized phased roadmap','Editable decision factors with server-side proprietary ranking logic and Now / Next / Later planning.',status('work','Working')],
     ['Search Console / Analytics','Browser-local CSV import is working; authenticated account connections remain intentionally unconnected.',status('work','CSV workflow')],
     ['WordPress support','Ticket workflow, page-level support model, safe change boundary and escalation logic.',status('work','Working demo')],
     ['WordPress admin integration','Prepared as an authenticated connector path; not represented as live.',status('ready','Connector-ready')],
@@ -424,7 +437,7 @@ function coverage(){
     ['Large decentralized environment','Dashboard + roadmap + ownership/status patterns model multi-department governance.',status('work','Working demo')]
   ];
   view.innerHTML=
-    '<div class="card section"><h2>Portfolio evidence</h2><p>This application is designed to show how AJ approaches the actual workflow: inspect evidence, explain the finding, prioritize the work, support the content owner, document the change, and measure the result.</p><p><a href="https://aj-kivela-portfolio.lovable.app/" target="_blank" rel="noopener">AJ Kivela Portfolio</a> · <a href="https://github.com/ajkivela369-coder/servicebridge-advocate" target="_blank" rel="noopener">ServiceBridge Advocate GitHub</a></p></div>'+
+    '<div class="card section"><h2>Portfolio evidence</h2><p>This application is designed to show how AJ approaches the actual workflow: inspect evidence, explain the finding, prioritize the work, support the content owner, document the change, and measure the result.</p><p><a href="https://aj-kivela-portfolio.lovable.app/" target="_blank" rel="noopener">AJ Kivela Portfolio</a></p><p class="muted mini">Source code is private. Selected implementation details can be reviewed by screen share during an interview.</p></div>'+
     '<table><tr><th>Role requirement</th><th>Evidence in SearchSignal</th><th>Status</th></tr>'+
     rows.map((r)=>'<tr><td><b>'+r[0]+'</b></td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+
     '</table>'+
