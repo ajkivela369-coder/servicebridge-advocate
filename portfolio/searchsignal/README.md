@@ -22,6 +22,8 @@ Google Search Console, Google Analytics, self-hosted WordPress, and WordPress.co
 
 The independent local Apache/PHP/MariaDB Multisite lab passed 24 automated checks, followed by browser verification of departmental navigation and authenticated Network Admin. The separate Playground Blueprint also launched successfully. See [lab acceptance](wordpress-lab/ACCEPTANCE.md). This is hands-on training evidence, not production administration employment.
 
+See [LICENSE_BOUNDARY.md](LICENSE_BOUNDARY.md) for the historical MIT/community snapshot boundary and the current proprietary licensing posture.
+
 ## Source snapshots
 
 The [`interview-build/`](interview-build/) directory is the current standalone, inspectable source for the public Geisel interview build. It includes its own server, client, deployment config, smoke tests, build history, and five-minute walkthrough.
