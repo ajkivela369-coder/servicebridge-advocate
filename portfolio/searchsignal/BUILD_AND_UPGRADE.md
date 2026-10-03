@@ -24,3 +24,5 @@
 21. Made Geisel Interview Mode the default landing screen and added a dated public-site evidence snapshot so a reviewer sees the concrete problem before navigating the tool.
 22. Added a ready-to-review Geisel homepage fix pack: public-evidence summary, editorial meta-description draft, minimal truthful WebPage JSON-LD draft, contextual link-review guidance, copy controls, and downloadable JSON evidence. No production change is claimed or attempted.
 23. Disconnected the standalone Vercel interview project from the incorrect monorepo auto-deploy path after catching a root-directory 404 regression; restored the verified manual production deployment and stable alias.
+
+24. Began the October 2 Geisel interview-build upgrade on an isolated branch: Change Lab, site-pattern aggregation, Document Intelligence, interactive WordPress support, 7/30/90-day CSV measurement, roadmap reporting, synthetic 20K/15K scale simulation, and three-state requirements evidence. These are not marked live-verified until hosted acceptance passes.
