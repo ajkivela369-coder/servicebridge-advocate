@@ -164,11 +164,27 @@ async function runAudit(){
 }
 
 function checks(list){
-  return list.map((c)=>'<div class="check"><span class="'+(c.ok?'ok':'bad')+'">'+(c.ok?'✓':'×')+'</span><span>'+esc(c.name)+'</span><span>'+(c.ok?'pass':'review')+'</span></div>').join('');
+  return list.map((c)=>{
+    if(c.applicable===false) return '<div class="check"><span class="muted">—</span><span>'+esc(c.name)+'</span><span class="muted">n/a</span></div>';
+    return '<div class="check"><span class="'+(c.ok?'ok':'bad')+'">'+(c.ok?'✓':'×')+'</span><span>'+esc(c.name)+'</span><span>'+(c.ok?'pass':'review')+'</span></div>';
+  }).join('');
 }
 
 function renderAudit(d){
   const rows=d.findings.map((f)=>'<tr><td><span class="sev '+f.severity+'">'+f.severity+'</span></td><td><b>'+esc(f.label)+'</b><div class="muted mini">'+esc(f.evidence)+'</div></td><td>'+esc(f.fix)+'</td></tr>').join('');
+  if(d.auditability && d.auditability.scorable===false){
+    const reasons=(d.auditability.reasons||[]).map((x)=>'<li>'+esc(x)+'</li>').join('');
+    document.getElementById('auditOut').innerHTML=
+      '<div class="callout warn section"><b>Not scorable:</b> SearchSignal did not receive the intended content page, so SEO/GEO scores are suppressed instead of grading an error, bot-challenge, or temporary-unavailable response.</div>'+
+      '<div class="grid two section">'+
+        '<div class="card"><h2>Retrieval result</h2><div class="scoreline"><div class="score">N/A</div><div><b>'+esc(d.title||'Unscorable response')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div><p><b>HTTP status:</b> '+esc(d.status)+'</p><ul>'+reasons+'</ul></div>'+
+        '<div class="card"><h2>What to do next</h2><p>Retry later, choose a different public page, or use a site that permits server-side retrieval. SearchSignal will not treat this response as evidence about the target page\'s SEO or GEO quality.</p><div class="callout"><b>Important:</b> “Indexable,” title length, alt coverage, structured data, and other page-level checks are marked not applicable when the intended page was not retrieved.</div></div>'+
+      '</div>'+
+      '<div class="card section"><h2>Auditability finding</h2><table><tr><th>Priority</th><th>Evidence</th><th>Recommendation</th></tr>'+rows+'</table>'+
+        '<div class="header-actions" style="margin-top:12px"><button class="secondary" id="exportAuditJson">Export diagnostic JSON</button></div></div>';
+    document.getElementById('exportAuditJson').onclick=()=>downloadFile('searchsignal-audit-diagnostic.json',JSON.stringify(d,null,2),'application/json');
+    return;
+  }
   document.getElementById('auditOut').innerHTML=
     '<div class="grid two section">'+
       '<div class="card"><h2>SEO health</h2><div class="scoreline"><div class="score">'+d.scores.seo+'</div><div><b>'+esc(d.title||'Untitled page')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div>'+checks(d.rubrics.seo)+'</div>'+
@@ -176,7 +192,7 @@ function renderAudit(d){
     '</div>'+
     '<div class="grid three section">'+
       kpi('Internal links',d.links.internal,d.links.total+' total links')+
-      kpi('Alt coverage',d.images.coverage+'%',d.images.withAlt+'/'+d.images.total+' images')+
+      kpi('Alt coverage',d.images.coverage===null?'N/A':d.images.coverage+'%',d.images.total?d.images.withAlt+'/'+d.images.total+' images':'No images detected')+
       kpi('WordPress',d.signals.wordpress?'Likely':'Not detected',esc(d.signals.generator||'fingerprint check'))+
     '</div>'+
     '<div class="card section"><h2>Findings & recommended fixes</h2><table><tr><th>Priority</th><th>Evidence</th><th>Recommendation</th></tr>'+rows+'</table>'+
@@ -200,6 +216,9 @@ function renderAudit(d){
 }
 
 function auditSummary(d){
+  if(d.auditability && d.auditability.scorable===false){
+    return 'SearchSignal audit diagnostic: '+d.finalUrl+'\nNot scorable — '+(d.auditability.reasons||[]).join(' · ')+'\nSEO/GEO scores suppressed.';
+  }
   return 'SearchSignal audit: '+d.finalUrl+'\nSEO '+d.scores.seo+'/100 · GEO '+d.scores.geo+'/100\n'+d.findings.map((f)=>f.severity+': '+f.label+' — '+f.fix).join('\n');
 }
 
