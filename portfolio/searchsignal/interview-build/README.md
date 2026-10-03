@@ -52,3 +52,15 @@ The interview build now adds an explicit implementation loop and larger-site ope
 - Additional technical signals include generic-link/form-label heuristics, crawl-delay controls, redirect-loop detection, richer document metadata, and audit JSON/CSV exports.
 
 Automated QA now passes in GitHub CI/Portfolio Quality Control, and the upgraded standalone build has been redeployed to the production Vercel alias. Hosted smoke checks returned HTTP 200 for the app, health endpoint, Change Lab verification endpoint, and 20K scale-simulation endpoint. The Requirements Coverage screen still keeps feature-level **Live verified** states conservative until each specific deployed workflow is exercised.
+
+
+## Browser-rendered audit mode
+
+The auditor now has two retrieval paths:
+
+1. **Server audit** — fast HTTP retrieval for ordinary public pages.
+2. **Browser-rendered audit** — sandboxed headless Chromium for JavaScript-heavy applications and hash routes.
+
+Rendered audits preserve client-side hash routes, wait for usable DOM content, block private-network requests, skip media/fonts, and run the resulting DOM through the same SEO/GEO analyzer. The UI clearly labels the retrieval mode. If client-side navigation sends the request to an authentication wall, SearchSignal suppresses SEO/GEO scores rather than grading the login page as if it were the requested route.
+
+Preview acceptance on 2026-10-02 successfully rendered `https://play.geforcenow.com/mall/#/layout/games` on Vercel, retained the requested hash route, and returned a scored rendered DOM. Production verification is tracked separately in Requirements Coverage.
