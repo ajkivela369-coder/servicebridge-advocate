@@ -41,7 +41,7 @@ Floot supplies shared UI primitives and hosting/runtime infrastructure, so this 
 
 ## Quality status
 
-On 2026-09-30, the production homepage returned HTTP 200, the deployed assets loaded, and the production audit endpoint successfully returned both SEO and GEO scores for a public test page. The auditor also rejects local/private-network targets.
+On 2026-10-02, GitHub CI and Portfolio Quality Control passed for the upgraded Geisel interview build. The standalone Vercel project was previewed and then manually redeployed to production; hosted smoke checks returned HTTP 200 for the app and health endpoint, and the new Change Lab verification and 20K/15K synthetic scale endpoints returned successful bounded responses. Earlier live acceptance also verified public-page auditing, bounded site scanning, redirect validation, and private-network blocking. Feature-level live-verification claims remain separated in the Requirements Coverage screen.
 
 See [Portfolio Quality Control](../QUALITY_CONTROL.md) for the shared QC contract and automation.
 
