@@ -133,6 +133,187 @@ app.post('/api/recommendations', (req, res) => {
   res.json(recommendationDraft(req.body?.text));
 });
 
+
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function uniqueText(values) {
+  return [...new Set(values.map(cleanText).filter(Boolean))];
+}
+
+function elementValue($, selector) {
+  const el = $(selector).first();
+  if (!el.length) return '';
+  return cleanText(el.attr('content') || el.attr('href') || el.text());
+}
+
+function itemValue($, prop) {
+  return elementValue($, '[itemprop="'+prop+'"]');
+}
+
+function parseIsoDurationSeconds(raw) {
+  const match = String(raw || '').match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/i);
+  if (!match) return null;
+  return Math.round((Number(match[1] || 0) * 86400) + (Number(match[2] || 0) * 3600) + (Number(match[3] || 0) * 60) + Number(match[4] || 0));
+}
+
+function chapterLabel(text) {
+  const parts = String(text || '').split(/\n+/).map(cleanText).filter(Boolean)
+    .filter((x) => !/^(?:\d{1,2}:)?\d{1,2}:\d{2}$/.test(x))
+    .filter((x) => !/^(view all|chapters?)$/i.test(x));
+  if (!parts.length) return '';
+  return parts.sort((a, b) => b.length - a.length)[0].slice(0, 180);
+}
+
+function transcriptLabel(text) {
+  return cleanText(String(text || '').replace(/^(?:\d{1,2}:)?\d{1,2}:\d{2}\s*/, '')).slice(0, 600);
+}
+
+function extractVideoEvidence($, base, bodyText) {
+  const ogType = meta($, 'meta[property="og:type"]');
+  const title = cleanText(
+    meta($, 'meta[name="title"]') ||
+    meta($, 'meta[property="og:title"]') ||
+    elementValue($, '[itemtype*="VideoObject"] [itemprop="name"]') ||
+    ''
+  );
+  const description = cleanText(
+    meta($, 'meta[name="description"]') ||
+    meta($, 'meta[property="og:description"]') ||
+    elementValue($, '[itemtype*="VideoObject"] [itemprop="description"]') ||
+    itemValue($, 'description')
+  );
+  const authorRoot = $('[itemprop="author"]').first();
+  const creator = cleanText(
+    authorRoot.find('[itemprop="name"]').first().attr('content') ||
+    authorRoot.find('[itemprop="name"]').first().text() ||
+    meta($, 'meta[name="author"]') ||
+    ''
+  );
+  const duration = itemValue($, 'duration');
+  const datePublished = itemValue($, 'datePublished') || meta($, 'meta[property="article:published_time"]');
+  const uploadDate = itemValue($, 'uploadDate') || datePublished;
+  const thumbnailUrl = itemValue($, 'thumbnailUrl') || meta($, 'meta[property="og:image"]');
+  const embedUrl = itemValue($, 'embedUrl') || meta($, 'meta[property="og:video:url"]') || meta($, 'meta[name="twitter:player"]');
+  const tags = uniqueText($('meta[property="og:video:tag"]').map((_, e) => $(e).attr('content')).get()).slice(0, 40);
+  const interactions = uniqueText($('[itemprop="userInteractionCount"]').map((_, e) => $(e).attr('content') || $(e).text()).get()).slice(0, 10);
+
+  const chapters = uniqueText($('ytd-macro-markers-list-item-renderer, [data-searchsignal-chapter]').map((_, e) => {
+    return $(e).attr('data-searchsignal-chapter') || chapterLabel($(e).text());
+  }).get()).filter((x) => x.length >= 2).slice(0, 80);
+
+  const transcriptSegments = uniqueText($('ytd-transcript-segment-renderer, [data-searchsignal-transcript]').map((_, e) => {
+    return $(e).attr('data-searchsignal-transcript') || transcriptLabel($(e).text());
+  }).get()).filter((x) => x.length >= 2).slice(0, 500);
+
+  const transcriptUi = $('ytd-video-description-transcript-section-renderer, ytd-transcript-renderer').length > 0 ||
+    /(?:show|view|open)\s+transcript/i.test(bodyText) ||
+    /\btranscript\b/i.test($('h2,h3,button').map((_,e)=>$(e).text()).get().join(' '));
+
+  const microdataVideo = $('[itemtype*="VideoObject"], [itemprop="duration"], [itemprop="thumbnailUrl"], [itemprop="embedUrl"]').length > 0;
+  const openGraphVideo = /^video(?:\.|$)/i.test(ogType) || Boolean(meta($, 'meta[property="og:video:url"]'));
+  const playerMetadata = Boolean(embedUrl || meta($, 'meta[name="twitter:player"]'));
+  const primaryText = uniqueText([title, description, creator, ...chapters, ...transcriptSegments]).join(' ');
+  const primaryWordCount = primaryText ? primaryText.split(/\s+/).filter(Boolean).length : 0;
+  const machineSignals = [
+    openGraphVideo ? 'Open Graph video' : '',
+    microdataVideo ? 'Video microdata' : '',
+    playerMetadata ? 'Player/embed metadata' : '',
+    thumbnailUrl ? 'Thumbnail reference' : '',
+    duration ? 'Duration' : '',
+    uploadDate ? 'Publication date' : ''
+  ].filter(Boolean);
+
+  return {
+    title,
+    description,
+    creator,
+    duration,
+    durationSeconds: parseIsoDurationSeconds(duration),
+    datePublished,
+    uploadDate,
+    thumbnailUrl,
+    embedUrl,
+    tags,
+    interactions,
+    chapters,
+    transcript: {
+      available: transcriptSegments.length > 0 || transcriptUi,
+      loaded: transcriptSegments.length > 0,
+      segments: transcriptSegments.length,
+      wordCount: transcriptSegments.join(' ').split(/\s+/).filter(Boolean).length,
+      sample: transcriptSegments.slice(0, 3)
+    },
+    metadata: {
+      ogType,
+      openGraphVideo,
+      microdataVideo,
+      playerMetadata,
+      signals: machineSignals
+    },
+    primaryWordCount,
+    platform: /(^|\.)youtube\.com$/i.test(base.hostname) ? 'YouTube' : (base.hostname || 'Unknown')
+  };
+}
+
+function classifyContent($, base, raw, bodyText, wordCount, video) {
+  const ogType = meta($, 'meta[property="og:type"]');
+  const scriptCount = $('script').length;
+  const videoMarkers = [
+    /^video(?:\.|$)/i.test(ogType),
+    Boolean(video.duration),
+    Boolean(video.thumbnailUrl),
+    Boolean(video.embedUrl),
+    video.metadata.microdataVideo,
+    /(^|\.)youtube\.com$/i.test(base.hostname) && base.pathname === '/watch'
+  ].filter(Boolean).length;
+
+  if (videoMarkers >= 2) {
+    return { type: 'video', confidence: videoMarkers >= 4 ? 'high' : 'medium', evidence: videoMarkers+' video-specific signal(s)' };
+  }
+  if (/article/i.test(ogType) || $('article').length > 0) {
+    return { type: 'article', confidence: 'medium', evidence: 'Article semantic/Open Graph signal' };
+  }
+  if (new URL(raw).hash || (wordCount < 120 && scriptCount >= 8) || ($('#app,#root,[data-reactroot]').length > 0 && scriptCount >= 5)) {
+    return { type: 'application', confidence: 'medium', evidence: 'Client-rendered application shell signal' };
+  }
+  return { type: 'webpage', confidence: 'medium', evidence: 'General HTML document' };
+}
+
+function videoRubrics(video, noindex, canonicalOk) {
+  const titleOk = video.title.length >= 20 && video.title.length <= 120;
+  const descriptionOk = video.description.length >= 80;
+  const machineReadable = video.metadata.signals.length >= 3;
+  const primaryExtractable = video.primaryWordCount >= 80;
+  return {
+    seo: [
+      { name: 'Indexable', ok: !noindex, weight: 12 },
+      { name: 'Descriptive video title', ok: titleOk, weight: 14 },
+      { name: 'Video description', ok: descriptionOk, weight: 12 },
+      { name: 'Canonical', ok: canonicalOk, weight: 10 },
+      { name: 'Creator / channel', ok: Boolean(video.creator), weight: 10 },
+      { name: 'Published date', ok: Boolean(video.uploadDate || video.datePublished), weight: 8 },
+      { name: 'Duration metadata', ok: Boolean(video.duration), weight: 8 },
+      { name: 'Thumbnail metadata', ok: Boolean(video.thumbnailUrl), weight: 8 },
+      { name: 'Player / embed metadata', ok: Boolean(video.embedUrl), weight: 7 },
+      { name: 'Machine-readable video metadata', ok: machineReadable, weight: 7 },
+      { name: 'Chapter structure', ok: video.chapters.length >= 3, weight: 4 }
+    ],
+    geo: [
+      { name: 'Description context', ok: descriptionOk, weight: 14 },
+      { name: 'Transcript discoverable', ok: video.transcript.available, weight: 10 },
+      { name: 'Transcript text extractable', ok: video.transcript.loaded && video.transcript.wordCount >= 80, weight: 14 },
+      { name: 'Chapter structure', ok: video.chapters.length >= 3, weight: 12 },
+      { name: 'Creator identity', ok: Boolean(video.creator), weight: 10 },
+      { name: 'Freshness date', ok: Boolean(video.uploadDate || video.datePublished), weight: 10 },
+      { name: 'Machine-readable video metadata', ok: machineReadable, weight: 12 },
+      { name: 'Topic / entity tags', ok: video.tags.length >= 3, weight: 8 },
+      { name: 'Primary content extractability', ok: primaryExtractable, weight: 10 }
+    ]
+  };
+}
+
 function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fetch', label: 'Server fetch', rendered: false }) {
   const $ = cheerio.load(html);
   const base = new URL(finalUrl);
@@ -147,7 +328,7 @@ function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fe
   const h2 = $('h2').map((_, e) => $(e).text().trim()).get();
   const h3 = $('h3').map((_, e) => $(e).text().trim()).get();
   const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
-  const wordCount = bodyText ? bodyText.split(' ').length : 0;
+  const wordCount = bodyText ? bodyText.split(/\s+/).filter(Boolean).length : 0;
 
   const imageCount = $('img').length;
   const imagesWithAlt = $('img[alt]').filter((_, e) => String($(e).attr('alt') || '').trim().length > 0).length;
@@ -200,6 +381,10 @@ function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fe
     const id = el.attr('id');
     return !(el.attr('aria-label') || el.attr('aria-labelledby') || (id && $('label[for="'+id+'"]').length) || el.closest('label').length);
   }).length;
+
+  const video = extractVideoEvidence($, base, bodyText);
+  const pageType = classifyContent($, base, raw, bodyText, wordCount, video);
+
   const normalizedTitle = title.toLowerCase();
   const normalizedBody = bodyText.toLowerCase();
   const errorTitlePattern = /(website temporarily unavailable|temporarily unavailable|service unavailable|access denied|request blocked|forbidden|too many requests|verify you are human|captcha|robot check|page not found|404 not found|internal server error)/i;
@@ -208,7 +393,7 @@ function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fe
   if (status >= 400) auditabilityReasons.push('HTTP '+status+' response');
   if (errorTitlePattern.test(normalizedTitle)) auditabilityReasons.push('Error/challenge title detected: '+title);
   if (wordCount < 120 && errorBodyPattern.test(normalizedBody)) auditabilityReasons.push('Error/challenge response text detected');
-  if (wordCount === 0) auditabilityReasons.push('No readable body text was returned');
+  if (wordCount === 0 && pageType.type !== 'video') auditabilityReasons.push('No readable body text was returned');
   const scorable = auditabilityReasons.length === 0;
   const noindex = /noindex/i.test(robots);
   const canonicalOk = Boolean(canonical) && (() => {
@@ -216,7 +401,7 @@ function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fe
   })();
   const singleH1 = h1.length === 1;
 
-  const seoRubric = [
+  const webSeoRubric = [
     { name: 'Indexable', ok: !noindex, weight: 15 },
     { name: 'Title length', ok: title.length >= 20 && title.length <= 65, weight: 12 },
     { name: 'Meta description', ok: description.length >= 70 && description.length <= 170, weight: 10 },
@@ -230,7 +415,7 @@ function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fe
     { name: 'Language attribute', ok: Boolean(lang), weight: 5 }
   ];
 
-  const geoRubric = [
+  const webGeoRubric = [
     { name: 'Answer-first opening', ok: answerFirst, weight: 14 },
     { name: 'Extractable headings', ok: h2.length >= 2, weight: 12 },
     { name: 'Question-answer structure', ok: questions > 0, weight: 10 },
@@ -243,11 +428,28 @@ function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fe
     { name: 'Entity metadata', ok: Boolean(title && description), weight: 5 }
   ];
 
+  const selectedRubrics = pageType.type === 'video' ? videoRubrics(video, noindex, canonicalOk) : { seo: webSeoRubric, geo: webGeoRubric };
   const findings = [];
+
   if (!scorable) {
     findings.push(issue('Critical', 'Page could not be audited reliably', auditabilityReasons.join(' · '), 'Retry later, use a different public page, or audit a page that allows server-side retrieval. SEO/GEO scores are intentionally suppressed for this response.'));
-  }
-  if (scorable) {
+  } else if (pageType.type === 'video') {
+    if (noindex) findings.push(issue('Critical', 'Video page is marked noindex', robots || 'robots=noindex', 'Confirm whether search indexing is intended before changing the directive.'));
+    if (!video.title) findings.push(issue('Critical', 'Video title not detected', 'No video-specific title signal was found', 'Expose a descriptive video title in visible content and machine-readable metadata.'));
+    else if (video.title.length < 20 || video.title.length > 120) findings.push(issue('High', 'Video title needs review', video.title, 'Use a specific human-readable title without applying ordinary webpage-title limits mechanically.'));
+    if (!video.description) findings.push(issue('High', 'Video description not detected', 'No video-specific description signal was found', 'Provide a useful description that explains the subject and context.'));
+    else if (video.description.length < 80) findings.push(issue('Medium', 'Video description is thin', video.description, 'Add enough context for users and machines to understand what the video covers.'));
+    if (!canonical) findings.push(issue('High', 'Missing canonical', 'No canonical link detected', 'Expose the intended canonical watch URL.'));
+    if (!video.creator) findings.push(issue('High', 'Creator / channel not detected', 'No creator identity was extracted', 'Expose the responsible creator or channel in visible and/or machine-readable metadata.'));
+    if (!video.uploadDate && !video.datePublished) findings.push(issue('Medium', 'Publication date not detected', 'No upload/publication date signal was extracted', 'Expose a machine-readable publication date when appropriate.'));
+    if (!video.duration) findings.push(issue('Medium', 'Duration metadata not detected', 'No duration signal was extracted', 'Expose machine-readable duration metadata for the video.'));
+    if (!video.thumbnailUrl) findings.push(issue('Medium', 'Thumbnail metadata not detected', 'No primary thumbnail reference was extracted', 'Expose a representative thumbnail in video metadata.'));
+    if (!video.embedUrl) findings.push(issue('Opportunity', 'Embed/player URL not detected', 'No player/embed URL signal was extracted', 'Expose a player/embed reference where appropriate.'));
+    if (video.chapters.length < 3) findings.push(issue('Opportunity', 'Limited chapter structure', video.chapters.length+' chapter(s) detected', 'Add meaningful chapters when the video is long enough to benefit from navigation.'));
+    if (!video.transcript.available) findings.push(issue('High', 'Transcript / caption signal not detected', 'No public transcript signal was found in the rendered content', 'Provide captions/transcript access where appropriate and verify it is discoverable.'));
+    else if (!video.transcript.loaded) findings.push(issue('Opportunity', 'Transcript is discoverable but not loaded', 'A transcript interface was detected, but transcript text was not present in the captured DOM', 'Load the public transcript during a rendered audit when the platform permits it.'));
+    if (video.tags.length < 3) findings.push(issue('Opportunity', 'Limited topic metadata', video.tags.length+' video topic tag(s) detected', 'Use specific topic/entity metadata where the platform supports it.'));
+  } else {
     if (noindex) findings.push(issue('Critical', 'Page is marked noindex', robots || 'robots=noindex', 'Confirm whether indexing is intended; remove noindex only after owner approval.'));
     if (!title) findings.push(issue('Critical', 'Missing title', 'No <title> detected', 'Add a unique, descriptive title.'));
     else if (title.length < 20 || title.length > 65) findings.push(issue('High', 'Title length needs review', title, 'Use a concise, specific title that reflects page intent.'));
@@ -265,30 +467,67 @@ function analyzeHtml(raw, html, status, finalUrl, retrieval = { mode: 'server-fe
     if (unlabeledControls) findings.push(issue('High', 'Form controls need label review', unlabeledControls + '/' + formControls + ' visible control(s) lack an obvious label signal', 'Add programmatic labels and verify the form with accessibility testing.'));
   }
 
+  const effectiveTitle = pageType.type === 'video' && video.title ? video.title : title;
+  const effectiveDescription = pageType.type === 'video' && video.description ? video.description : description;
+  const primaryContent = pageType.type === 'video'
+    ? {
+        source: 'video-specific evidence',
+        wordCount: video.primaryWordCount,
+        shellWordCount: wordCount,
+        excludedShellWords: Math.max(0, wordCount - video.primaryWordCount),
+        provenance: ['video title','video description','creator/channel','chapters','loaded transcript'].filter((x, i) => i < 5)
+      }
+    : { source: 'document body', wordCount, shellWordCount: wordCount, excludedShellWords: 0, provenance: ['HTML body'] };
 
-  return   {
-        url: raw, finalUrl, status, title, description, canonical, robots, lang, viewport,
-        retrieval,
-        wordCount, headings: { h1, h2, h3 },
-        links: { total: hrefs.length, internal, external, placeholders },
-        images: { total: imageCount, withAlt: imagesWithAlt, coverage: altCoverage === null ? null : Math.round(altCoverage * 100) },
-        schema: { types: [...new Set(schemas)], invalidBlocks: invalidSchemaBlocks },
-        signals: { wordpress, generator, author, published, modified, openGraph, twitter, questions, answerFirst, hasCitations },
-        accessibilitySignals: { genericLinkText, formControls, unlabeledControls, note: 'Heuristic signals only; not an accessibility conformance determination.' },
-        scores: { seo: scorable ? weightedScore(seoRubric) : null, geo: scorable ? weightedScore(geoRubric) : null },
-        auditability: {
-          scorable,
-          classification: scorable ? 'content' : 'blocked_or_error',
-          reasons: auditabilityReasons,
-          note: scorable ? 'Response appears suitable for SEO/GEO scoring.' : 'SEO/GEO scores are suppressed because the retrieved response does not appear to be the intended content page.'
-        },
-        rubrics: {
-          seo: seoRubric.map(({ name, ok, applicable = true }) => ({ name, ok, applicable: scorable && applicable })),
-          geo: geoRubric.map(({ name, ok, applicable = true }) => ({ name, ok, applicable: scorable && applicable }))
-        },
-        findings
-      };
+  return {
+    url: raw, finalUrl, status,
+    title: effectiveTitle, description: effectiveDescription, canonical, robots, lang, viewport,
+    retrieval,
+    pageType,
+    scoringModel: pageType.type === 'video' ? 'video-seo-geo-v1' : 'webpage-seo-geo-v1',
+    primaryContent,
+    wordCount: primaryContent.wordCount,
+    shellWordCount: wordCount,
+    headings: { h1, h2, h3 },
+    links: { total: hrefs.length, internal, external, placeholders },
+    images: { total: imageCount, withAlt: imagesWithAlt, coverage: altCoverage === null ? null : Math.round(altCoverage * 100) },
+    schema: {
+      types: [...new Set(schemas)],
+      invalidBlocks: invalidSchemaBlocks,
+      videoSignals: video.metadata.signals
+    },
+    video: pageType.type === 'video' ? video : null,
+    signals: {
+      wordpress,
+      generator,
+      author: pageType.type === 'video' ? video.creator : author,
+      published: pageType.type === 'video' ? (video.uploadDate || video.datePublished) : published,
+      modified,
+      openGraph,
+      twitter,
+      questions,
+      answerFirst,
+      hasCitations
+    },
+    accessibilitySignals: { genericLinkText, formControls, unlabeledControls, note: 'Heuristic signals only; not an accessibility conformance determination.' },
+    scores: {
+      seo: scorable ? weightedScore(selectedRubrics.seo) : null,
+      geo: scorable ? weightedScore(selectedRubrics.geo) : null
+    },
+    auditability: {
+      scorable,
+      classification: scorable ? 'content' : 'blocked_or_error',
+      reasons: auditabilityReasons,
+      note: scorable ? 'Response appears suitable for '+pageType.type+' scoring.' : 'SEO/GEO scores are suppressed because the retrieved response does not appear to be the intended content page.'
+    },
+    rubrics: {
+      seo: selectedRubrics.seo.map(({ name, ok, applicable = true }) => ({ name, ok, applicable: scorable && applicable })),
+      geo: selectedRubrics.geo.map(({ name, ok, applicable = true }) => ({ name, ok, applicable: scorable && applicable }))
+    },
+    findings
+  };
 }
+
 
 app.post('/api/audit', async (req, res) => {
   try {
