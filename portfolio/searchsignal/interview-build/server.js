@@ -415,6 +415,10 @@ async function renderHtml(raw) {
         resourceCount,
         textChars,
         hashRoute: Boolean(new URL(raw).hash),
+        requestedHash: new URL(raw).hash || '',
+        finalHash: new URL(finalUrl).hash || '',
+        routeChanged: new URL(raw).origin === new URL(finalUrl).origin && (new URL(raw).pathname + new URL(raw).hash) !== (new URL(finalUrl).pathname + new URL(finalUrl).hash),
+        authWall: /(login|signin|sign-in|auth|loginwall|access-denied|forbidden)/i.test(new URL(finalUrl).pathname + new URL(finalUrl).hash),
         note: 'Rendered in a sandboxed headless Chromium session. Private-network requests are blocked; media and fonts are skipped.'
       }
     };
@@ -428,7 +432,22 @@ app.post('/api/rendered-audit', async (req, res) => {
   try {
     const raw = String(req.body?.url || '').trim();
     const rendered = await renderHtml(raw);
-    res.json(analyzeHtml(raw, rendered.html, rendered.status, rendered.finalUrl, rendered.renderMeta));
+    const result = analyzeHtml(raw, rendered.html, rendered.status, rendered.finalUrl, rendered.renderMeta);
+    if (rendered.renderMeta.authWall && rendered.renderMeta.routeChanged) {
+      result.scores = { seo: null, geo: null };
+      result.auditability = {
+        scorable: false,
+        classification: 'rendered_auth_wall',
+        reasons: ['Client-side navigation changed the requested route to an authentication/login wall: '+rendered.finalUrl],
+        note: 'The rendered DOM belongs to an authentication wall rather than the requested content route, so SEO/GEO scores are suppressed.'
+      };
+      result.rubrics = {
+        seo: result.rubrics.seo.map((item) => ({ ...item, applicable: false })),
+        geo: result.rubrics.geo.map((item) => ({ ...item, applicable: false }))
+      };
+      result.findings = [issue('Critical', 'Requested rendered route was not accessible', 'Requested '+raw+' but the browser ended at '+rendered.finalUrl, 'Sign in or use a publicly accessible route. SearchSignal will not score the login wall as if it were the requested content page.')];
+    }
+    res.json(result);
   } catch (err) {
     res.status(400).json({ error: err?.name === 'TimeoutError' ? 'Browser-rendered audit timed out.' : (err?.message || 'Browser-rendered audit failed.') });
   }
