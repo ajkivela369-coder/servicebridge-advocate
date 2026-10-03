@@ -260,15 +260,19 @@ function extractVideoEvidence($, base, bodyText) {
 function classifyContent($, base, raw, bodyText, wordCount, video) {
   const ogType = meta($, 'meta[property="og:type"]');
   const scriptCount = $('script').length;
+  const youtubeWatchRoute = /(^|\.)youtube\.com$/i.test(base.hostname) && base.pathname === '/watch' && Boolean(base.searchParams.get('v'));
   const videoMarkers = [
     /^video(?:\.|$)/i.test(ogType),
     Boolean(video.duration),
     Boolean(video.thumbnailUrl),
     Boolean(video.embedUrl),
     video.metadata.microdataVideo,
-    /(^|\.)youtube\.com$/i.test(base.hostname) && base.pathname === '/watch'
+    youtubeWatchRoute
   ].filter(Boolean).length;
 
+  if (youtubeWatchRoute) {
+    return { type: 'video', confidence: videoMarkers >= 4 ? 'high' : 'medium', evidence: videoMarkers+' video-specific signal(s), including YouTube watch route' };
+  }
   if (videoMarkers >= 2) {
     return { type: 'video', confidence: videoMarkers >= 4 ? 'high' : 'medium', evidence: videoMarkers+' video-specific signal(s)' };
   }
