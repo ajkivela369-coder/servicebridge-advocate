@@ -135,19 +135,24 @@ function auditor(){
   setTitle('Live URL Auditor','Inspect a public page for technical SEO and AI-answer readiness with transparent scoring.');
   view.innerHTML=
     '<div class="card section"><h2>Audit a public page</h2>'+
-      '<div class="form-row"><input id="auditUrl" value="https://geiselmed.dartmouth.edu/" aria-label="URL"><button id="auditBtn" class="primary">Run audit</button></div>'+
-      '<p class="muted mini">Server-side fetch with private-network blocking, redirect checks, timeout, HTML-only validation, and a 2 MB response limit.</p>'+
+      '<div class="form-row"><input id="auditUrl" value="https://geiselmed.dartmouth.edu/" aria-label="URL"><button id="auditBtn" class="primary">Server audit</button><button id="renderAuditBtn" class="secondary">Browser-rendered audit</button></div>'+
+      '<p class="muted mini">Server audit is fastest. Browser-rendered audit launches sandboxed headless Chromium for JavaScript-heavy pages and hash routes. Private-network targets remain blocked.</p>'+
     '</div><div id="auditOut"></div>';
-  document.getElementById('auditBtn').onclick=runAudit;
+  document.getElementById('auditBtn').onclick=()=>runAudit('server');
+  document.getElementById('renderAuditBtn').onclick=()=>runAudit('rendered');
 }
 
-async function runAudit(){
-  const btn=document.getElementById('auditBtn');
+async function runAudit(mode='server'){
+  const serverBtn=document.getElementById('auditBtn');
+  const renderBtn=document.getElementById('renderAuditBtn');
+  const btn=mode==='rendered'?renderBtn:serverBtn;
   const out=document.getElementById('auditOut');
-  btn.disabled=true; btn.textContent='Auditing…';
-  out.innerHTML='<div class="card">Fetching and inspecting page…</div>';
+  serverBtn.disabled=true; renderBtn.disabled=true;
+  const priorServer=serverBtn.textContent, priorRender=renderBtn.textContent;
+  btn.textContent=mode==='rendered'?'Rendering…':'Auditing…';
+  out.innerHTML='<div class="card">'+(mode==='rendered'?'Launching sandboxed Chromium, rendering JavaScript, then auditing the resulting DOM…':'Fetching and inspecting page…')+'</div>';
   try{
-    const response=await fetch('/api/audit',{
+    const response=await fetch(mode==='rendered'?'/api/rendered-audit':'/api/audit',{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({url:document.getElementById('auditUrl').value})
@@ -159,7 +164,8 @@ async function runAudit(){
   }catch(error){
     out.innerHTML='<div class="card"><h2>Audit error</h2><p>'+esc(error.message)+'</p></div>';
   }finally{
-    btn.disabled=false; btn.textContent='Run audit';
+    serverBtn.disabled=false; renderBtn.disabled=false;
+    serverBtn.textContent=priorServer; renderBtn.textContent=priorRender;
   }
 }
 
@@ -177,15 +183,21 @@ function renderAudit(d){
     document.getElementById('auditOut').innerHTML=
       '<div class="callout warn section"><b>Not scorable:</b> SearchSignal did not receive the intended content page, so SEO/GEO scores are suppressed instead of grading an error, bot-challenge, or temporary-unavailable response.</div>'+
       '<div class="grid two section">'+
-        '<div class="card"><h2>Retrieval result</h2><div class="scoreline"><div class="score">N/A</div><div><b>'+esc(d.title||'Unscorable response')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div><p><b>HTTP status:</b> '+esc(d.status)+'</p><ul>'+reasons+'</ul></div>'+
-        '<div class="card"><h2>What to do next</h2><p>Retry later, choose a different public page, or use a site that permits server-side retrieval. SearchSignal will not treat this response as evidence about the target page\'s SEO or GEO quality.</p><div class="callout"><b>Important:</b> “Indexable,” title length, alt coverage, structured data, and other page-level checks are marked not applicable when the intended page was not retrieved.</div></div>'+
+        '<div class="card"><h2>Retrieval result</h2><div class="scoreline"><div class="score">N/A</div><div><b>'+esc(d.title||'Unscorable response')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div><p><b>HTTP status:</b> '+esc(d.status)+'</p><p><b>Audit mode:</b> '+esc(d.retrieval?.label||'Server fetch')+'</p><ul>'+reasons+'</ul></div>'+
+        '<div class="card"><h2>What to do next</h2><p>'+(d.retrieval?.rendered?'The browser-rendered page still did not expose enough auditable HTML content. The app will not invent a score.':'This may be a JavaScript shell or hash-routed app. Try the browser-rendered audit to inspect the DOM after client-side rendering.')+'</p><div class="callout"><b>Important:</b> “Indexable,” title length, alt coverage, structured data, and other page-level checks are marked not applicable when the intended page was not retrieved.</div>'+(d.retrieval?.rendered?'':'<p style="margin-top:12px"><button id="retryRendered" class="primary">Try browser-rendered audit</button></p>')+'</div>'+
       '</div>'+
       '<div class="card section"><h2>Auditability finding</h2><table><tr><th>Priority</th><th>Evidence</th><th>Recommendation</th></tr>'+rows+'</table>'+
         '<div class="header-actions" style="margin-top:12px"><button class="secondary" id="exportAuditJson">Export diagnostic JSON</button></div></div>';
     document.getElementById('exportAuditJson').onclick=()=>downloadFile('searchsignal-audit-diagnostic.json',JSON.stringify(d,null,2),'application/json');
+    const retry=document.getElementById('retryRendered');
+    if(retry) retry.onclick=()=>runAudit('rendered');
     return;
   }
+  const retrievalNote=d.retrieval?.rendered
+    ? '<div class="callout section"><b>Browser-rendered audit:</b> JavaScript was executed in sandboxed Chromium before scoring. '+esc(d.retrieval.renderMs||0)+' ms · '+esc(d.retrieval.resourceCount||0)+' resources · '+(d.retrieval.hashRoute?'hash route preserved':'standard route')+'.</div>'
+    : '<div class="callout section"><b>Server audit:</b> Scored directly from the public HTML response without executing page JavaScript.</div>';
   document.getElementById('auditOut').innerHTML=
+    retrievalNote+
     '<div class="grid two section">'+
       '<div class="card"><h2>SEO health</h2><div class="scoreline"><div class="score">'+d.scores.seo+'</div><div><b>'+esc(d.title||'Untitled page')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div>'+checks(d.rubrics.seo)+'</div>'+
       '<div class="card"><h2>GEO readiness</h2><div class="scoreline"><div class="score">'+d.scores.geo+'</div><div><b>AI-answer extraction signals</b><div class="muted">'+d.wordCount+' words · '+d.schema.types.length+' schema type(s)</div></div></div>'+checks(d.rubrics.geo)+'</div>'+
