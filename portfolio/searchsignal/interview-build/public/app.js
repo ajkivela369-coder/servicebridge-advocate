@@ -135,19 +135,27 @@ function auditor(){
   setTitle('Live URL Auditor','Inspect a public page for technical SEO and AI-answer readiness with transparent scoring.');
   view.innerHTML=
     '<div class="card section"><h2>Audit a public page</h2>'+
-      '<div class="form-row"><input id="auditUrl" value="https://geiselmed.dartmouth.edu/" aria-label="URL"><button id="auditBtn" class="primary">Run audit</button></div>'+
-      '<p class="muted mini">Server-side fetch with private-network blocking, redirect checks, timeout, HTML-only validation, and a 2 MB response limit.</p>'+
+      '<div class="form-row"><input id="auditUrl" value="https://geiselmed.dartmouth.edu/" aria-label="URL"><button id="auditBtn" class="primary">Smart audit</button><button id="serverAuditBtn" class="secondary">Server only</button><button id="renderAuditBtn" class="secondary">Browser rendered</button></div>'+
+      '<p class="muted mini">Smart audit starts with public HTML, classifies the content, and automatically renders JavaScript-heavy, hash-routed, video, or otherwise unscorable pages. Server only and Browser rendered remain available for comparison.</p>'+
     '</div><div id="auditOut"></div>';
-  document.getElementById('auditBtn').onclick=runAudit;
+  document.getElementById('auditBtn').onclick=()=>runAudit('smart');
+  document.getElementById('serverAuditBtn').onclick=()=>runAudit('server');
+  document.getElementById('renderAuditBtn').onclick=()=>runAudit('rendered');
 }
 
-async function runAudit(){
-  const btn=document.getElementById('auditBtn');
+async function runAudit(mode='smart'){
+  const smartBtn=document.getElementById('auditBtn');
+  const serverBtn=document.getElementById('serverAuditBtn');
+  const renderBtn=document.getElementById('renderAuditBtn');
+  const btn=mode==='rendered'?renderBtn:(mode==='server'?serverBtn:smartBtn);
   const out=document.getElementById('auditOut');
-  btn.disabled=true; btn.textContent='Auditing…';
-  out.innerHTML='<div class="card">Fetching and inspecting page…</div>';
+  smartBtn.disabled=true; serverBtn.disabled=true; renderBtn.disabled=true;
+  const priorSmart=smartBtn.textContent, priorServer=serverBtn.textContent, priorRender=renderBtn.textContent;
+  btn.textContent=mode==='rendered'?'Rendering…':(mode==='server'?'Fetching…':'Classifying…');
+  out.innerHTML='<div class="card">'+(mode==='rendered'?'Launching sandboxed Chromium, rendering JavaScript, then auditing the resulting DOM…':(mode==='server'?'Fetching public HTML without executing JavaScript…':'Inspecting server HTML first; SearchSignal will render only if the content type or auditability requires it…'))+'</div>';
   try{
-    const response=await fetch('/api/audit',{
+    const endpoint=mode==='rendered'?'/api/rendered-audit':(mode==='server'?'/api/audit':'/api/smart-audit');
+    const response=await fetch(endpoint,{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({url:document.getElementById('auditUrl').value})
@@ -159,7 +167,8 @@ async function runAudit(){
   }catch(error){
     out.innerHTML='<div class="card"><h2>Audit error</h2><p>'+esc(error.message)+'</p></div>';
   }finally{
-    btn.disabled=false; btn.textContent='Run audit';
+    smartBtn.disabled=false; serverBtn.disabled=false; renderBtn.disabled=false;
+    smartBtn.textContent=priorSmart; serverBtn.textContent=priorServer; renderBtn.textContent=priorRender;
   }
 }
 
@@ -170,6 +179,13 @@ function checks(list){
   }).join('');
 }
 
+function formatDuration(seconds,raw=''){
+  const n=Number(seconds);
+  if(!Number.isFinite(n)||n<=0) return raw||'Not detected';
+  const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=Math.floor(n%60);
+  return (h?h+'h ':'')+(m?m+'m ':'')+s+'s';
+}
+
 function renderAudit(d){
   const rows=d.findings.map((f)=>'<tr><td><span class="sev '+f.severity+'">'+f.severity+'</span></td><td><b>'+esc(f.label)+'</b><div class="muted mini">'+esc(f.evidence)+'</div></td><td>'+esc(f.fix)+'</td></tr>').join('');
   if(d.auditability && d.auditability.scorable===false){
@@ -177,24 +193,52 @@ function renderAudit(d){
     document.getElementById('auditOut').innerHTML=
       '<div class="callout warn section"><b>Not scorable:</b> SearchSignal did not receive the intended content page, so SEO/GEO scores are suppressed instead of grading an error, bot-challenge, or temporary-unavailable response.</div>'+
       '<div class="grid two section">'+
-        '<div class="card"><h2>Retrieval result</h2><div class="scoreline"><div class="score">N/A</div><div><b>'+esc(d.title||'Unscorable response')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div><p><b>HTTP status:</b> '+esc(d.status)+'</p><ul>'+reasons+'</ul></div>'+
-        '<div class="card"><h2>What to do next</h2><p>Retry later, choose a different public page, or use a site that permits server-side retrieval. SearchSignal will not treat this response as evidence about the target page\'s SEO or GEO quality.</p><div class="callout"><b>Important:</b> “Indexable,” title length, alt coverage, structured data, and other page-level checks are marked not applicable when the intended page was not retrieved.</div></div>'+
+        '<div class="card"><h2>Retrieval result</h2><div class="scoreline"><div class="score">N/A</div><div><b>'+esc(d.title||'Unscorable response')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div><p><b>HTTP status:</b> '+esc(d.status)+'</p><p><b>Audit mode:</b> '+esc(d.retrieval?.label||'Server fetch')+'</p><ul>'+reasons+'</ul></div>'+
+        '<div class="card"><h2>What to do next</h2><p>'+(d.auditability?.classification==='rendered_auth_wall'?'The browser executed the app, but client-side navigation sent the requested route to a login/authentication wall. SearchSignal will not score that wall as if it were the requested page.':(d.retrieval?.rendered?'The browser-rendered page still did not expose enough auditable HTML content. The app will not invent a score.':'This may be a JavaScript shell or hash-routed app. Try the browser-rendered audit to inspect the DOM after client-side rendering.'))+'</p><div class="callout"><b>Important:</b> “Indexable,” title length, alt coverage, structured data, and other page-level checks are marked not applicable when the intended page was not retrieved.</div>'+(d.retrieval?.rendered?'':'<p style="margin-top:12px"><button id="retryRendered" class="primary">Try browser-rendered audit</button></p>')+'</div>'+
       '</div>'+
       '<div class="card section"><h2>Auditability finding</h2><table><tr><th>Priority</th><th>Evidence</th><th>Recommendation</th></tr>'+rows+'</table>'+
         '<div class="header-actions" style="margin-top:12px"><button class="secondary" id="exportAuditJson">Export diagnostic JSON</button></div></div>';
     document.getElementById('exportAuditJson').onclick=()=>downloadFile('searchsignal-audit-diagnostic.json',JSON.stringify(d,null,2),'application/json');
+    const retry=document.getElementById('retryRendered');
+    if(retry) retry.onclick=()=>runAudit('rendered');
     return;
   }
+  const pageType=d.pageType?.type||'webpage';
+  const typeLabel=pageType==='video'?'Video':(pageType==='application'?'Web application':(pageType==='article'?'Article':'Webpage'));
+  const retrievalNote=d.retrieval?.rendered
+    ? '<div class="callout section"><b>'+esc(d.retrieval.label||'Browser-rendered audit')+':</b> JavaScript was executed in sandboxed Chromium before scoring. '+esc(d.retrieval.renderMs||0)+' ms · '+esc(d.retrieval.resourceCount||0)+' resources'+(d.retrieval.cached?' · cached render':'')+'. '+(d.retrieval.autoFallback?'<b>Automatic fallback:</b> '+esc(d.retrieval.fallbackReason||'Rendered content was required.'):'')+'</div>'
+    : '<div class="callout section"><b>'+esc(d.retrieval?.label||'Server audit')+':</b> Scored directly from the public HTML response without executing page JavaScript.</div>';
+  const typeNote='<div class="card section"><div class="eyebrow">CONTENT-TYPE CLASSIFIER</div><h2>'+esc(typeLabel)+'</h2><p class="muted">'+esc(d.pageType?.evidence||'General document classification')+' · '+esc(d.pageType?.confidence||'unknown')+' confidence · scoring model '+esc(d.scoringModel||'webpage-seo-geo-v1')+'.</p><p class="muted mini">Primary-content scoring uses '+esc(d.primaryContent?.source||'document body')+' ('+esc(d.primaryContent?.wordCount||0)+' words). '+(d.primaryContent?.excludedShellWords?esc(d.primaryContent.excludedShellWords)+' platform/shell words excluded from the scoring content.':'')+'</p></div>';
+  const video=d.video;
+  const videoEvidence=video?'<div class="card section"><div class="eyebrow">VIDEO EVIDENCE</div><h2>Primary video signals</h2><div class="grid three">'+
+      kpi('Creator / channel',esc(video.creator||'Not detected'),esc(video.platform||'video platform'))+
+      kpi('Duration',esc(formatDuration(video.durationSeconds,video.duration)),esc(video.duration||'no machine duration'))+
+      kpi('Chapters',video.chapters.length,video.chapters.length?'deduplicated chapter labels':'none detected')+
+      kpi('Transcript',video.transcript.loaded?(video.transcript.wordCount+' words'):(video.transcript.available?'Discoverable':'Not detected'),video.transcript.loaded?video.transcript.segments+' segments loaded':'public transcript signal')+
+      kpi('Published',esc(video.uploadDate||video.datePublished||'Not detected'),'machine-readable date')+
+      kpi('Video metadata',video.metadata.signals.length,esc(video.metadata.signals.join(' · ')||'none detected'))+
+    '</div>'+
+    (video.chapters.length?'<h3 style="margin-top:16px">Chapter intelligence</h3><div class="chapter-list">'+video.chapters.slice(0,12).map((x)=>'<span class="doc-signal">'+esc(x)+'</span>').join(' ')+'</div>':'')+
+    (video.transcript.sample?.length?'<h3 style="margin-top:16px">Transcript sample</h3><p class="muted">'+video.transcript.sample.map(esc).join(' … ')+'</p>':'')+
+    '<div class="callout" style="margin-top:14px"><b>Content provenance:</b> video scoring uses title, description, creator/channel, chapters, transcript text when loaded, and machine-readable video metadata. Recommendation feeds, comments, navigation, and other platform chrome are not treated as primary video text.</div></div>':'';
+  const metricCards=video
+    ? '<div class="grid three section">'+
+        kpi('Primary words',d.primaryContent?.wordCount||0,(d.primaryContent?.excludedShellWords||0)+' shell/UI words excluded')+
+        kpi('Topic tags',video.tags.length,video.tags.slice(0,3).map(esc).join(' · ')||'none detected')+
+        kpi('Transcript',video.transcript.loaded?'Loaded':(video.transcript.available?'Available':'Not detected'),video.transcript.loaded?video.transcript.wordCount+' transcript words':'rendered evidence')+
+      '</div>'
+    : '<div class="grid three section">'+
+        kpi('Internal links',d.links.internal,d.links.total+' total links')+
+        kpi('Alt coverage',d.images.coverage===null?'N/A':d.images.coverage+'%',d.images.total?d.images.withAlt+'/'+d.images.total+' images':'No images detected')+
+        kpi('WordPress',d.signals.wordpress?'Likely':'Not detected',esc(d.signals.generator||'fingerprint check'))+
+      '</div>';
   document.getElementById('auditOut').innerHTML=
+    retrievalNote+typeNote+
     '<div class="grid two section">'+
-      '<div class="card"><h2>SEO health</h2><div class="scoreline"><div class="score">'+d.scores.seo+'</div><div><b>'+esc(d.title||'Untitled page')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div>'+checks(d.rubrics.seo)+'</div>'+
-      '<div class="card"><h2>GEO readiness</h2><div class="scoreline"><div class="score">'+d.scores.geo+'</div><div><b>AI-answer extraction signals</b><div class="muted">'+d.wordCount+' words · '+d.schema.types.length+' schema type(s)</div></div></div>'+checks(d.rubrics.geo)+'</div>'+
+      '<div class="card"><h2>'+(video?'Video SEO health':'SEO health')+'</h2><div class="scoreline"><div class="score">'+d.scores.seo+'</div><div><b>'+esc(d.title||'Untitled page')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div>'+checks(d.rubrics.seo)+'</div>'+
+      '<div class="card"><h2>'+(video?'Video GEO readiness':'GEO readiness')+'</h2><div class="scoreline"><div class="score">'+d.scores.geo+'</div><div><b>'+(video?'Video answer-engine signals':'AI-answer extraction signals')+'</b><div class="muted">'+(d.primaryContent?.wordCount||d.wordCount)+' primary words · '+((d.schema.videoSignals||[]).length+d.schema.types.length)+' structured signal(s)</div></div></div>'+checks(d.rubrics.geo)+'</div>'+
     '</div>'+
-    '<div class="grid three section">'+
-      kpi('Internal links',d.links.internal,d.links.total+' total links')+
-      kpi('Alt coverage',d.images.coverage===null?'N/A':d.images.coverage+'%',d.images.total?d.images.withAlt+'/'+d.images.total+' images':'No images detected')+
-      kpi('WordPress',d.signals.wordpress?'Likely':'Not detected',esc(d.signals.generator||'fingerprint check'))+
-    '</div>'+
+    metricCards+videoEvidence+
     '<div class="card section"><h2>Findings & recommended fixes</h2><table><tr><th>Priority</th><th>Evidence</th><th>Recommendation</th></tr>'+rows+'</table>'+
       '<div style="margin-top:12px" class="header-actions"><button class="secondary" id="copyAudit">Copy plain-language summary</button><button class="secondary" id="explainEditor">Explain to department editor</button><button class="secondary" id="exportAuditJson">Export JSON</button><button class="secondary" id="exportAuditCsv">Export CSV</button></div>'+
     '</div>';
@@ -219,7 +263,7 @@ function auditSummary(d){
   if(d.auditability && d.auditability.scorable===false){
     return 'SearchSignal audit diagnostic: '+d.finalUrl+'\nNot scorable — '+(d.auditability.reasons||[]).join(' · ')+'\nSEO/GEO scores suppressed.';
   }
-  return 'SearchSignal audit: '+d.finalUrl+'\nSEO '+d.scores.seo+'/100 · GEO '+d.scores.geo+'/100\n'+d.findings.map((f)=>f.severity+': '+f.label+' — '+f.fix).join('\n');
+  return 'SearchSignal audit: '+d.finalUrl+'\nType '+(d.pageType?.type||'webpage')+' · '+(d.scoringModel||'webpage-seo-geo-v1')+'\nSEO '+d.scores.seo+'/100 · GEO '+d.scores.geo+'/100\n'+d.findings.map((f)=>f.severity+': '+f.label+' — '+f.fix).join('\n');
 }
 
 function siteIntelligence(){
@@ -833,6 +877,7 @@ function coverageV2(){
   setTitle('Requirements Coverage','Open each requirement to see implementation, automated-test, and live-verification evidence separately.');
   const rows=[
     {name:'Technical/content SEO audits',evidence:'Live URL Auditor inspects metadata, indexability, canonical, headings, links, schema, image-alt coverage, generic-link text and form-label signals.',implemented:true,tested:true,live:true,date:'2026-09-30',notes:'Public audit endpoint live-verified. Accessibility items are heuristic signals, not conformance claims.'},
+    {name:'JavaScript-rendered page audits',evidence:'Browser-rendered audit launches sandboxed headless Chromium for JavaScript-heavy pages and hash routes, then sends the rendered DOM through the same SEO/GEO analyzer.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Preview-verified against GeForce NOW. Production live verification remains pending until deployment.'},
     {name:'Find → fix → verify implementation',evidence:'Change Lab demonstrates a synthetic page moving from detected issue to exact safe change, validation, and re-audit.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Sandbox-only by design; no production site is modified.'},
     {name:'Site pattern detection',evidence:'Site Patterns converts bounded crawl results into duplicate-title, canonical, H1, and document-link clusters.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Counts stay scoped to the bounded sample.'},
     {name:'Document operations',evidence:'Document Intelligence tracks HTTP status, file size, Last-Modified, duplicate filenames, weak link text, and referencing pages.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Accessibility and true orphan status require separate review/broader inventory.'},
