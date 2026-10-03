@@ -162,3 +162,50 @@ test('security headers protect the public demo surface', async () => {
   const api = await fetch(`${base}/api/health`);
   assert.equal(api.headers.get('cache-control'), 'no-store');
 });
+
+test('Change Lab is sandbox-only and supports verify re-audit', async () => {
+  const r = await fetch(base + '/api/change-lab', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({action:'verify'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.sandboxOnly, true);
+  assert.equal(data.productionModified, false);
+  assert.equal(data.validation.h1Count, 1);
+  assert.ok(data.reAudit.after.seo > data.reAudit.before.seo);
+  assert.match(data.boundary, /No production site modified/i);
+});
+
+test('scale simulator models 20K pages and 15K documents without crawling production', async () => {
+  const r = await fetch(base + '/api/scale-sim', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({pages:20000,documents:15000,batchSize:250,ratePerSecond:4})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.synthetic, true);
+  assert.equal(data.productionCrawl, false);
+  assert.equal(data.inventory.totalItems, 35000);
+  assert.ok(data.execution.batches > 0);
+  assert.equal(typeof data.issueCounts.orphanedDocuments, 'number');
+});
+
+test('client exposes implementation, pattern, document, reporting, and support workflows', async () => {
+  const js = await (await fetch(base + '/app.js')).text();
+  const phrases = [
+    'Change Lab',
+    'No production site modified',
+    'Site Patterns',
+    'Document Intelligence',
+    'Progress & Reporting',
+    '20K Scale Simulator',
+    'My page disappeared from navigation',
+    'Baseline → post-change comparison',
+    'Implemented',
+    'Automated test',
+    'Live verified',
+    'Explain to department editor'
+  ];
+  for (const phrase of phrases) assert.ok(js.includes(phrase), 'Missing client phrase: ' + phrase);
+});
