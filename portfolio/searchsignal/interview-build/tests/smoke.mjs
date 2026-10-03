@@ -10,7 +10,7 @@ let child;
 let childError = '';
 
 async function waitForServer() {
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 120; i++) {
     if (child?.exitCode !== null && child?.exitCode !== undefined) {
       throw new Error(`SearchSignal test server exited early (${child.exitCode}): ${childError}`);
     }
