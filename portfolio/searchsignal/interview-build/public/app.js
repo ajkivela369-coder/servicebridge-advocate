@@ -53,6 +53,7 @@ function show(id){
   const routes={dashboard,interview,auditor,changelab:changeLab,site:siteIntelligence,patterns:sitePatterns,documents:documentIntelligence,optimizer,schemaStudio,roadmap,reporting:progressReporting,analytics:analyticsV2,scale:scaleSimulator,wordpress:wordpressV2,training,lab,coverage:coverageV2};
   (routes[id]||dashboard)();
   window.scrollTo(0,0);
+  if(location.hash!=='#'+id) history.replaceState(null,'','#'+id);
 }
 
 function dashboard(){
@@ -830,4 +831,6 @@ function coverageV2(){
     '<div class="callout section"><b>Accuracy boundary:</b> implementation, automated verification, hosted/live verification, and production experience are deliberately separate claims.</div>';
 }
 
-show('interview');
+window.addEventListener('hashchange',()=>{const id=location.hash.slice(1);if(pages.some((p)=>p[0]===id))show(id);});
+const initialPage=location.hash.slice(1);
+show(pages.some((p)=>p[0]===initialPage)?initialPage:'interview');
