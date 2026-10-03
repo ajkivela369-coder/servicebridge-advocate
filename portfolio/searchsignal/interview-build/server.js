@@ -77,9 +77,10 @@ async function fetchHtml(raw) {
 
 function meta($, selector) { return $(selector).first().attr('content') || ''; }
 function weightedScore(checks) {
-  const total = checks.reduce((s, c) => s + c.weight, 0);
-  const earned = checks.reduce((s, c) => s + (c.ok ? c.weight : 0), 0);
-  return Math.round((earned / total) * 100);
+  const applicable = checks.filter((c) => c.applicable !== false);
+  const total = applicable.reduce((s, c) => s + c.weight, 0);
+  const earned = applicable.reduce((s, c) => s + (c.ok ? c.weight : 0), 0);
+  return total ? Math.round((earned / total) * 100) : null;
 }
 function issue(severity, label, evidence, fix) { return { severity, label, evidence, fix }; }
 
@@ -150,7 +151,7 @@ app.post('/api/audit', async (req, res) => {
 
     const imageCount = $('img').length;
     const imagesWithAlt = $('img[alt]').filter((_, e) => String($(e).attr('alt') || '').trim().length > 0).length;
-    const altCoverage = imageCount ? imagesWithAlt / imageCount : 1;
+    const altCoverage = imageCount ? imagesWithAlt / imageCount : null;
 
     const hrefs = $('a[href]').map((_, e) => $(e).attr('href')).get();
     let internal = 0, external = 0, placeholders = 0;
@@ -199,6 +200,16 @@ app.post('/api/audit', async (req, res) => {
       const id = el.attr('id');
       return !(el.attr('aria-label') || el.attr('aria-labelledby') || (id && $('label[for="'+id+'"]').length) || el.closest('label').length);
     }).length;
+    const normalizedTitle = title.toLowerCase();
+    const normalizedBody = bodyText.toLowerCase();
+    const errorTitlePattern = /(website temporarily unavailable|temporarily unavailable|service unavailable|access denied|request blocked|forbidden|too many requests|verify you are human|captcha|robot check|page not found|404 not found|internal server error)/i;
+    const errorBodyPattern = /(website temporarily unavailable|service unavailable|access denied|request blocked|verify you are human|unusual traffic|captcha|cloudflare ray id|error 403|error 429|error 500|error 502|error 503|error 504)/i;
+    const auditabilityReasons = [];
+    if (status >= 400) auditabilityReasons.push('HTTP '+status+' response');
+    if (errorTitlePattern.test(normalizedTitle)) auditabilityReasons.push('Error/challenge title detected: '+title);
+    if (wordCount < 120 && errorBodyPattern.test(normalizedBody)) auditabilityReasons.push('Error/challenge response text detected');
+    if (wordCount === 0) auditabilityReasons.push('No readable body text was returned');
+    const scorable = auditabilityReasons.length === 0;
     const noindex = /noindex/i.test(robots);
     const canonicalOk = Boolean(canonical) && (() => {
       try { return new URL(canonical, base).hostname === base.hostname; } catch { return false; }
@@ -212,7 +223,7 @@ app.post('/api/audit', async (req, res) => {
       { name: 'Canonical', ok: canonicalOk, weight: 10 },
       { name: 'Single H1', ok: singleH1, weight: 10 },
       { name: 'Heading structure', ok: h2.length > 0, weight: 8 },
-      { name: 'Image alt coverage', ok: altCoverage >= 0.8, weight: 8 },
+      { name: 'Image alt coverage', ok: imageCount ? altCoverage >= 0.8 : false, applicable: imageCount > 0, weight: 8 },
       { name: 'Internal links', ok: internal >= 3, weight: 7 },
       { name: 'Structured data', ok: schemas.length > 0 && invalidSchemaBlocks === 0, weight: 10 },
       { name: 'Mobile viewport', ok: Boolean(viewport), weight: 5 },
@@ -233,34 +244,45 @@ app.post('/api/audit', async (req, res) => {
     ];
 
     const findings = [];
-    if (noindex) findings.push(issue('Critical', 'Page is marked noindex', robots || 'robots=noindex', 'Confirm whether indexing is intended; remove noindex only after owner approval.'));
-    if (!title) findings.push(issue('Critical', 'Missing title', 'No <title> detected', 'Add a unique, descriptive title.'));
-    else if (title.length < 20 || title.length > 65) findings.push(issue('High', 'Title length needs review', title, 'Use a concise, specific title that reflects page intent.'));
-    if (!description) findings.push(issue('High', 'Missing meta description', 'No description detected', 'Write a plain-language summary useful in search snippets.'));
-    if (!canonical) findings.push(issue('High', 'Missing canonical', 'No canonical link detected', 'Add a self-referential or intentionally selected canonical URL.'));
-    if (!singleH1) findings.push(issue('High', 'H1 structure issue', h1.length + ' H1 elements detected', 'Use one clear page-level H1.'));
-    if (schemas.length === 0) findings.push(issue('Medium', 'No JSON-LD structured data', 'No schema types detected', 'Add only schema.org markup that truthfully reflects visible content.'));
-    if (invalidSchemaBlocks) findings.push(issue('High', 'Invalid JSON-LD', invalidSchemaBlocks + ' block(s) failed JSON parsing', 'Repair JSON syntax before publishing.'));
-    if (imageCount && altCoverage < 0.8) findings.push(issue('Medium', 'Image alt coverage below 80%', imagesWithAlt + '/' + imageCount + ' images have meaningful alt text', 'Add concise alt text where images convey information.'));
-    if (placeholders) findings.push(issue('Medium', 'Empty or placeholder links', placeholders + ' link(s)', 'Replace placeholder hrefs with valid destinations or buttons.'));
-    if (!answerFirst) findings.push(issue('Opportunity', 'Opening may be hard for answer engines to extract', firstParagraph.slice(0, 220) || 'No opening paragraph found', 'Lead with a concise answer or definition before deeper detail.'));
-    if (!hasCitations) findings.push(issue('Opportunity', 'Weak source/citation signals', external + ' external source links detected', 'Add authoritative source links or a references section when appropriate.'));
-    if (!author) findings.push(issue('Opportunity', 'No clear author signal', 'No author metadata detected', 'Expose responsible author/editor when appropriate.'));
-    if (genericLinkText) findings.push(issue('Medium', 'Non-descriptive link text', genericLinkText + ' link(s) use generic text', 'Replace generic link text with wording that describes the destination or action.'));
-    if (unlabeledControls) findings.push(issue('High', 'Form controls need label review', unlabeledControls + '/' + formControls + ' visible control(s) lack an obvious label signal', 'Add programmatic labels and verify the form with accessibility testing.'));
+    if (!scorable) {
+      findings.push(issue('Critical', 'Page could not be audited reliably', auditabilityReasons.join(' · '), 'Retry later, use a different public page, or audit a page that allows server-side retrieval. SEO/GEO scores are intentionally suppressed for this response.'));
+    }
+    if (scorable) {
+      if (noindex) findings.push(issue('Critical', 'Page is marked noindex', robots || 'robots=noindex', 'Confirm whether indexing is intended; remove noindex only after owner approval.'));
+      if (!title) findings.push(issue('Critical', 'Missing title', 'No <title> detected', 'Add a unique, descriptive title.'));
+      else if (title.length < 20 || title.length > 65) findings.push(issue('High', 'Title length needs review', title, 'Use a concise, specific title that reflects page intent.'));
+      if (!description) findings.push(issue('High', 'Missing meta description', 'No description detected', 'Write a plain-language summary useful in search snippets.'));
+      if (!canonical) findings.push(issue('High', 'Missing canonical', 'No canonical link detected', 'Add a self-referential or intentionally selected canonical URL.'));
+      if (!singleH1) findings.push(issue('High', 'H1 structure issue', h1.length + ' H1 elements detected', 'Use one clear page-level H1.'));
+      if (schemas.length === 0) findings.push(issue('Medium', 'No JSON-LD structured data', 'No schema types detected', 'Add only schema.org markup that truthfully reflects visible content.'));
+      if (invalidSchemaBlocks) findings.push(issue('High', 'Invalid JSON-LD', invalidSchemaBlocks + ' block(s) failed JSON parsing', 'Repair JSON syntax before publishing.'));
+      if (imageCount && altCoverage < 0.8) findings.push(issue('Medium', 'Image alt coverage below 80%', imagesWithAlt + '/' + imageCount + ' images have meaningful alt text', 'Add concise alt text where images convey information.'));
+      if (placeholders) findings.push(issue('Medium', 'Empty or placeholder links', placeholders + ' link(s)', 'Replace placeholder hrefs with valid destinations or buttons.'));
+      if (!answerFirst) findings.push(issue('Opportunity', 'Opening may be hard for answer engines to extract', firstParagraph.slice(0, 220) || 'No opening paragraph found', 'Lead with a concise answer or definition before deeper detail.'));
+      if (!hasCitations) findings.push(issue('Opportunity', 'Weak source/citation signals', external + ' external source links detected', 'Add authoritative source links or a references section when appropriate.'));
+      if (!author) findings.push(issue('Opportunity', 'No clear author signal', 'No author metadata detected', 'Expose responsible author/editor when appropriate.'));
+      if (genericLinkText) findings.push(issue('Medium', 'Non-descriptive link text', genericLinkText + ' link(s) use generic text', 'Replace generic link text with wording that describes the destination or action.'));
+      if (unlabeledControls) findings.push(issue('High', 'Form controls need label review', unlabeledControls + '/' + formControls + ' visible control(s) lack an obvious label signal', 'Add programmatic labels and verify the form with accessibility testing.'));
+    }
 
     res.json({
       url: raw, finalUrl, status, title, description, canonical, robots, lang, viewport,
       wordCount, headings: { h1, h2, h3 },
       links: { total: hrefs.length, internal, external, placeholders },
-      images: { total: imageCount, withAlt: imagesWithAlt, coverage: Math.round(altCoverage * 100) },
+      images: { total: imageCount, withAlt: imagesWithAlt, coverage: altCoverage === null ? null : Math.round(altCoverage * 100) },
       schema: { types: [...new Set(schemas)], invalidBlocks: invalidSchemaBlocks },
       signals: { wordpress, generator, author, published, modified, openGraph, twitter, questions, answerFirst, hasCitations },
       accessibilitySignals: { genericLinkText, formControls, unlabeledControls, note: 'Heuristic signals only; not an accessibility conformance determination.' },
-      scores: { seo: weightedScore(seoRubric), geo: weightedScore(geoRubric) },
+      scores: { seo: scorable ? weightedScore(seoRubric) : null, geo: scorable ? weightedScore(geoRubric) : null },
+      auditability: {
+        scorable,
+        classification: scorable ? 'content' : 'blocked_or_error',
+        reasons: auditabilityReasons,
+        note: scorable ? 'Response appears suitable for SEO/GEO scoring.' : 'SEO/GEO scores are suppressed because the retrieved response does not appear to be the intended content page.'
+      },
       rubrics: {
-        seo: seoRubric.map(({ name, ok }) => ({ name, ok })),
-        geo: geoRubric.map(({ name, ok }) => ({ name, ok }))
+        seo: seoRubric.map(({ name, ok, applicable = true }) => ({ name, ok, applicable: scorable && applicable })),
+        geo: geoRubric.map(({ name, ok, applicable = true }) => ({ name, ok, applicable: scorable && applicable }))
       },
       findings
     });

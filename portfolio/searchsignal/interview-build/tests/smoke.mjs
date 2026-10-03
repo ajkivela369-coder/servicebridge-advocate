@@ -209,3 +209,39 @@ test('client exposes implementation, pattern, document, reporting, and support w
   ];
   for (const phrase of phrases) assert.ok(js.includes(phrase), 'Missing client phrase: ' + phrase);
 });
+
+
+test('error responses are not given SEO or GEO scores', async () => {
+  const r = await fetch(`${base}/api/audit`, {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({url:'https://example.com/definitely-not-a-real-page-searchsignal'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.auditability.scorable, false);
+  assert.equal(data.scores.seo, null);
+  assert.equal(data.scores.geo, null);
+  assert.ok(data.auditability.reasons.length >= 1);
+  assert.match(data.auditability.note, /suppressed/i);
+});
+
+test('zero-image pages do not receive automatic alt-text credit', async () => {
+  const r = await fetch(`${base}/api/audit`, {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({url:'https://example.com/'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  if (data.images.total === 0) {
+    assert.equal(data.images.coverage, null);
+    const altCheck = data.rubrics.seo.find((x) => x.name === 'Image alt coverage');
+    assert.equal(altCheck.applicable, false);
+  }
+});
+
+test('client labels unscorable audits as N/A instead of a misleading score', async () => {
+  const js = await (await fetch(`${base}/app.js`)).text();
+  assert.match(js, /Not scorable/);
+  assert.match(js, /SEO\/GEO scores are suppressed/);
+  assert.match(js, /No images detected/);
+});
