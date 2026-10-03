@@ -245,3 +245,24 @@ test('client labels unscorable audits as N/A instead of a misleading score', asy
   assert.match(js, /SEO\/GEO scores are suppressed/);
   assert.match(js, /No images detected/);
 });
+
+
+test('browser-rendered audit mode is exposed in the client', async () => {
+  const js = await (await fetch(base + '/app.js')).text();
+  assert.match(js, /Browser-rendered audit/);
+  assert.match(js, /\/api\/rendered-audit/);
+  assert.match(js, /Try browser-rendered audit/);
+});
+
+test('browser-rendered audit executes a public page in Chromium', async () => {
+  const r = await fetch(base + '/api/rendered-audit', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({url:'https://example.com/'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.retrieval.mode, 'browser-rendered');
+  assert.equal(data.retrieval.rendered, true);
+  assert.equal(typeof data.retrieval.renderMs, 'number');
+  assert.equal(typeof data.scores.seo, 'number');
+});
