@@ -64,3 +64,12 @@ The auditor now has two retrieval paths:
 Rendered audits preserve client-side hash routes, wait for usable DOM content, block private-network requests, skip media/fonts, and run the resulting DOM through the same SEO/GEO analyzer. The UI clearly labels the retrieval mode. If client-side navigation sends the request to an authentication wall, SearchSignal suppresses SEO/GEO scores rather than grading the login page as if it were the requested route.
 
 Preview acceptance on 2026-10-02 successfully rendered `https://play.geforcenow.com/mall/#/layout/games` on Vercel, retained the requested hash route, and returned a scored rendered DOM. Production verification is tracked separately in Requirements Coverage.
+
+
+## Smart content-type auditing
+
+SearchSignal now classifies the retrieved content before choosing a scoring model. The current classifier distinguishes general webpages, articles, client-rendered applications, and video pages. **Smart audit** begins with the fast server fetch, then automatically escalates to sandboxed Chromium when the URL is hash-routed, the server response is not reliably scorable, the page is classified as a video, or a client-rendered shell is detected.
+
+For video pages, SearchSignal no longer grades the entire platform interface with the ordinary webpage rubric. It extracts video-specific evidence including title, description, creator/channel, publication date, duration, thumbnail, embed/player metadata, Open Graph video signals, video microdata, topic tags, chapters, and public transcript text when the platform exposes it. The Video SEO/GEO rubric uses that evidence and excludes platform chrome, comments, navigation, recommendation feeds, and other shell text from the primary-content word count.
+
+YouTube acceptance testing on 2026-10-02 classified the supplied watch page as a high-confidence video, automatically rendered it, loaded the public transcript, extracted the creator, duration, topic tags, six deduplicated chapters, and more than 11,000 transcript words. GeForce NOW remained correctly classified as a web application and suppressed scoring when the rendered route redirected to a login wall.
