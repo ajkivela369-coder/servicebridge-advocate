@@ -203,7 +203,7 @@ function extractVideoEvidence($, base, bodyText) {
     return $(e).attr('data-searchsignal-chapter') || chapterLabel($(e).text());
   }).get()).filter((x) => x.length >= 2).slice(0, 80);
 
-  const transcriptSegments = uniqueText($('ytd-transcript-segment-renderer, [data-searchsignal-transcript]').map((_, e) => {
+  const transcriptSegments = uniqueText($('ytd-transcript-segment-renderer, transcript-segment-view-model, [data-searchsignal-transcript]').map((_, e) => {
     return $(e).attr('data-searchsignal-transcript') || transcriptLabel($(e).text());
   }).get()).filter((x) => x.length >= 2).slice(0, 500);
 
@@ -648,7 +648,7 @@ async function renderHtml(raw) {
         });
         if (transcriptAttempted) {
           try {
-            await page.waitForSelector('ytd-transcript-segment-renderer', { timeout: 3500 });
+            await page.waitForSelector('ytd-transcript-segment-renderer, transcript-segment-view-model', { timeout: 3500 });
             transcriptLoaded = true;
           } catch {}
         }
