@@ -298,7 +298,7 @@ test('client exposes content classification and video evidence UX', async () => 
   const js = await (await fetch(base + '/app.js')).text();
   for (const phrase of [
     'Smart audit',
-    'Content-Type Classifier',
+    'CONTENT-TYPE CLASSIFIER',
     'VIDEO EVIDENCE',
     'Video SEO health',
     'Video GEO readiness',
