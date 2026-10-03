@@ -632,7 +632,28 @@ async function renderHtml(raw) {
     } catch {}
 
     try { await page.waitForNetworkIdle({ idleTime: 700, timeout: 5000 }); } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    let transcriptAttempted = false;
+    let transcriptLoaded = false;
+    const target = new URL(validated);
+    if (/(^|\.)youtube\.com$/i.test(target.hostname) && target.pathname === '/watch') {
+      try {
+        transcriptAttempted = await page.evaluate(() => {
+          const buttons = [...document.querySelectorAll('button')];
+          const button = buttons.find((el) => /show transcript/i.test((el.getAttribute('aria-label') || '')+' '+(el.innerText || el.textContent || '')));
+          if (!button) return false;
+          button.click();
+          return true;
+        });
+        if (transcriptAttempted) {
+          try {
+            await page.waitForSelector('ytd-transcript-segment-renderer', { timeout: 3500 });
+            transcriptLoaded = true;
+          } catch {}
+        }
+      } catch {}
+    }
 
     const html = await page.content();
     if (Buffer.byteLength(html, 'utf8') > 4_000_000) throw new Error('Rendered page exceeds the 4 MB audit limit.');
@@ -658,6 +679,8 @@ async function renderHtml(raw) {
         finalHash: new URL(finalUrl).hash || '',
         routeChanged: new URL(raw).origin === new URL(finalUrl).origin && (new URL(raw).pathname + new URL(raw).hash) !== (new URL(finalUrl).pathname + new URL(finalUrl).hash),
         authWall: /(login|signin|sign-in|auth|loginwall|access-denied|forbidden)/i.test(new URL(finalUrl).pathname + new URL(finalUrl).hash),
+        transcriptAttempted,
+        transcriptLoaded,
         note: 'Rendered in a sandboxed headless Chromium session. Private-network requests are blocked; media and fonts are skipped.'
       }
     };
@@ -667,31 +690,113 @@ async function renderHtml(raw) {
   }
 }
 
+
+const renderedAuditCache = new Map();
+let activeRenderedAudits = 0;
+const MAX_RENDERED_AUDITS = 2;
+const RENDER_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function cachedRenderedHtml(raw) {
+  const key = String(raw || '').trim();
+  const cached = renderedAuditCache.get(key);
+  if (cached && Date.now() - cached.at < RENDER_CACHE_TTL_MS) {
+    return {
+      ...cached.value,
+      renderMeta: {
+        ...cached.value.renderMeta,
+        cached: true,
+        note: cached.value.renderMeta.note+' Result reused from the short-lived rendered-audit cache.'
+      }
+    };
+  }
+  if (activeRenderedAudits >= MAX_RENDERED_AUDITS) {
+    const error = new Error('Rendered-audit capacity is busy. Retry shortly or use Server only.');
+    error.statusCode = 429;
+    throw error;
+  }
+  activeRenderedAudits += 1;
+  try {
+    const value = await renderHtml(key);
+    renderedAuditCache.set(key, { at: Date.now(), value });
+    if (renderedAuditCache.size > 12) {
+      const oldest = [...renderedAuditCache.entries()].sort((a,b)=>a[1].at-b[1].at)[0]?.[0];
+      if (oldest) renderedAuditCache.delete(oldest);
+    }
+    return value;
+  } finally {
+    activeRenderedAudits -= 1;
+  }
+}
+
+function renderedResult(raw, rendered, fallbackReason = '') {
+  const retrieval = {
+    ...rendered.renderMeta,
+    mode: fallbackReason ? 'auto-rendered' : 'browser-rendered',
+    label: fallbackReason ? 'Automatic browser-rendered audit' : 'Browser-rendered audit',
+    autoFallback: Boolean(fallbackReason),
+    fallbackReason: fallbackReason || ''
+  };
+  const result = analyzeHtml(raw, rendered.html, rendered.status, rendered.finalUrl, retrieval);
+  if (rendered.renderMeta.authWall && rendered.renderMeta.routeChanged) {
+    result.scores = { seo: null, geo: null };
+    result.auditability = {
+      scorable: false,
+      classification: 'rendered_auth_wall',
+      reasons: ['Client-side navigation changed the requested route to an authentication/login wall: '+rendered.finalUrl],
+      note: 'The rendered DOM belongs to an authentication wall rather than the requested content route, so SEO/GEO scores are suppressed.'
+    };
+    result.rubrics = {
+      seo: result.rubrics.seo.map((item) => ({ ...item, applicable: false })),
+      geo: result.rubrics.geo.map((item) => ({ ...item, applicable: false }))
+    };
+    result.findings = [issue('Critical', 'Requested rendered route was not accessible', 'Requested '+raw+' but the browser ended at '+rendered.finalUrl, 'Sign in or use a publicly accessible route. SearchSignal will not score the login wall as if it were the requested content page.')];
+  }
+  return result;
+}
+
+function renderedFallbackReason(result, raw, html) {
+  let url;
+  try { url = new URL(raw); } catch { return ''; }
+  if (url.hash) return 'Hash-routed URL requires client-side rendering.';
+  if (!result.auditability?.scorable) return 'Server response was not reliably scorable.';
+  if (result.pageType?.type === 'video') return 'Video page benefits from rendered primary-content, chapter, and transcript inspection.';
+  if (result.pageType?.type === 'application') return 'Client-rendered application shell detected.';
+  const scriptCount = (String(html || '').match(/<script\b/gi) || []).length;
+  if ((result.shellWordCount || 0) < 120 && scriptCount >= 8) return 'Thin HTML shell with substantial JavaScript detected.';
+  return '';
+}
+
 app.post('/api/rendered-audit', async (req, res) => {
   try {
     const raw = String(req.body?.url || '').trim();
-    const rendered = await renderHtml(raw);
-    const result = analyzeHtml(raw, rendered.html, rendered.status, rendered.finalUrl, rendered.renderMeta);
-    if (rendered.renderMeta.authWall && rendered.renderMeta.routeChanged) {
-      result.scores = { seo: null, geo: null };
-      result.auditability = {
-        scorable: false,
-        classification: 'rendered_auth_wall',
-        reasons: ['Client-side navigation changed the requested route to an authentication/login wall: '+rendered.finalUrl],
-        note: 'The rendered DOM belongs to an authentication wall rather than the requested content route, so SEO/GEO scores are suppressed.'
-      };
-      result.rubrics = {
-        seo: result.rubrics.seo.map((item) => ({ ...item, applicable: false })),
-        geo: result.rubrics.geo.map((item) => ({ ...item, applicable: false }))
-      };
-      result.findings = [issue('Critical', 'Requested rendered route was not accessible', 'Requested '+raw+' but the browser ended at '+rendered.finalUrl, 'Sign in or use a publicly accessible route. SearchSignal will not score the login wall as if it were the requested content page.')];
-    }
-    res.json(result);
+    const rendered = await cachedRenderedHtml(raw);
+    res.json(renderedResult(raw, rendered));
   } catch (err) {
-    res.status(400).json({ error: err?.name === 'TimeoutError' ? 'Browser-rendered audit timed out.' : (err?.message || 'Browser-rendered audit failed.') });
+    res.status(err?.statusCode || 400).json({ error: err?.name === 'TimeoutError' ? 'Browser-rendered audit timed out.' : (err?.message || 'Browser-rendered audit failed.') });
   }
 });
 
+app.post('/api/smart-audit', async (req, res) => {
+  try {
+    const raw = String(req.body?.url || '').trim();
+    const fetched = await fetchHtml(raw);
+    const serverResult = analyzeHtml(raw, fetched.html, fetched.status, fetched.finalUrl, {
+      mode: 'smart-server',
+      label: 'Smart audit · server fetch',
+      rendered: false,
+      autoFallback: false
+    });
+    const reason = renderedFallbackReason(serverResult, raw, fetched.html);
+    if (!reason) {
+      serverResult.retrieval.fallbackReason = '';
+      return res.json(serverResult);
+    }
+    const rendered = await cachedRenderedHtml(raw);
+    return res.json(renderedResult(raw, rendered, reason));
+  } catch (err) {
+    res.status(err?.statusCode || 400).json({ error: err?.name === 'TimeoutError' ? 'Smart audit render timed out.' : (err?.message || 'Smart audit failed.') });
+  }
+});
 
 
 function cleanCrawlUrl(raw) {
