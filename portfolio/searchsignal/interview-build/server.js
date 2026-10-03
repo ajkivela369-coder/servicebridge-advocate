@@ -191,6 +191,14 @@ app.post('/api/audit', async (req, res) => {
     const hasCitations = external >= 2 || /references|sources|citations/i.test(bodyText);
     const firstParagraph = $('main p, article p, body p').first().text().trim();
     const answerFirst = firstParagraph.length >= 60 && firstParagraph.length <= 500;
+    const genericLinkPattern = /^(click here|here|read more|learn more|more|link)$/i;
+    const genericLinkText = $('a[href]').filter((_, e) => genericLinkPattern.test($(e).text().replace(/\s+/g, ' ').trim())).length;
+    const formControls = $('input:not([type="hidden"]), select, textarea').length;
+    const unlabeledControls = $('input:not([type="hidden"]), select, textarea').filter((_, e) => {
+      const el = $(e);
+      const id = el.attr('id');
+      return !(el.attr('aria-label') || el.attr('aria-labelledby') || (id && $('label[for="'+id+'"]').length) || el.closest('label').length);
+    }).length;
     const noindex = /noindex/i.test(robots);
     const canonicalOk = Boolean(canonical) && (() => {
       try { return new URL(canonical, base).hostname === base.hostname; } catch { return false; }
@@ -238,6 +246,8 @@ app.post('/api/audit', async (req, res) => {
     if (!answerFirst) findings.push(issue('Opportunity', 'Opening may be hard for answer engines to extract', firstParagraph.slice(0, 220) || 'No opening paragraph found', 'Lead with a concise answer or definition before deeper detail.'));
     if (!hasCitations) findings.push(issue('Opportunity', 'Weak source/citation signals', external + ' external source links detected', 'Add authoritative source links or a references section when appropriate.'));
     if (!author) findings.push(issue('Opportunity', 'No clear author signal', 'No author metadata detected', 'Expose responsible author/editor when appropriate.'));
+    if (genericLinkText) findings.push(issue('Medium', 'Non-descriptive link text', genericLinkText + ' link(s) use generic text', 'Replace generic link text with wording that describes the destination or action.'));
+    if (unlabeledControls) findings.push(issue('High', 'Form controls need label review', unlabeledControls + '/' + formControls + ' visible control(s) lack an obvious label signal', 'Add programmatic labels and verify the form with accessibility testing.'));
 
     res.json({
       url: raw, finalUrl, status, title, description, canonical, robots, lang, viewport,
@@ -246,6 +256,7 @@ app.post('/api/audit', async (req, res) => {
       images: { total: imageCount, withAlt: imagesWithAlt, coverage: Math.round(altCoverage * 100) },
       schema: { types: [...new Set(schemas)], invalidBlocks: invalidSchemaBlocks },
       signals: { wordpress, generator, author, published, modified, openGraph, twitter, questions, answerFirst, hasCitations },
+      accessibilitySignals: { genericLinkText, formControls, unlabeledControls, note: 'Heuristic signals only; not an accessibility conformance determination.' },
       scores: { seo: weightedScore(seoRubric), geo: weightedScore(geoRubric) },
       rubrics: {
         seo: seoRubric.map(({ name, ok }) => ({ name, ok })),
@@ -293,7 +304,10 @@ async function inspectDocument(raw) {
       finalUrl: current.toString(),
       status: response.status,
       contentType: response.headers.get('content-type') || '',
-      bytes: Number(response.headers.get('content-length') || 0) || null
+      bytes: Number(response.headers.get('content-length') || 0) || null,
+      lastModified: response.headers.get('last-modified') || '',
+      etag: response.headers.get('etag') || '',
+      contentDisposition: response.headers.get('content-disposition') || ''
     };
   }
   throw new Error('Too many document redirects.');
@@ -302,7 +316,11 @@ async function inspectDocument(raw) {
 async function getRedirectChain(raw) {
   let current = await validateUrl(raw);
   const chain = [];
+  const visited = new Set();
   for (let i = 0; i < 8; i++) {
+    const key = current.toString();
+    if (visited.has(key)) throw new Error('Redirect loop detected.');
+    visited.add(key);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 7000);
     let response;
@@ -330,6 +348,8 @@ app.post('/api/site-scan', async (req, res) => {
     const raw = String(req.body?.url || '').trim();
     const requested = Number(req.body?.limit || 8);
     const limit = Math.max(1, Math.min(12, Number.isFinite(requested) ? Math.round(requested) : 8));
+    const requestedDelay = Number(req.body?.delayMs || 0);
+    const delayMs = Math.max(0, Math.min(1000, Number.isFinite(requestedDelay) ? Math.round(requestedDelay) : 0));
     const start = await validateUrl(raw);
     const origin = start.origin;
     const queue = [cleanCrawlUrl(start.toString())];
@@ -341,6 +361,7 @@ app.post('/api/site-scan', async (req, res) => {
       const current = queue.shift();
       if (!current || seen.has(current)) continue;
       seen.add(current);
+      if (delayMs > 0 && pages.length > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
       try {
         const fetched = await fetchHtml(current);
         const $ = cheerio.load(fetched.html);
@@ -365,8 +386,13 @@ app.post('/api/site-scan', async (req, res) => {
               if (!documents.has(normalized)) documents.set(normalized, {
                 url: normalized,
                 source: fetched.finalUrl,
+                sources: [fetched.finalUrl],
                 linkText: $(el).text().replace(/\s+/g, ' ').trim() || '(no link text)'
               });
+              else {
+                const existing = documents.get(normalized);
+                if (!existing.sources.includes(fetched.finalUrl)) existing.sources.push(fetched.finalUrl);
+              }
               return;
             }
             if (!seen.has(normalized) && !queue.includes(normalized) && !/\/(wp-admin|wp-login|search)(\/|$)/i.test(u.pathname)) {
@@ -409,7 +435,7 @@ app.post('/api/site-scan', async (req, res) => {
       documentsChecked: documentRows.length,
       averageWords: okPages.length ? Math.round(okPages.reduce((n, p) => n + p.wordCount, 0) / okPages.length) : 0
     };
-    res.json({ startUrl: start.toString(), origin, limit, summary, pages, documents: documentRows });
+    res.json({ startUrl: start.toString(), origin, limit, delayMs, summary, pages, documents: documentRows });
   } catch (err) {
     res.status(400).json({ error: err?.name === 'AbortError' ? 'Site scan timed out.' : (err?.message || 'Site scan failed.') });
   }
@@ -428,6 +454,106 @@ app.post('/api/redirect-check', async (req, res) => {
     });
   } catch (err) {
     res.status(400).json({ error: err?.name === 'AbortError' ? 'Redirect check timed out.' : (err?.message || 'Redirect check failed.') });
+  }
+});
+
+
+function changeLabPayload(action = 'analyze') {
+  const beforeHtml = '<title>Health Sciences Program | Example University</title>\n<meta name="description" content="Learn more.">\n<main><h1>Health Sciences</h1><h1>Program Overview</h1><p>Prepare for a career in health sciences.</p><p><a href="/admissions">Click here</a> for admissions.</p></main>';
+  const afterHtml = '<title>Health Sciences Program | Example University</title>\n<meta name="description" content="Explore the Health Sciences program, curriculum, admissions requirements, student support, and career pathways at Example University.">\n<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Health Sciences Program","url":"https://example.edu/health-sciences"}</script>\n<main><h1>Health Sciences Program</h1><h2>Program overview</h2><p>Prepare for a career in health sciences through applied coursework and guided academic support.</p><p><a href="/admissions">Review admissions requirements</a> for next steps.</p><p><a href="/curriculum">Explore the curriculum</a>.</p><p><a href="/support">Student support resources</a>.</p></main>';
+  const issues = [
+    {id:'meta',severity:'High',label:'Weak meta description',evidence:'“Learn more.” is too vague to explain page intent.'},
+    {id:'heading',severity:'High',label:'Heading hierarchy',evidence:'Two H1 elements compete for the page-level heading.'},
+    {id:'schema',severity:'Medium',label:'Missing structured data',evidence:'No JSON-LD is present in the sandbox copy.'},
+    {id:'links',severity:'Medium',label:'Weak internal linking',evidence:'One generic “Click here” link provides little destination context.'}
+  ];
+  const changes = [
+    {field:'Meta description',before:'Learn more.',after:'Explore the Health Sciences program, curriculum, admissions requirements, student support, and career pathways at Example University.'},
+    {field:'Heading structure',before:'H1: Health Sciences + H1: Program Overview',after:'H1: Health Sciences Program + H2: Program overview'},
+    {field:'JSON-LD',before:'None',after:'Truthful WebPage schema matching visible content'},
+    {field:'Internal links',before:'Click here → /admissions',after:'Descriptive admissions, curriculum, and student-support links'}
+  ];
+  const applied = action === 'apply' || action === 'verify';
+  return {
+    sandboxOnly:true,
+    productionModified:false,
+    action,
+    page:{name:'Synthetic Health Sciences Program page',url:'https://example.edu/health-sciences'},
+    beforeHtml,
+    afterHtml,
+    issues,
+    changes,
+    appliedHtml: applied ? afterHtml : beforeHtml,
+    validation: applied ? {metaLength:148,h1Count:1,schemaTypes:['WebPage'],descriptiveInternalLinks:3,placeholderLinks:0,htmlStatus:'Valid demo fragment'} : null,
+    reAudit: action === 'verify' ? {before:{seo:54,geo:36},after:{seo:94,geo:83},remaining:['Human editorial review','Accessibility conformance testing','Production change approval']} : null,
+    boundary:'No production site modified. All changes are applied only to a synthetic sandbox copy.'
+  };
+}
+
+app.post('/api/change-lab', (req, res) => {
+  const action = String(req.body?.action || 'analyze').toLowerCase();
+  if (!['analyze','prepare','apply','verify','reset'].includes(action)) return res.status(400).json({error:'Unsupported Change Lab action.'});
+  res.json(changeLabPayload(action === 'reset' ? 'analyze' : action));
+});
+
+app.post('/api/scale-sim', (req, res) => {
+  const pages = Math.max(100, Math.min(100000, Math.round(Number(req.body?.pages || 20000))));
+  const documents = Math.max(0, Math.min(100000, Math.round(Number(req.body?.documents || 15000))));
+  const batchSize = Math.max(10, Math.min(1000, Math.round(Number(req.body?.batchSize || 250))));
+  const ratePerSecond = Math.max(0.5, Math.min(20, Number(req.body?.ratePerSecond || 4)));
+  const resumeFrom = Math.max(0, Math.min(pages + documents, Math.round(Number(req.body?.resumeFrom || 0))));
+  const totalItems = pages + documents;
+  const remaining = Math.max(0, totalItems - resumeFrom);
+  const batches = Math.ceil(remaining / batchSize);
+  const estimatedSeconds = Math.ceil(remaining / ratePerSecond);
+  const seed = (pages * 31 + documents * 17 + batchSize) % 997;
+  const issueCounts = {
+    duplicateTitles: Math.round(pages * (0.008 + (seed % 4) / 1000)),
+    brokenLinks: Math.round(pages * (0.004 + (seed % 3) / 1000)),
+    redirectChains: Math.round(pages * 0.0025),
+    missingCanonicals: Math.round(pages * 0.006),
+    orphanedDocuments: Math.round(documents * 0.012),
+    oversizedDocuments: Math.round(documents * 0.007)
+  };
+  res.json({
+    synthetic:true,
+    productionCrawl:false,
+    inventory:{pages,documents,totalItems},
+    execution:{batchSize,ratePerSecond,resumeFrom,remaining,batches,estimatedSeconds,cacheStrategy:'URL + ETag/Last-Modified fingerprint',checkpointEveryBatches:10},
+    issueCounts,
+    queuePreview:[
+      {priority:'Now',work:'Broken-link clusters on high-traffic program pages'},
+      {priority:'Now',work:'Canonical gaps affecting duplicate page families'},
+      {priority:'Next',work:'Orphaned/oversized document review'},
+      {priority:'Later',work:'Long redirect-chain cleanup after owner validation'}
+    ],
+    boundary:'Synthetic scale model only. This endpoint does not crawl Geisel or any external site.'
+  });
+});
+
+async function fetchPublicResource(raw) {
+  const current = await validateUrl(raw);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 7000);
+  try {
+    const response = await fetch(current, {redirect:'follow', signal:controller.signal, headers:{'user-agent':'SearchSignalPortfolioAudit/1.0 (+independent demo)'}});
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return {url:current.toString(),status:response.status,contentType:response.headers.get('content-type')||'',bytes:buffer.length,preview:buffer.toString('utf8',0,Math.min(buffer.length,900))};
+  } finally { clearTimeout(timer); }
+}
+
+app.post('/api/site-meta', async (req, res) => {
+  try {
+    const start = await validateUrl(String(req.body?.url || '').trim());
+    const robotsUrl = new URL('/robots.txt', start.origin).toString();
+    const sitemapUrl = new URL('/sitemap.xml', start.origin).toString();
+    const [robots, sitemap] = await Promise.all([
+      fetchPublicResource(robotsUrl).catch((error)=>({url:robotsUrl,error:error?.message||'Check failed'})),
+      fetchPublicResource(sitemapUrl).catch((error)=>({url:sitemapUrl,error:error?.message||'Check failed'}))
+    ]);
+    res.json({origin:start.origin,robots,sitemap});
+  } catch (err) {
+    res.status(400).json({error:err?.name==='AbortError'?'Site metadata check timed out.':(err?.message||'Site metadata check failed.')});
   }
 });
 

@@ -14,3 +14,13 @@
 12. Added browser-local Search Console / Analytics CSV summaries so the import controls are functional without pretending authenticated account access.
 13. Added a repeatable `npm run qa` gate; the current suite checks syntax, health, interview workflow, private-network protection, public auditing, site scanning, and redirect validation.
 14. Kept the richer published Floot v2 separate: this local build does not supersede v2 until source access reopens and parity is verified.
+
+24. Added Change Lab: synthetic current-page inspection, exact before/after implementation diff, sandbox-only apply, validation, and re-audit. The workflow explicitly states that no production site is modified.
+25. Added Site Patterns, including duplicate title/canonical clusters derived from the bounded crawl and public robots.txt/sitemap.xml status checks.
+26. Promoted linked files into Document Intelligence with HTTP metadata, file-size and duplicate-name signals, Last-Modified review signals, and referencing-page counts; document accessibility remains a separate human-testing boundary.
+27. Rebuilt WordPress Support as an interactive diagnosis → editor-safe steps → escalation → plain-language response → knowledge-base workflow across three realistic support scenarios.
+28. Reworked analytics imports into browser-local 7/30/90-day before/after comparisons around a chosen change date, with plain-English reporting and print/save-to-PDF support.
+29. Added Progress & Reporting with an owner-aware roadmap register, generated weekly Web Architect update, and JSON/CSV exports.
+30. Added a synthetic 20K-page / 15K-document scale simulator for batching, rate limits, caching, checkpoints, pause/resume, modeled issue clusters, and prioritization without a production crawl.
+31. Upgraded Requirements Coverage so implementation, automated-test coverage, and live verification are independent evidence states.
+32. Added supporting technical controls: polite crawl delay, redirect-loop detection, generic-link/form-label heuristic signals, richer document headers, and audit JSON/CSV exports.

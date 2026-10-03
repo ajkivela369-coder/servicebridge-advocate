@@ -35,3 +35,20 @@ Run `npm run qa` to execute the local quality gate. See the private repository [
 - MariaDB/MySQL application concepts
 
 SearchSignal is an independent portfolio demonstration and is not affiliated with Dartmouth College or the Geisel School of Medicine.
+
+
+## October 2 implementation upgrade
+
+The interview build now adds an explicit implementation loop and larger-site operations surfaces:
+
+- **Change Lab** — a synthetic page moves through detected issue → prepared WordPress-safe/HTML changes → sandbox apply → validation → re-audit. The UI and API explicitly state **No production site modified**.
+- **Site Patterns** — groups duplicate-title/canonical and other recurring signals from the loaded bounded crawl, with public robots.txt/sitemap.xml checks.
+- **Document Intelligence** — elevates PDF/Office files into a separate inventory with HTTP status, file size, Last-Modified, duplicate-filename, weak-link-text, and referencing-page signals. Accessibility remains a human-review requirement rather than an automated claim.
+- **Interactive WordPress Support** — three realistic support cases walk through diagnosis, editor-safe steps, escalation, plain-language response, and reusable knowledge-base guidance.
+- **Measurement workspace** — browser-local CSV analysis around a user-selected change date with 7/30/90-day before/after comparisons.
+- **Progress & Reporting** — owner-aware roadmap register, weekly Web Architect update generation, and JSON/CSV/print-to-PDF export.
+- **20K Scale Simulator** — synthetic 20,000-page / 15,000-document workload modeling for batches, rate limits, caching, checkpoints, pause/resume, and prioritization without crawling Geisel.
+- **Requirements Coverage v2** — separates Implemented, Automated test, and Live verified evidence states.
+- Additional technical signals include generic-link/form-label heuristics, crawl-delay controls, redirect-loop detection, richer document metadata, and audit JSON/CSV exports.
+
+New capabilities remain subject to automated QA and hosted acceptance before they are marked **Live verified**.

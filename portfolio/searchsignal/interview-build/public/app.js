@@ -1,14 +1,19 @@
-const state={lastAudit:null,caseStudyUrl:'https://geiselmed.dartmouth.edu/'};
+const state={lastAudit:null,lastSiteScan:null,caseStudyUrl:'https://geiselmed.dartmouth.edu/',changeLab:null,scaleRun:null};
 
 const pages=[
   ['dashboard','Dashboard'],
   ['interview','Geisel Interview Mode'],
   ['auditor','Live URL Auditor'],
+  ['changelab','Change Lab'],
   ['site','Site Intelligence'],
+  ['patterns','Site Patterns'],
+  ['documents','Document Intelligence'],
   ['optimizer','Content Optimizer'],
   ['schema','Structured Data Studio'],
   ['roadmap','Priority Roadmap'],
+  ['reporting','Progress & Reporting'],
   ['analytics','Analytics & AI Visibility'],
+  ['scale','20K Scale Simulator'],
   ['wordpress','WordPress Support'],
   ['training','Training Center'],
   ['lab','Technical Lab'],
@@ -18,9 +23,9 @@ const pages=[
 const nav=document.getElementById('nav');
 const view=document.getElementById('view');
 const navIcons={
-  dashboard:'nav-dashboard.svg',interview:'nav-interview.svg',auditor:'nav-auditor.svg',site:'nav-roadmap.svg',
-  optimizer:'nav-optimizer.svg',schema:'nav-schema.svg',roadmap:'nav-roadmap.svg',
-  analytics:'nav-analytics.svg',wordpress:'nav-wordpress.svg',training:'nav-training.svg',
+  dashboard:'nav-dashboard.svg',interview:'nav-interview.svg',auditor:'nav-auditor.svg',changelab:'nav-lab.svg',site:'nav-roadmap.svg',patterns:'nav-roadmap.svg',documents:'nav-schema.svg',
+  optimizer:'nav-optimizer.svg',schema:'nav-schema.svg',roadmap:'nav-roadmap.svg',reporting:'nav-analytics.svg',
+  analytics:'nav-analytics.svg',scale:'nav-lab.svg',wordpress:'nav-wordpress.svg',training:'nav-training.svg',
   lab:'nav-lab.svg',coverage:'nav-coverage.svg'
 };
 
@@ -45,9 +50,10 @@ function status(kind,text){return '<span class="status '+kind+'">'+text+'</span>
 
 function show(id){
   setActive(id);
-  const routes={dashboard,interview,auditor,site:siteIntelligence,optimizer,schemaStudio,roadmap,analytics,wordpress,training,lab,coverage};
+  const routes={dashboard,interview,auditor,changelab:changeLab,site:siteIntelligence,patterns:sitePatterns,documents:documentIntelligence,optimizer,schemaStudio,roadmap,reporting:progressReporting,analytics:analyticsV2,scale:scaleSimulator,wordpress:wordpressV2,training,lab,coverage:coverageV2};
   (routes[id]||dashboard)();
   window.scrollTo(0,0);
+  if(location.hash!=='#'+id) history.replaceState(null,'','#'+id);
 }
 
 function dashboard(){
@@ -174,11 +180,22 @@ function renderAudit(d){
       kpi('WordPress',d.signals.wordpress?'Likely':'Not detected',esc(d.signals.generator||'fingerprint check'))+
     '</div>'+
     '<div class="card section"><h2>Findings & recommended fixes</h2><table><tr><th>Priority</th><th>Evidence</th><th>Recommendation</th></tr>'+rows+'</table>'+
-      '<div style="margin-top:12px"><button class="secondary" id="copyAudit">Copy plain-language summary</button></div>'+
+      '<div style="margin-top:12px" class="header-actions"><button class="secondary" id="copyAudit">Copy plain-language summary</button><button class="secondary" id="explainEditor">Explain to department editor</button><button class="secondary" id="exportAuditJson">Export JSON</button><button class="secondary" id="exportAuditCsv">Export CSV</button></div>'+
     '</div>';
   document.getElementById('copyAudit').onclick=function(){
     navigator.clipboard.writeText(auditSummary(d));
     this.textContent='Copied';
+  };
+  document.getElementById('explainEditor').onclick=function(){
+    const top=d.findings.slice(0,5).map((f)=>'• '+f.label+': '+f.fix).join('\n');
+    const note='Here are the page changes I would review with the content owner. Nothing is published automatically.\n\n'+top+'\n\nAccessibility notes are heuristic signals only and still require human testing.';
+    navigator.clipboard.writeText(note);
+    this.textContent='Editor explanation copied';
+  };
+  document.getElementById('exportAuditJson').onclick=()=>downloadFile('searchsignal-audit.json',JSON.stringify(d,null,2),'application/json');
+  document.getElementById('exportAuditCsv').onclick=()=>{
+    const rows=[['severity','finding','evidence','recommendation']].concat(d.findings.map((x)=>[x.severity,x.label,x.evidence,x.fix]));
+    downloadFile('searchsignal-audit.csv',rows.map((r)=>r.map(csvCell).join(',')).join('\n'),'text/csv');
   };
 }
 
@@ -190,7 +207,7 @@ function siteIntelligence(){
   setTitle('Site Intelligence','Run a bounded same-site crawl, inventory linked documents, and validate redirect chains.');
   view.innerHTML=
     '<div class="grid two section">'+
-      '<div class="card"><h2>Bounded site scan</h2><p class="muted">Crawls public HTML on the same origin only. Query strings are removed to reduce duplicate/infinite crawl paths; the demo is capped at 12 pages.</p><div class="form-row"><input id="siteUrl" value="'+esc(state.caseStudyUrl)+'" aria-label="Starting URL"><select id="siteLimit" style="max-width:120px" aria-label="Page limit"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option></select><button id="siteScanBtn" class="primary">Scan site</button></div></div>'+
+      '<div class="card"><h2>Bounded site scan</h2><p class="muted">Crawls public HTML on the same origin only. Query strings are removed to reduce duplicate/infinite crawl paths; the demo is capped at 12 pages and supports a polite delay between requests.</p><div class="form-row"><input id="siteUrl" value="'+esc(state.caseStudyUrl)+'" aria-label="Starting URL"><select id="siteLimit" style="max-width:120px" aria-label="Page limit"><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option></select><select id="crawlDelay" style="max-width:150px" aria-label="Delay between page requests"><option value="0">No delay</option><option value="150" selected>150 ms delay</option><option value="300">300 ms delay</option><option value="500">500 ms delay</option></select><button id="siteScanBtn" class="primary">Scan site</button></div></div>'+
       '<div class="card"><h2>Redirect validator</h2><p class="muted">Follows up to eight public redirects and shows every HTTP hop before the final destination.</p><div class="form-row"><input id="redirectUrl" value="'+esc(state.caseStudyUrl)+'" aria-label="URL to validate"><button id="redirectBtn" class="secondary">Check chain</button></div><div id="redirectOut" class="muted mini" style="margin-top:10px">No redirect check run.</div></div>'+
     '</div><div id="siteScanOut"></div>';
   document.getElementById('siteScanBtn').onclick=runSiteScan;
@@ -203,7 +220,7 @@ async function runSiteScan(){
   button.disabled=true;button.textContent='Scanning…';
   out.innerHTML='<div class="card">Crawling a small same-origin sample and checking linked documents…</div>';
   try{
-    const response=await fetch('/api/site-scan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url:document.getElementById('siteUrl').value,limit:Number(document.getElementById('siteLimit').value)})});
+    const response=await fetch('/api/site-scan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url:document.getElementById('siteUrl').value,limit:Number(document.getElementById('siteLimit').value),delayMs:Number(document.getElementById('crawlDelay').value)})});
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||'Site scan failed');
     state.lastSiteScan=data;
@@ -444,4 +461,376 @@ function coverage(){
     '<div class="callout section" style="margin-top:16px"><b>Accuracy boundary:</b> SearchSignal demonstrates real auditing logic, structured-data generation, prioritization, support workflows and technical concepts. It does not present unconnected Search Console, Analytics, WordPress, Apache, PHP or MariaDB systems as production experience.</div>';
 }
 
-show('interview');
+
+function downloadFile(name,content,type='text/plain'){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),0);
+}
+function csvCell(value){
+  const s=String(value??'');
+  return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function safeDate(value){
+  const d=new Date(value);
+  return Number.isNaN(d.getTime())?null:d;
+}
+function filenameFromUrl(raw){
+  try{return decodeURIComponent(new URL(raw).pathname.split('/').filter(Boolean).pop()||'document');}
+  catch{return raw;}
+}
+function changeLab(){
+  setTitle('Change Lab','Practice the full find → fix → verify loop on a synthetic sandbox page.');
+  view.innerHTML=
+    '<div class="callout section"><b>Safety boundary:</b> No production site modified. Every change below applies only to a synthetic sandbox copy.</div>'+
+    '<div class="grid two section">'+
+      '<div class="card"><div class="eyebrow">SANDBOX PAGE</div><h2>Synthetic Health Sciences Program page</h2><p class="muted">Use this page to demonstrate implementation mechanics without touching Dartmouth or any external CMS.</p><div class="header-actions"><button id="labAnalyze" class="secondary">1 · Detect issues</button><button id="labPrepare" class="secondary">2 · Prepare fix</button><button id="labApply" class="primary">3 · Apply to sandbox</button><button id="labVerify" class="secondary">4 · Verify</button><button id="labReset" class="secondary">Reset</button></div></div>'+
+      '<div class="card"><h2>Workflow state</h2><div id="labState">'+status('ready','Ready')+'<p class="muted">Start with issue detection.</p></div></div>'+
+    '</div>'+
+    '<div id="changeLabOut"></div>';
+  const run=async(action)=>{
+    const out=document.getElementById('changeLabOut');
+    document.querySelectorAll('#labAnalyze,#labPrepare,#labApply,#labVerify,#labReset').forEach((b)=>b.disabled=true);
+    out.innerHTML='<div class="card">Running '+esc(action)+' in the sandbox…</div>';
+    try{
+      const r=await fetch('/api/change-lab',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action})});
+      const d=await r.json();
+      if(!r.ok) throw new Error(d.error||'Change Lab failed');
+      state.changeLab=d;
+      renderChangeLab(d);
+    }catch(error){out.innerHTML='<div class="card"><h2>Change Lab error</h2><p>'+esc(error.message)+'</p></div>';}
+    finally{document.querySelectorAll('#labAnalyze,#labPrepare,#labApply,#labVerify,#labReset').forEach((b)=>b.disabled=false);}
+  };
+  document.getElementById('labAnalyze').onclick=()=>run('analyze');
+  document.getElementById('labPrepare').onclick=()=>run('prepare');
+  document.getElementById('labApply').onclick=()=>run('apply');
+  document.getElementById('labVerify').onclick=()=>run('verify');
+  document.getElementById('labReset').onclick=()=>run('reset');
+  run('analyze');
+}
+function renderChangeLab(d){
+  const issueRows=d.issues.map((x)=>'<tr><td><span class="sev '+x.severity+'">'+x.severity+'</span></td><td><b>'+esc(x.label)+'</b><div class="muted mini">'+esc(x.evidence)+'</div></td></tr>').join('');
+  const changeRows=d.changes.map((x)=>'<tr><td><b>'+esc(x.field)+'</b></td><td><code>'+esc(x.before)+'</code></td><td><code>'+esc(x.after)+'</code></td></tr>').join('');
+  const validation=d.validation?'<div class="grid three">'+
+    kpi('H1 count',d.validation.h1Count,'target: 1')+
+    kpi('Schema',d.validation.schemaTypes.join(', ')||'None','sandbox JSON-LD')+
+    kpi('Descriptive links',d.validation.descriptiveInternalLinks,d.validation.placeholderLinks+' placeholder')+
+    '</div><div class="callout" style="margin-top:12px"><b>Validation:</b> meta description '+d.validation.metaLength+' chars · '+esc(d.validation.htmlStatus)+'.</div>':'<div class="callout warn">Apply the prepared fix to the sandbox before validation results are shown.</div>';
+  const reAudit=d.reAudit?'<div class="card section"><div class="eyebrow">RE-AUDIT RESULT</div><h2>Before → after</h2><div class="grid two"><div>'+kpi('SEO',d.reAudit.before.seo+' → '+d.reAudit.after.seo,'synthetic sandbox rubric')+'</div><div>'+kpi('GEO',d.reAudit.before.geo+' → '+d.reAudit.after.geo,'synthetic sandbox rubric')+'</div></div><p class="muted"><b>Still requires:</b> '+d.reAudit.remaining.map(esc).join(' · ')+'</p></div>':'';
+  document.getElementById('labState').innerHTML=status(d.reAudit?'work':d.validation?'work':'ready',d.reAudit?'Verified':d.validation?'Sandbox changed':'Prepared / detected')+'<p class="muted mini">'+esc(d.boundary)+'</p>';
+  document.getElementById('changeLabOut').innerHTML=
+    '<div class="grid two section"><div class="card"><h2>Detected issues</h2><table><tr><th>Priority</th><th>Evidence</th></tr>'+issueRows+'</table></div>'+
+    '<div class="card"><h2>Sandbox source</h2><div class="diff-labels"><span>Current / applied copy</span><span>'+esc(d.action)+'</span></div><pre>'+esc(d.appliedHtml)+'</pre></div></div>'+
+    '<div class="card section"><h2>Before / after implementation diff</h2><div class="table-wrap"><table><tr><th>Change</th><th>Before</th><th>After</th></tr>'+changeRows+'</table></div></div>'+
+    '<div class="card section"><h2>Validation</h2>'+validation+'</div>'+reAudit+
+    '<div class="callout section"><b>No production site modified.</b> This workflow is intentionally synthetic so the implementation steps can be inspected safely.</div>';
+}
+
+function sitePatterns(){
+  setTitle('Site Patterns','Turn page-by-page findings into repeatable site-level cleanup patterns.');
+  const scan=state.lastSiteScan;
+  const pages=(scan?.pages||[]).filter((p)=>!p.error);
+  const titleGroups={};
+  const canonicalGroups={};
+  pages.forEach((p)=>{
+    const title=(p.title||'(missing)').trim().toLowerCase();
+    titleGroups[title]=(titleGroups[title]||[]).concat(p.url);
+    const canonical=(p.canonical||'(missing)').trim().toLowerCase();
+    canonicalGroups[canonical]=(canonicalGroups[canonical]||[]).concat(p.url);
+  });
+  const duplicateTitles=Object.entries(titleGroups).filter(([k,v])=>k!=='(missing)'&&v.length>1);
+  const duplicateCanonicals=Object.entries(canonicalGroups).filter(([k,v])=>k!=='(missing)'&&v.length>1);
+  const brokenDocs=(scan?.documents||[]).filter((d)=>d.error||Number(d.status)>=400);
+  const actual=scan?[
+    ['Duplicate title clusters',duplicateTitles.length,'titles repeated within this bounded crawl'],
+    ['Missing canonicals',scan.summary.missingCanonicals,'sampled pages'],
+    ['H1 structure issues',scan.summary.h1Issues,'sampled pages'],
+    ['Broken document links',brokenDocs.length,'checked linked documents'],
+    ['Duplicate canonical clusters',duplicateCanonicals.length,'same canonical used by multiple sampled URLs']
+  ]:[
+    ['Duplicate title clusters','—','Run a bounded site scan first'],
+    ['Missing canonicals','—','Run a bounded site scan first'],
+    ['H1 structure issues','—','Run a bounded site scan first'],
+    ['Broken document links','—','Run a bounded site scan first'],
+    ['Duplicate canonical clusters','—','Run a bounded site scan first']
+  ];
+  view.innerHTML=
+    '<div class="grid two section"><div class="card"><div class="eyebrow">OBSERVED SAMPLE</div><h2>Pattern summary</h2><p class="muted">'+(scan?'Derived from the last bounded crawl. Counts apply only to that sample.':'No bounded crawl is loaded yet. Run Site Intelligence to replace placeholders with observed sample data.')+'</p><table><tr><th>Pattern</th><th>Count</th><th>Scope</th></tr>'+actual.map((x)=>'<tr><td><b>'+x[0]+'</b></td><td>'+x[1]+'</td><td>'+x[2]+'</td></tr>').join('')+'</table><p style="margin-top:12px"><button class="secondary" data-go="site">Run / refresh bounded scan</button></p></div>'+
+    '<div class="card"><div class="eyebrow">SITE CONTROL FILES</div><h2>robots.txt + sitemap.xml</h2><p class="muted">Check only public control files. This does not imply Search Console or server access.</p><button id="metaCheckBtn" class="secondary">Inspect public control files</button><div id="metaCheckOut" class="muted mini" style="margin-top:12px">Not checked yet.</div></div></div>'+
+    '<div class="card section"><h2>Pattern clusters</h2>'+
+      (duplicateTitles.length?'<h3>Repeated titles</h3>'+duplicateTitles.map(([t,urls])=>'<div class="pattern-row"><b>'+esc(t)+'</b><span>'+urls.length+' pages</span><div class="muted mini">'+urls.map(esc).join('<br>')+'</div></div>').join(''):'<p class="muted">No duplicate title cluster detected in the loaded sample.</p>')+
+      (duplicateCanonicals.length?'<h3 style="margin-top:16px">Canonical clusters</h3>'+duplicateCanonicals.map(([u,urls])=>'<div class="pattern-row"><b>'+esc(u)+'</b><span>'+urls.length+' pages point here</span></div>').join(''):'')+
+    '</div>'+
+    '<div class="callout section"><b>Scale boundary:</b> a bounded crawl can expose patterns but cannot prove site-wide counts. Use the 20K Scale Simulator for a clearly labeled synthetic workload model.</div>';
+  document.getElementById('metaCheckBtn').onclick=async function(){
+    const out=document.getElementById('metaCheckOut');this.disabled=true;this.textContent='Checking…';
+    try{
+      const r=await fetch('/api/site-meta',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url:scan?.startUrl||state.caseStudyUrl})});
+      const d=await r.json();if(!r.ok) throw new Error(d.error||'Check failed');
+      out.innerHTML='<div class="check"><span class="'+(d.robots.status===200?'ok':'bad')+'">'+(d.robots.status||'—')+'</span><span>robots.txt</span><span>'+esc(d.robots.contentType||d.robots.error||'')+'</span></div>'+
+        '<div class="check"><span class="'+(d.sitemap.status===200?'ok':'bad')+'">'+(d.sitemap.status||'—')+'</span><span>sitemap.xml</span><span>'+esc(d.sitemap.contentType||d.sitemap.error||'')+'</span></div>';
+    }catch(error){out.textContent=error.message;}
+    finally{this.disabled=false;this.textContent='Inspect public control files';}
+  };
+}
+
+function documentIntelligence(){
+  setTitle('Document Intelligence','Treat PDF and Office files as governed web content, not invisible attachments.');
+  const scan=state.lastSiteScan;
+  const docs=scan?.documents||[];
+  const names={};
+  docs.forEach((d)=>{const n=filenameFromUrl(d.url).toLowerCase();names[n]=(names[n]||0)+1;});
+  const rows=docs.map((d)=>{
+    const lm=safeDate(d.lastModified);
+    const ageDays=lm?Math.floor((Date.now()-lm.getTime())/86400000):null;
+    const signals=[];
+    if(d.error||Number(d.status)>=400) signals.push('Broken / unavailable');
+    if(d.bytes&&d.bytes>5*1024*1024) signals.push('Oversized >5 MB');
+    if(names[filenameFromUrl(d.url).toLowerCase()]>1) signals.push('Duplicate filename');
+    if(ageDays!==null&&ageDays>730) signals.push('Old Last-Modified signal');
+    if(!d.linkText||/^(download|click here|here)$/i.test(d.linkText)) signals.push('Weak link text');
+    return '<tr><td><b>'+esc(filenameFromUrl(d.url))+'</b><div class="muted mini">'+esc(d.url)+'</div></td><td>'+(d.error?'Error':d.status||'—')+'</td><td>'+(d.bytes?Math.round(d.bytes/1024)+' KB':'Unknown')+'</td><td>'+esc(d.lastModified||'Unknown')+'</td><td>'+esc((d.sources||[d.source]).filter(Boolean).length)+'</td><td>'+(signals.length?signals.map((s)=>'<span class="doc-signal">'+esc(s)+'</span>').join(' '):'<span class="status work">No HTTP-level flag</span>')+'</td></tr>';
+  }).join('');
+  view.innerHTML=
+    '<div class="callout section"><b>Accessibility boundary:</b> HTTP metadata, filenames, and link context can flag review needs, but they cannot determine whether a PDF or Office file is accessible. Document-level accessibility still requires appropriate inspection/testing.</div>'+
+    '<div class="grid three section">'+
+      kpi('Discovered',docs.length,scan?'last bounded crawl':'run Site Intelligence')+
+      kpi('Broken',docs.filter((d)=>d.error||Number(d.status)>=400).length,'HTTP / fetch signal')+
+      kpi('Large files',docs.filter((d)=>d.bytes>5*1024*1024).length,'>5 MB review threshold')+
+    '</div>'+
+    '<div class="card section"><h2>Document inventory</h2>'+(rows?'<div class="table-wrap"><table><tr><th>Document</th><th>Status</th><th>Size</th><th>Last-Modified</th><th>Referencing pages</th><th>Review signals</th></tr>'+rows+'</table></div>':'<p class="muted">No document inventory loaded. Run a bounded site scan to discover public PDF/Office links.</p>')+'</div>'+
+    '<div class="grid two"><div class="card"><h2>What a crawl can support</h2><p>Broken document links, HTTP metadata, file size, duplicate filenames in the discovered sample, weak link text, and which crawled pages reference a document.</p></div><div class="card"><h2>What needs broader inventory or human review</h2><p>True orphan detection, document accessibility conformance, content accuracy, retention requirements, and whether an old file should be retired.</p></div></div>';
+}
+
+function wordpressV2(){
+  setTitle('WordPress Support Center','Walk a support request from user language to diagnosis, safe steps, escalation, and reusable training.');
+  const scenarios={
+    nav:{title:'My page disappeared from navigation',user:'“The page is still published, but nobody can find it in the menu.”',diagnosis:'Confirm the page URL/status first, then inspect the assigned menu/navigation block and parent-child structure. Avoid changing theme code for a content-level navigation issue.',steps:['Confirm the page is published and the expected URL resolves.','Check whether the correct menu/navigation block includes the page.','Verify parent/child placement and label text.','Preview the navigation at desktop and mobile widths.','Document the change and owner.'],escalation:'Escalate if the menu is generated by theme/application logic, permissions block the editor, or the issue appears across many sites.',reply:'I found that the page itself is still available. I would next check the menu/navigation assignment and page placement before touching any theme or server code.',kb:'KB: Restore a published page to site navigation — verify page status → menu assignment → hierarchy → responsive preview → document the change.'},
+    redirect:{title:'I need to redirect an old page',user:'“We renamed a program page and want the old link to go to the new one.”',diagnosis:'Verify whether the move is permanent, confirm the target is the correct canonical destination, check for loops/chains, and use the approved redirect layer for the site.',steps:['Confirm old and new URLs with the content owner.','Verify the destination returns 200 and is the intended canonical page.','Check whether a redirect already exists.','Use a 301 for a confirmed permanent move.','Validate the full chain and update important internal links.'],escalation:'Escalate if the redirect requires Apache/server configuration, creates a loop, conflicts with multisite routing, or affects a large URL family.',reply:'I can prepare the redirect after confirming the new URL is the permanent destination. I would also validate the chain and update important internal links so users and crawlers do not rely on an avoidable hop.',kb:'KB: Permanent page moves — confirm ownership → destination → existing rules → 301 → validate chain → update internal links.'},
+    program:{title:'How should I structure a program page for search / AI answers?',user:'“We have good information, but the page is hard to scan and does not answer common questions quickly.”',diagnosis:'Keep the factual content, then improve information hierarchy, answer-first sections, descriptive headings, source context, internal links, and truthful structured data where appropriate.',steps:['State the program purpose clearly near the top.','Use one H1 and descriptive H2/H3 sections.','Add concise answers for admissions, curriculum, outcomes, cost/support, and contacts where accurate.','Use descriptive internal links to authoritative supporting pages.','Add only structured data that matches visible content.'],escalation:'Escalate claims, policy-sensitive content, schema that requires institutional review, or template changes affecting many sites.',reply:'I would keep the program facts intact and reorganize them so students can answer key questions quickly. The goal is clearer information architecture first; search and AI visibility should follow from that clarity.',kb:'KB: Program-page structure — purpose → key facts → requirements → curriculum → support → outcomes → contacts/sources.'}
+  };
+  view.innerHTML=
+    '<div class="grid two section"><div class="card"><h2>Choose a support scenario</h2><div class="support-choices">'+
+      Object.entries(scenarios).map(([k,s],i)=>'<button class="'+(i===0?'primary':'secondary')+'" data-support="'+k+'">'+esc(s.title)+'</button>').join('')+
+      '</div><div class="callout warn" style="margin-top:14px"><b>Boundary:</b> this is a support simulation. No live WordPress admin connection is represented.</div></div>'+
+      '<div class="card"><h2>Safe change boundary</h2><p><b>Handle directly:</b> page editing, content structure, links, media, alt text, approved redirects, metadata, documentation and training.</p><p><b>Escalate:</b> server config, Apache routing, authentication, multisite architecture, risky PHP/theme code, or changes with broad blast radius.</p></div></div>'+
+    '<div id="supportWorkflow"></div>';
+  const render=(key)=>{
+    const s=scenarios[key];
+    document.querySelectorAll('[data-support]').forEach((b)=>{b.className=b.dataset.support===key?'primary':'secondary';});
+    document.getElementById('supportWorkflow').innerHTML=
+      '<div class="card section"><div class="eyebrow">USER ISSUE</div><h2>'+esc(s.title)+'</h2><p>'+esc(s.user)+'</p></div>'+
+      '<div class="workflow-rail section">'+
+        '<div class="card"><div class="stepnum">01</div><h3>Diagnosis</h3><p>'+esc(s.diagnosis)+'</p></div>'+
+        '<div class="card"><div class="stepnum">02</div><h3>Editor-safe steps</h3><ol>'+s.steps.map((x)=>'<li>'+esc(x)+'</li>').join('')+'</ol></div>'+
+        '<div class="card"><div class="stepnum">03</div><h3>Escalation decision</h3><p>'+esc(s.escalation)+'</p></div>'+
+        '<div class="card"><div class="stepnum">04</div><h3>Plain-language response</h3><p>'+esc(s.reply)+'</p><button id="copySupportReply" class="secondary">Copy response</button></div>'+
+        '<div class="card"><div class="stepnum">05</div><h3>Knowledge-base article</h3><p>'+esc(s.kb)+'</p><button id="copySupportKb" class="secondary">Copy KB draft</button></div>'+
+      '</div>';
+    document.getElementById('copySupportReply').onclick=()=>navigator.clipboard.writeText(s.reply);
+    document.getElementById('copySupportKb').onclick=()=>navigator.clipboard.writeText(s.kb);
+  };
+  document.querySelectorAll('[data-support]').forEach((b)=>b.onclick=()=>render(b.dataset.support));
+  render('nav');
+}
+
+function parseCsvLine(line){
+  const out=[];let cur='';let quoted=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'&&quoted&&line[i+1]==='"'){cur+='"';i++;continue;}
+    if(ch==='"'){quoted=!quoted;continue;}
+    if(ch===','&&!quoted){out.push(cur);cur='';continue;}
+    cur+=ch;
+  }
+  out.push(cur);return out;
+}
+function parseCsv(text){
+  const lines=text.split(/\r?\n/).filter((x)=>x.trim());
+  if(lines.length<2) throw new Error('CSV needs a header row and at least one data row.');
+  const headers=parseCsvLine(lines[0]).map((x)=>x.trim());
+  return lines.slice(1).map((line)=>{
+    const values=parseCsvLine(line);const row={};
+    headers.forEach((h,i)=>row[h]=values[i]??'');return row;
+  });
+}
+function findHeader(row,candidates){
+  const keys=Object.keys(row);
+  const lower=keys.map((k)=>k.toLowerCase().replace(/[\s_-]+/g,''));
+  for(const candidate of candidates){
+    const i=lower.indexOf(candidate.toLowerCase().replace(/[\s_-]+/g,''));
+    if(i>=0) return keys[i];
+  }
+  return null;
+}
+function summarizeCsvRows(rows,changeDate){
+  if(!rows.length) throw new Error('No rows found.');
+  const dateKey=findHeader(rows[0],['date','day']);
+  if(!dateKey) throw new Error('A Date column is required for 7/30/90-day comparison.');
+  const clicksKey=findHeader(rows[0],['clicks']);
+  const impressionsKey=findHeader(rows[0],['impressions']);
+  const sessionsKey=findHeader(rows[0],['sessions','organicsessions','users']);
+  const positionKey=findHeader(rows[0],['position','averageposition']);
+  const pageKey=findHeader(rows[0],['page','landingpage','url']);
+  const parsed=rows.map((r)=>({...r,__date:safeDate(r[dateKey])})).filter((r)=>r.__date).sort((a,b)=>a.__date-b.__date);
+  if(!parsed.length) throw new Error('No valid dates found.');
+  const change=safeDate(changeDate)||parsed[Math.floor(parsed.length/2)].__date;
+  const sum=(arr,key)=>key?arr.reduce((n,r)=>n+(Number(String(r[key]).replace(/[%,$]/g,''))||0),0):null;
+  const avg=(arr,key)=>key&&arr.length?arr.reduce((n,r)=>n+(Number(String(r[key]).replace(/[%,$]/g,''))||0),0)/arr.length:null;
+  const result={changeDate:change.toISOString().slice(0,10),windows:[],affectedPages:pageKey?new Set(parsed.map((r)=>r[pageKey]).filter(Boolean)).size:null};
+  for(const days of [7,30,90]){
+    const beforeStart=new Date(change.getTime()-days*86400000);
+    const afterEnd=new Date(change.getTime()+days*86400000);
+    const before=parsed.filter((r)=>r.__date>=beforeStart&&r.__date<change);
+    const after=parsed.filter((r)=>r.__date>=change&&r.__date<afterEnd);
+    const clicksBefore=sum(before,clicksKey), clicksAfter=sum(after,clicksKey);
+    const impBefore=sum(before,impressionsKey), impAfter=sum(after,impressionsKey);
+    const sessionsBefore=sum(before,sessionsKey), sessionsAfter=sum(after,sessionsKey);
+    result.windows.push({
+      days,
+      rowsBefore:before.length,rowsAfter:after.length,
+      clicksBefore,clicksAfter,impressionsBefore:impBefore,impressionsAfter:impAfter,
+      ctrBefore:impBefore?clicksBefore/impBefore*100:null,ctrAfter:impAfter?clicksAfter/impAfter*100:null,
+      positionBefore:avg(before,positionKey),positionAfter:avg(after,positionKey),
+      sessionsBefore,sessionsAfter
+    });
+  }
+  return result;
+}
+function analyticsV2(){
+  setTitle('Analytics & AI Visibility','Compare exported evidence before and after a change without pretending Google accounts are connected.');
+  view.innerHTML=
+    '<div class="callout section"><b>Data boundary:</b> CSV files are read locally in your browser. This demo does not authenticate to Search Console or Google Analytics.</div>'+
+    '<div class="grid two section"><div class="card"><h2>1 · Choose change date</h2><input id="changeDate" type="date" value="2026-09-01"><p class="muted mini">The app compares 7-, 30-, and 90-day windows before/after this date when the CSV contains those dates.</p></div>'+
+      '<div class="card"><h2>2 · Import export</h2><input id="metricCsv" type="file" accept=".csv,text/csv"><p class="muted mini">Recognizes common columns such as Date, Clicks, Impressions, Position, Sessions, Page/Landing Page.</p><button id="loadMetricDemo" class="secondary">Use synthetic demo CSV</button></div></div>'+
+    '<div id="analyticsOut"><div class="card"><h2>Comparison report</h2><p class="muted">Import a CSV or load the synthetic demo.</p></div></div>';
+  const run=async(text,label)=>{
+    try{
+      const rows=parseCsv(text);
+      const summary=summarizeCsvRows(rows,document.getElementById('changeDate').value);
+      renderAnalyticsSummary(summary,label);
+    }catch(error){document.getElementById('analyticsOut').innerHTML='<div class="card"><h2>CSV review</h2><p class="bad">'+esc(error.message)+'</p></div>';}
+  };
+  document.getElementById('metricCsv').onchange=async(e)=>{const file=e.target.files?.[0];if(file) run(await file.text(),file.name);};
+  document.getElementById('loadMetricDemo').onclick=()=>{
+    const rows=['Date,Clicks,Impressions,Position,Sessions,Page'];
+    const start=new Date('2026-06-01T00:00:00Z');
+    for(let i=0;i<190;i++){
+      const d=new Date(start.getTime()+i*86400000);
+      const after=d>=new Date('2026-09-01T00:00:00Z');
+      rows.push([d.toISOString().slice(0,10),Math.round(110+(after?24:0)+(i%11)),Math.round(2700+(after?320:0)+(i%17)*8),(after?18.3:21.2)-(i%5)*0.08,Math.round(160+(after?27:0)+(i%9)),'/programs/health-sciences'].join(','));
+    }
+    run(rows.join('\n'),'Synthetic demo data');
+  };
+}
+function fmtMetric(v,digits=1){return v===null||v===undefined?'—':Number(v).toFixed(digits);}
+function renderAnalyticsSummary(s,label){
+  const rows=s.windows.map((w)=>'<tr><td><b>'+w.days+' days</b></td><td>'+fmtMetric(w.clicksBefore,0)+' → '+fmtMetric(w.clicksAfter,0)+'</td><td>'+fmtMetric(w.impressionsBefore,0)+' → '+fmtMetric(w.impressionsAfter,0)+'</td><td>'+fmtMetric(w.ctrBefore,2)+'% → '+fmtMetric(w.ctrAfter,2)+'%</td><td>'+fmtMetric(w.positionBefore,1)+' → '+fmtMetric(w.positionAfter,1)+'</td><td>'+fmtMetric(w.sessionsBefore,0)+' → '+fmtMetric(w.sessionsAfter,0)+'</td></tr>').join('');
+  const w30=s.windows.find((w)=>w.days===30);
+  const clicksDelta=w30&&w30.clicksBefore?((w30.clicksAfter-w30.clicksBefore)/w30.clicksBefore*100):null;
+  const narrative='For the 30-day comparison around '+s.changeDate+', '+(clicksDelta===null?'click data were unavailable.':('clicks changed '+(clicksDelta>=0?'+':'')+clicksDelta.toFixed(1)+'%.'))+' Treat this as descriptive evidence, not proof that one change caused the movement.';
+  document.getElementById('analyticsOut').innerHTML=
+    '<div class="card section"><div class="eyebrow">'+esc(label.toUpperCase())+'</div><h2>Baseline → post-change comparison</h2><p class="muted">Change date: '+esc(s.changeDate)+(s.affectedPages!==null?' · '+s.affectedPages+' affected page(s) represented':'')+'</p><div class="table-wrap"><table><tr><th>Window</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Avg. position</th><th>Sessions/users</th></tr>'+rows+'</table></div><div class="callout" style="margin-top:14px">'+esc(narrative)+'</div><div class="header-actions" style="margin-top:12px"><button id="copyAnalyticsNarrative" class="secondary">Copy plain-English report</button><button id="printAnalytics" class="secondary">Print / Save as PDF</button></div></div>';
+  document.getElementById('copyAnalyticsNarrative').onclick=()=>navigator.clipboard.writeText(narrative);
+  document.getElementById('printAnalytics').onclick=()=>window.print();
+}
+
+function progressReporting(){
+  setTitle('Progress & Reporting','Track ownership, evidence, status, expected impact, actual result, and next review.');
+  const items=[
+    ['Admissions','Program-page metadata cleanup','Web','Completed','High','Meta/title changes verified','2026-10-09'],
+    ['Research','Faculty schema pilot','Comms','Active','High','Pilot validation pending','2026-10-06'],
+    ['Education','Heading hierarchy cleanup','Dept. editor','Active','Medium','3 pages reviewed','2026-10-07'],
+    ['Legacy PDFs','Document inventory review','Web + owners','Queued','High','— pending','2026-10-15'],
+    ['News','Article author/date consistency','Editors','Completed','Medium','Template guidance published','2026-10-12'],
+    ['Admissions','Redirect chain cleanup','Web Architect','Active','High','Chain checks underway','2026-10-05'],
+    ['Student Affairs','Internal-link improvements','Dept. editor','Queued','Medium','— pending','2026-10-14'],
+    ['Cross-site','Editor mini-course','Web','Completed','Medium','Training draft ready','2026-10-11']
+  ];
+  view.innerHTML=
+    '<div class="grid three section">'+kpi('Roadmap','24 items','illustrative portfolio workload')+kpi('Completed','7','documented change evidence')+kpi('Active / queued','5 / 12','owner-aware backlog')+'</div>'+
+    '<div class="card section"><h2>Roadmap register</h2><div class="table-wrap"><table><tr><th>Area</th><th>Work</th><th>Owner</th><th>Status</th><th>Expected impact</th><th>Actual result / evidence</th><th>Next review</th></tr>'+
+      items.map((r)=>'<tr>'+r.map((x,i)=>'<td>'+(i===0?'<b>'+esc(x)+'</b>':esc(x))+'</td>').join('')+'</tr>').join('')+
+    '</table></div></div>'+
+    '<div class="grid two section"><div class="card"><h2>Weekly Web Architect update</h2><textarea id="weeklyUpdate" aria-label="Generated weekly update"></textarea><div class="header-actions" style="margin-top:10px"><button id="generateWeekly" class="primary">Generate weekly update</button><button id="copyWeekly" class="secondary">Copy</button></div></div>'+
+      '<div class="card"><h2>Export</h2><p class="muted">JSON and CSV keep the register machine-readable. Print uses the browser’s Save as PDF workflow.</p><div class="header-actions"><button id="reportJson" class="secondary">Export JSON</button><button id="reportCsv" class="secondary">Export CSV</button><button id="reportPdf" class="secondary">Print / Save as PDF</button></div></div></div>';
+  const generate=()=>{
+    const completed=items.filter((r)=>r[3]==='Completed');
+    const active=items.filter((r)=>r[3]==='Active');
+    const queued=items.filter((r)=>r[3]==='Queued');
+    document.getElementById('weeklyUpdate').value=
+      'SearchSignal weekly web-operations update\\n\\nCompleted: '+completed.map((r)=>r[0]+' — '+r[1]).join('; ')+
+      '\\n\\nActive: '+active.map((r)=>r[0]+' — '+r[1]+' (next review '+r[6]+')').join('; ')+
+      '\\n\\nQueued: '+queued.map((r)=>r[0]+' — '+r[1]).join('; ')+
+      '\\n\\nEvidence boundary: this portfolio register is illustrative. Production results would be populated from approved change logs and measurement sources.';
+  };
+  generate();
+  document.getElementById('generateWeekly').onclick=generate;
+  document.getElementById('copyWeekly').onclick=()=>navigator.clipboard.writeText(document.getElementById('weeklyUpdate').value);
+  document.getElementById('reportJson').onclick=()=>downloadFile('searchsignal-roadmap.json',JSON.stringify(items,null,2),'application/json');
+  document.getElementById('reportCsv').onclick=()=>downloadFile('searchsignal-roadmap.csv',[['area','work','owner','status','expected impact','result evidence','next review']].concat(items).map((r)=>r.map(csvCell).join(',')).join('\\n'),'text/csv');
+  document.getElementById('reportPdf').onclick=()=>window.print();
+}
+
+function scaleSimulator(){
+  setTitle('20K Scale Simulator','Model batching, rate limits, caching, checkpoints, and prioritization without crawling Geisel.');
+  view.innerHTML=
+    '<div class="callout section"><b>Synthetic workload only:</b> this simulator does not crawl Geisel or any external site. It models the mechanics of handling a 20,000-page / 15,000-document inventory.</div>'+
+    '<div class="grid two section"><div class="card"><h2>Inventory model</h2><label>Pages<input id="scalePages" type="number" min="100" max="100000" value="20000"></label><br><label>Documents<input id="scaleDocs" type="number" min="0" max="100000" value="15000"></label><br><label>Batch size<input id="scaleBatch" type="number" min="10" max="1000" value="250"></label><br><label>Rate / sec<input id="scaleRate" type="number" min="0.5" max="20" step="0.5" value="4"></label><div class="header-actions" style="margin-top:12px"><button id="scaleRunBtn" class="primary">Run simulation</button><button id="scalePause" class="secondary" disabled>Pause</button><button id="scaleResume" class="secondary" disabled>Resume</button></div></div>'+
+      '<div class="card"><h2>Execution progress</h2><div class="progress-track"><div id="scaleBar" class="progress-bar" style="width:0%"></div></div><div id="scaleProgress" class="metric">0%</div><p id="scaleProgressNote" class="muted">Ready.</p></div></div>'+
+    '<div id="scaleOut"></div>';
+  let timer=null;let progress=0;let current=null;
+  const tick=()=>{
+    progress=Math.min(100,progress+4);
+    document.getElementById('scaleBar').style.width=progress+'%';
+    document.getElementById('scaleProgress').textContent=progress+'%';
+    document.getElementById('scaleProgressNote').textContent=progress<100?'Processing synthetic batches with checkpoints and cache lookups…':'Simulation complete. No external crawl was performed.';
+    if(progress>=100){clearInterval(timer);timer=null;document.getElementById('scalePause').disabled=true;document.getElementById('scaleResume').disabled=true;}
+  };
+  document.getElementById('scaleRunBtn').onclick=async()=>{
+    try{
+      const r=await fetch('/api/scale-sim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pages:Number(document.getElementById('scalePages').value),documents:Number(document.getElementById('scaleDocs').value),batchSize:Number(document.getElementById('scaleBatch').value),ratePerSecond:Number(document.getElementById('scaleRate').value)})});
+      current=await r.json();if(!r.ok) throw new Error(current.error||'Simulation failed');state.scaleRun=current;
+      renderScaleResult(current);progress=0;tick();if(timer)clearInterval(timer);timer=setInterval(tick,120);
+      document.getElementById('scalePause').disabled=false;document.getElementById('scaleResume').disabled=true;
+    }catch(error){document.getElementById('scaleOut').innerHTML='<div class="card"><p class="bad">'+esc(error.message)+'</p></div>';}
+  };
+  document.getElementById('scalePause').onclick=()=>{if(timer){clearInterval(timer);timer=null;}document.getElementById('scalePause').disabled=true;document.getElementById('scaleResume').disabled=false;document.getElementById('scaleProgressNote').textContent='Paused at checkpoint-safe simulated state.';};
+  document.getElementById('scaleResume').onclick=()=>{if(!timer&&progress<100)timer=setInterval(tick,120);document.getElementById('scalePause').disabled=false;document.getElementById('scaleResume').disabled=true;};
+}
+function renderScaleResult(d){
+  const i=d.issueCounts;
+  document.getElementById('scaleOut').innerHTML=
+    '<div class="grid three section">'+kpi('Total inventory',d.inventory.totalItems.toLocaleString(),d.inventory.pages.toLocaleString()+' pages + '+d.inventory.documents.toLocaleString()+' docs')+kpi('Batches',d.execution.batches,d.execution.batchSize+' items / batch')+kpi('Rate limit',d.execution.ratePerSecond+'/s',Math.ceil(d.execution.estimatedSeconds/60)+' min modeled runtime')+'</div>'+
+    '<div class="grid two section"><div class="card"><h2>Synthetic pattern output</h2><table><tr><th>Pattern</th><th>Modeled count</th></tr>'+
+      [['Duplicate titles',i.duplicateTitles],['Broken links',i.brokenLinks],['Redirect chains',i.redirectChains],['Missing canonicals',i.missingCanonicals],['Orphaned documents',i.orphanedDocuments],['Oversized documents',i.oversizedDocuments]].map((x)=>'<tr><td>'+x[0]+'</td><td><b>'+x[1].toLocaleString()+'</b></td></tr>').join('')+'</table></div>'+
+      '<div class="card"><h2>Execution controls</h2><p><b>Cache:</b> '+esc(d.execution.cacheStrategy)+'</p><p><b>Checkpoint:</b> every '+d.execution.checkpointEveryBatches+' batches</p><p><b>Resume cursor:</b> '+d.execution.resumeFrom.toLocaleString()+'</p><h3>Priority preview</h3>'+d.queuePreview.map((x)=>'<div class="check"><span class="status work">'+x.priority+'</span><span>'+esc(x.work)+'</span><span></span></div>').join('')+'</div></div>'+
+    '<div class="callout section">'+esc(d.boundary)+'</div>';
+}
+
+function coverageV2(){
+  setTitle('Requirements Coverage','Open each requirement to see implementation, automated-test, and live-verification evidence separately.');
+  const rows=[
+    {name:'Technical/content SEO audits',evidence:'Live URL Auditor inspects metadata, indexability, canonical, headings, links, schema, image-alt coverage, generic-link text and form-label signals.',implemented:true,tested:true,live:true,date:'2026-09-30',notes:'Public audit endpoint live-verified. Accessibility items are heuristic signals, not conformance claims.'},
+    {name:'Find → fix → verify implementation',evidence:'Change Lab demonstrates a synthetic page moving from detected issue to exact safe change, validation, and re-audit.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Sandbox-only by design; no production site is modified.'},
+    {name:'Site pattern detection',evidence:'Site Patterns converts bounded crawl results into duplicate-title, canonical, H1, and document-link clusters.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Counts stay scoped to the bounded sample.'},
+    {name:'Document operations',evidence:'Document Intelligence tracks HTTP status, file size, Last-Modified, duplicate filenames, weak link text, and referencing pages.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Accessibility and true orphan status require separate review/broader inventory.'},
+    {name:'Redirect validation',evidence:'Redirect validator shows each hop and now detects loops before the eight-hop safety cap.',implemented:true,tested:true,live:true,date:'2026-09-30',notes:'Public chain behavior verified on hosted build; loop detection added in this upgrade.'},
+    {name:'WordPress end-user support',evidence:'Interactive support scenarios produce diagnosis, editor-safe steps, escalation, plain-language response, and KB draft.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Support simulation; no live admin connection claimed.'},
+    {name:'Search/analytics measurement',evidence:'Browser-local CSV workflow compares 7/30/90-day windows around a change date and generates a plain-English report.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'No authenticated Google access is represented.'},
+    {name:'Progress reporting',evidence:'Roadmap register tracks owner, status, expected impact, evidence/result, and next review; weekly update generator included.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Illustrative register until connected to an approved production change log.'},
+    {name:'Large decentralized environment',evidence:'20K/15K synthetic scale simulator models batching, rate limits, caching, checkpoints, pause/resume, and prioritization.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Synthetic workload only; intentionally does not crawl Geisel at scale.'},
+    {name:'Training & documentation',evidence:'Training Center provides editor-focused mini-modules with plain-language guidance and escalation rules.',implemented:true,tested:true,live:true,date:'2026-09-30',notes:'Portfolio training content is visible in the hosted build.'}
+  ];
+  const badge=(label,on)=>'<span class="evidence-pill '+(on?'yes':'pending')+'">'+label+': '+(on?'Yes':'Pending')+'</span>';
+  view.innerHTML=
+    '<div class="card section"><h2>Evidence states</h2><p class="muted"><b>Implemented</b> means code exists. <b>Automated test</b> means the QA suite contains a check for the capability. <b>Live verified</b> is kept separate and is not marked until the deployed surface has been exercised.</p></div>'+
+    '<div class="coverage-list">'+rows.map((r)=>'<details class="card coverage-item"><summary><span><b>'+esc(r.name)+'</b><span class="muted mini">'+esc(r.evidence)+'</span></span><span class="coverage-badges">'+badge('Implemented',r.implemented)+badge('Automated test',r.tested)+badge('Live verified',r.live)+'</span></summary><div class="coverage-detail"><p>'+esc(r.notes)+'</p><p class="muted mini">Verification / implementation date: '+esc(r.date)+'</p></div></details>').join('')+'</div>'+
+    '<div class="callout section"><b>Accuracy boundary:</b> implementation, automated verification, hosted/live verification, and production experience are deliberately separate claims.</div>';
+}
+
+window.addEventListener('hashchange',()=>{const id=location.hash.slice(1);if(pages.some((p)=>p[0]===id))show(id);});
+const initialPage=location.hash.slice(1);
+show(pages.some((p)=>p[0]===initialPage)?initialPage:'interview');
