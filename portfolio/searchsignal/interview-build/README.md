@@ -51,4 +51,4 @@ The interview build now adds an explicit implementation loop and larger-site ope
 - **Requirements Coverage v2** — separates Implemented, Automated test, and Live verified evidence states.
 - Additional technical signals include generic-link/form-label heuristics, crawl-delay controls, redirect-loop detection, richer document metadata, and audit JSON/CSV exports.
 
-New capabilities remain subject to automated QA and hosted acceptance before they are marked **Live verified**.
+Automated QA now passes in GitHub CI/Portfolio Quality Control, and the upgraded standalone build has been redeployed to the production Vercel alias. Hosted smoke checks returned HTTP 200 for the app, health endpoint, Change Lab verification endpoint, and 20K scale-simulation endpoint. The Requirements Coverage screen still keeps feature-level **Live verified** states conservative until each specific deployed workflow is exercised.
