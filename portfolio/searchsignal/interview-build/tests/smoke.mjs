@@ -266,3 +266,43 @@ test('browser-rendered audit executes a public page in Chromium', async () => {
   assert.equal(typeof data.retrieval.renderMs, 'number');
   assert.equal(typeof data.scores.seo, 'number');
 });
+
+
+test('smart audit keeps ordinary pages on the server path', async () => {
+  const r = await fetch(base + '/api/smart-audit', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({url:'https://example.com/'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.retrieval.mode, 'smart-server');
+  assert.equal(data.retrieval.rendered, false);
+  assert.equal(data.retrieval.autoFallback, false);
+  assert.equal(data.pageType.type, 'webpage');
+});
+
+test('smart audit automatically renders a hash-routed URL', async () => {
+  const r = await fetch(base + '/api/smart-audit', {
+    method: 'POST', headers: {'content-type':'application/json'},
+    body: JSON.stringify({url:'https://example.com/#client-route'})
+  });
+  assert.equal(r.status, 200);
+  const data = await r.json();
+  assert.equal(data.retrieval.mode, 'auto-rendered');
+  assert.equal(data.retrieval.rendered, true);
+  assert.equal(data.retrieval.autoFallback, true);
+  assert.match(data.retrieval.fallbackReason, /Hash-routed/i);
+});
+
+test('client exposes content classification and video evidence UX', async () => {
+  const js = await (await fetch(base + '/app.js')).text();
+  for (const phrase of [
+    'Smart audit',
+    'Content-Type Classifier',
+    'VIDEO EVIDENCE',
+    'Video SEO health',
+    'Video GEO readiness',
+    'Primary video signals',
+    'platform/shell words excluded'
+  ]) assert.ok(js.includes(phrase), 'Missing classifier/video UX phrase: ' + phrase);
+});
