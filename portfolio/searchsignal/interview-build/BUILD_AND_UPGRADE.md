@@ -25,3 +25,5 @@
 31. Upgraded Requirements Coverage so implementation, automated-test coverage, and live verification are independent evidence states.
 32. Added supporting technical controls: polite crawl delay, redirect-loop detection, generic-link/form-label heuristic signals, richer document headers, and audit JSON/CSV exports.
 33. Ran GitHub CI and Portfolio Quality Control successfully, visually smoke-tested the upgraded Change Lab, WordPress Support, Scale Simulator, and Requirements Coverage surfaces, verified preview API behavior, then manually redeployed the standalone Vercel project to production. Production smoke returned HTTP 200 for the app, health endpoint, Change Lab verify action, and 20K/15K scale simulation.
+
+34. Fixed audit scoring for blocked/error/challenge responses after a live Prime Video test exposed a false-positive score. Unscorable responses now suppress SEO/GEO scores, show retrieval diagnostics, and mark page-level checks N/A; zero-image pages no longer receive automatic alt-text credit. Regression QA passed 17/17 before production redeploy.
