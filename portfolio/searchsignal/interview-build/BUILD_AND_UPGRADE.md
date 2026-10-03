@@ -27,3 +27,7 @@
 33. Ran GitHub CI and Portfolio Quality Control successfully, visually smoke-tested the upgraded Change Lab, WordPress Support, Scale Simulator, and Requirements Coverage surfaces, verified preview API behavior, then manually redeployed the standalone Vercel project to production. Production smoke returned HTTP 200 for the app, health endpoint, Change Lab verify action, and 20K/15K scale simulation.
 
 34. Fixed audit scoring for blocked/error/challenge responses after a live Prime Video test exposed a false-positive score. Unscorable responses now suppress SEO/GEO scores, show retrieval diagnostics, and mark page-level checks N/A; zero-image pages no longer receive automatic alt-text credit. Regression QA passed 17/17 before production redeploy.
+
+35. Added Browser-rendered Audit mode using headless Chromium + Puppeteer Core. The workflow uses the normal server fetch first, then supports explicit rendered auditing for JavaScript-heavy/hash-routed pages. Private-network requests are blocked during subresource loading, media/fonts are skipped, and rendered DOM output reuses the same explainable SEO/GEO analyzer.
+36. Added route-integrity safeguards: if client-side rendering redirects a requested content route to an authentication/login wall, SearchSignal suppresses SEO/GEO scoring and reports the route mismatch rather than grading the login wall.
+37. Preview-tested the rendered auditor on GeForce NOW `#/layout/games`; the Vercel preview rendered the requested route successfully and returned a browser-rendered audit with retrieval metadata.
