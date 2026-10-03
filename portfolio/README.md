@@ -5,7 +5,7 @@ A growing collection of compact, auditable AI applications spanning neuroscience
 <!-- FORGE-SUITE-PORTFOLIO:START -->
 ## Current integrated Forge Suite
 
-The newest integrated implementation is **Forge v0.5.6**, mirrored at **[`../forge-suite/current/`](../forge-suite/current/)**. It unifies Forge Workspace, Elias, Evidence Auditor, MedForge, GrimForge, and Forge Learn behind one local Forge Core while preserving each app's distinct workflow and identity.
+The integrated Forge line is now synchronized through **Forge Learn v0.5.9**. It connects Forge Workspace, Elias, Evidence Auditor, MedForge, GrimForge, Forge Learn, Forge Builder, and the current VocalForge MVP to a shared evidence-first build/learning story while preserving each app's distinct workflow and maturity boundary.
 
 The individual portfolio folders below remain useful project history and demonstrations. Where they differ, **`forge-suite/current/` is the controlling current local implementation**.
 <!-- FORGE-SUITE-PORTFOLIO:END -->
@@ -54,6 +54,9 @@ An adaptive MLT/ABOR study coach with source-grounded study-pack generation, Exa
 
 ### [WildTake Studio](wildtake-studio/)
 A rights-aware short-form wildlife/animal commentary studio with timed action beats, original AI commentary packs, a weighted Reference Lab for public channels/sites, curated production presets, and the floating Wild Copilot. Reference sources shape abstract pacing, hooks, structure, humor density, and educational framing—not scripts, voices, catchphrases, artwork, or creator identity.
+
+### [VocalForge](vocalforge/)
+A local-first vocal recording, analysis, enhancement, comparison, and export workstation. The current MVP preserves original takes, exposes an inspectable processing chain, supports Natural / Pure, Studio Vocal, and Comfort Mode concepts, and keeps later-phase audio features explicitly separate from verified current behavior.
 
 ### [CareFlow Research Lab](careflow-research-lab/)
 An independent healthcare UX research portfolio study built around a fictional medication-coordination workflow. It demonstrates research planning, interview/contextual-inquiry frameworks, moderated usability testing, task/confidence metrics, structured observation capture, affinity synthesis, evidence traceability, findings prioritization, research-repository design, and responsible AI-assisted synthesis. Seeded study data are explicitly simulated; the project does not claim BetterRX employment, client work, real participants, or real-world outcome metrics.
