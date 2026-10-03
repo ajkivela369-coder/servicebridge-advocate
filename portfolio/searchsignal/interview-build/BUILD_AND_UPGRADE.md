@@ -31,3 +31,12 @@
 35. Added Browser-rendered Audit mode using headless Chromium + Puppeteer Core. The workflow uses the normal server fetch first, then supports explicit rendered auditing for JavaScript-heavy/hash-routed pages. Private-network requests are blocked during subresource loading, media/fonts are skipped, and rendered DOM output reuses the same explainable SEO/GEO analyzer.
 36. Added route-integrity safeguards: if client-side rendering redirects a requested content route to an authentication/login wall, SearchSignal suppresses SEO/GEO scoring and reports the route mismatch rather than grading the login wall.
 37. Preview-tested the rendered auditor on GeForce NOW `#/layout/games`; the Vercel preview rendered the requested route successfully and returned a browser-rendered audit with retrieval metadata.
+
+38. Added a content-type classifier so SearchSignal selects a scoring model based on observed evidence rather than forcing every URL through the generic webpage rubric.
+39. Added a Video Evidence Extractor for creator/channel, duration, publication date, thumbnail, embed/player metadata, Open Graph video metadata, microdata, topic tags, interactions, chapters, and transcript signals.
+40. Added primary-content isolation for video pages. Platform navigation, comments, recommendation feeds, and other shell text remain observable but are excluded from the primary video content word count used for scoring.
+41. Added Video SEO/GEO v1 rubrics with video-specific checks for metadata, creator identity, chapters, transcript availability/extractability, topic/entity metadata, freshness, and primary-content extraction.
+42. Added YouTube transcript loading support, including current `transcript-segment-view-model` markup, plus deduplicated chapter intelligence.
+43. Added Smart Audit automatic fallback: server fetch first, then rendered Chromium only when the URL is hash-routed, unscorable, classified as video/application, or looks like a thin JavaScript shell.
+44. Added rendered-audit concurrency limits and a short-lived cache to reduce repeated Chromium work. Existing private-network blocking and auth-wall score suppression remain in force.
+45. Local QA passed 22/22 after the smart-audit and video-intelligence upgrade. Live stress tests correctly classified and analyzed the supplied YouTube watch page and continued to suppress GeForce NOW scoring when its requested route redirected to a login wall.
