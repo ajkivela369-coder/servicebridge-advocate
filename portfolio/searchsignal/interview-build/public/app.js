@@ -135,24 +135,27 @@ function auditor(){
   setTitle('Live URL Auditor','Inspect a public page for technical SEO and AI-answer readiness with transparent scoring.');
   view.innerHTML=
     '<div class="card section"><h2>Audit a public page</h2>'+
-      '<div class="form-row"><input id="auditUrl" value="https://geiselmed.dartmouth.edu/" aria-label="URL"><button id="auditBtn" class="primary">Server audit</button><button id="renderAuditBtn" class="secondary">Browser-rendered audit</button></div>'+
-      '<p class="muted mini">Server audit is fastest. Browser-rendered audit launches sandboxed headless Chromium for JavaScript-heavy pages and hash routes. Private-network targets remain blocked.</p>'+
+      '<div class="form-row"><input id="auditUrl" value="https://geiselmed.dartmouth.edu/" aria-label="URL"><button id="auditBtn" class="primary">Smart audit</button><button id="serverAuditBtn" class="secondary">Server only</button><button id="renderAuditBtn" class="secondary">Browser rendered</button></div>'+
+      '<p class="muted mini">Smart audit starts with public HTML, classifies the content, and automatically renders JavaScript-heavy, hash-routed, video, or otherwise unscorable pages. Server only and Browser rendered remain available for comparison.</p>'+
     '</div><div id="auditOut"></div>';
-  document.getElementById('auditBtn').onclick=()=>runAudit('server');
+  document.getElementById('auditBtn').onclick=()=>runAudit('smart');
+  document.getElementById('serverAuditBtn').onclick=()=>runAudit('server');
   document.getElementById('renderAuditBtn').onclick=()=>runAudit('rendered');
 }
 
-async function runAudit(mode='server'){
-  const serverBtn=document.getElementById('auditBtn');
+async function runAudit(mode='smart'){
+  const smartBtn=document.getElementById('auditBtn');
+  const serverBtn=document.getElementById('serverAuditBtn');
   const renderBtn=document.getElementById('renderAuditBtn');
-  const btn=mode==='rendered'?renderBtn:serverBtn;
+  const btn=mode==='rendered'?renderBtn:(mode==='server'?serverBtn:smartBtn);
   const out=document.getElementById('auditOut');
-  serverBtn.disabled=true; renderBtn.disabled=true;
-  const priorServer=serverBtn.textContent, priorRender=renderBtn.textContent;
-  btn.textContent=mode==='rendered'?'Rendering…':'Auditing…';
-  out.innerHTML='<div class="card">'+(mode==='rendered'?'Launching sandboxed Chromium, rendering JavaScript, then auditing the resulting DOM…':'Fetching and inspecting page…')+'</div>';
+  smartBtn.disabled=true; serverBtn.disabled=true; renderBtn.disabled=true;
+  const priorSmart=smartBtn.textContent, priorServer=serverBtn.textContent, priorRender=renderBtn.textContent;
+  btn.textContent=mode==='rendered'?'Rendering…':(mode==='server'?'Fetching…':'Classifying…');
+  out.innerHTML='<div class="card">'+(mode==='rendered'?'Launching sandboxed Chromium, rendering JavaScript, then auditing the resulting DOM…':(mode==='server'?'Fetching public HTML without executing JavaScript…':'Inspecting server HTML first; SearchSignal will render only if the content type or auditability requires it…'))+'</div>';
   try{
-    const response=await fetch(mode==='rendered'?'/api/rendered-audit':'/api/audit',{
+    const endpoint=mode==='rendered'?'/api/rendered-audit':(mode==='server'?'/api/audit':'/api/smart-audit');
+    const response=await fetch(endpoint,{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({url:document.getElementById('auditUrl').value})
@@ -164,8 +167,8 @@ async function runAudit(mode='server'){
   }catch(error){
     out.innerHTML='<div class="card"><h2>Audit error</h2><p>'+esc(error.message)+'</p></div>';
   }finally{
-    serverBtn.disabled=false; renderBtn.disabled=false;
-    serverBtn.textContent=priorServer; renderBtn.textContent=priorRender;
+    smartBtn.disabled=false; serverBtn.disabled=false; renderBtn.disabled=false;
+    smartBtn.textContent=priorSmart; serverBtn.textContent=priorServer; renderBtn.textContent=priorRender;
   }
 }
 
@@ -174,6 +177,13 @@ function checks(list){
     if(c.applicable===false) return '<div class="check"><span class="muted">—</span><span>'+esc(c.name)+'</span><span class="muted">n/a</span></div>';
     return '<div class="check"><span class="'+(c.ok?'ok':'bad')+'">'+(c.ok?'✓':'×')+'</span><span>'+esc(c.name)+'</span><span>'+(c.ok?'pass':'review')+'</span></div>';
   }).join('');
+}
+
+function formatDuration(seconds,raw=''){
+  const n=Number(seconds);
+  if(!Number.isFinite(n)||n<=0) return raw||'Not detected';
+  const h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=Math.floor(n%60);
+  return (h?h+'h ':'')+(m?m+'m ':'')+s+'s';
 }
 
 function renderAudit(d){
@@ -193,20 +203,42 @@ function renderAudit(d){
     if(retry) retry.onclick=()=>runAudit('rendered');
     return;
   }
+  const pageType=d.pageType?.type||'webpage';
+  const typeLabel=pageType==='video'?'Video':(pageType==='application'?'Web application':(pageType==='article'?'Article':'Webpage'));
   const retrievalNote=d.retrieval?.rendered
-    ? '<div class="callout section"><b>Browser-rendered audit:</b> JavaScript was executed in sandboxed Chromium before scoring. '+esc(d.retrieval.renderMs||0)+' ms · '+esc(d.retrieval.resourceCount||0)+' resources · '+(d.retrieval.hashRoute?'hash route preserved':'standard route')+'.</div>'
-    : '<div class="callout section"><b>Server audit:</b> Scored directly from the public HTML response without executing page JavaScript.</div>';
+    ? '<div class="callout section"><b>'+esc(d.retrieval.label||'Browser-rendered audit')+':</b> JavaScript was executed in sandboxed Chromium before scoring. '+esc(d.retrieval.renderMs||0)+' ms · '+esc(d.retrieval.resourceCount||0)+' resources'+(d.retrieval.cached?' · cached render':'')+'. '+(d.retrieval.autoFallback?'<b>Automatic fallback:</b> '+esc(d.retrieval.fallbackReason||'Rendered content was required.'):'')+'</div>'
+    : '<div class="callout section"><b>'+esc(d.retrieval?.label||'Server audit')+':</b> Scored directly from the public HTML response without executing page JavaScript.</div>';
+  const typeNote='<div class="card section"><div class="eyebrow">CONTENT-TYPE CLASSIFIER</div><h2>'+esc(typeLabel)+'</h2><p class="muted">'+esc(d.pageType?.evidence||'General document classification')+' · '+esc(d.pageType?.confidence||'unknown')+' confidence · scoring model '+esc(d.scoringModel||'webpage-seo-geo-v1')+'.</p><p class="muted mini">Primary-content scoring uses '+esc(d.primaryContent?.source||'document body')+' ('+esc(d.primaryContent?.wordCount||0)+' words). '+(d.primaryContent?.excludedShellWords?esc(d.primaryContent.excludedShellWords)+' platform/shell words excluded from the scoring content.':'')+'</p></div>';
+  const video=d.video;
+  const videoEvidence=video?'<div class="card section"><div class="eyebrow">VIDEO EVIDENCE</div><h2>Primary video signals</h2><div class="grid three">'+
+      kpi('Creator / channel',esc(video.creator||'Not detected'),esc(video.platform||'video platform'))+
+      kpi('Duration',esc(formatDuration(video.durationSeconds,video.duration)),esc(video.duration||'no machine duration'))+
+      kpi('Chapters',video.chapters.length,video.chapters.length?'deduplicated chapter labels':'none detected')+
+      kpi('Transcript',video.transcript.loaded?(video.transcript.wordCount+' words'):(video.transcript.available?'Discoverable':'Not detected'),video.transcript.loaded?video.transcript.segments+' segments loaded':'public transcript signal')+
+      kpi('Published',esc(video.uploadDate||video.datePublished||'Not detected'),'machine-readable date')+
+      kpi('Video metadata',video.metadata.signals.length,esc(video.metadata.signals.join(' · ')||'none detected'))+
+    '</div>'+
+    (video.chapters.length?'<h3 style="margin-top:16px">Chapter intelligence</h3><div class="chapter-list">'+video.chapters.slice(0,12).map((x)=>'<span class="doc-signal">'+esc(x)+'</span>').join(' ')+'</div>':'')+
+    (video.transcript.sample?.length?'<h3 style="margin-top:16px">Transcript sample</h3><p class="muted">'+video.transcript.sample.map(esc).join(' … ')+'</p>':'')+
+    '<div class="callout" style="margin-top:14px"><b>Content provenance:</b> video scoring uses title, description, creator/channel, chapters, transcript text when loaded, and machine-readable video metadata. Recommendation feeds, comments, navigation, and other platform chrome are not treated as primary video text.</div></div>':'';
+  const metricCards=video
+    ? '<div class="grid three section">'+
+        kpi('Primary words',d.primaryContent?.wordCount||0,(d.primaryContent?.excludedShellWords||0)+' shell/UI words excluded')+
+        kpi('Topic tags',video.tags.length,video.tags.slice(0,3).map(esc).join(' · ')||'none detected')+
+        kpi('Transcript',video.transcript.loaded?'Loaded':(video.transcript.available?'Available':'Not detected'),video.transcript.loaded?video.transcript.wordCount+' transcript words':'rendered evidence')+
+      '</div>'
+    : '<div class="grid three section">'+
+        kpi('Internal links',d.links.internal,d.links.total+' total links')+
+        kpi('Alt coverage',d.images.coverage===null?'N/A':d.images.coverage+'%',d.images.total?d.images.withAlt+'/'+d.images.total+' images':'No images detected')+
+        kpi('WordPress',d.signals.wordpress?'Likely':'Not detected',esc(d.signals.generator||'fingerprint check'))+
+      '</div>';
   document.getElementById('auditOut').innerHTML=
-    retrievalNote+
+    retrievalNote+typeNote+
     '<div class="grid two section">'+
-      '<div class="card"><h2>SEO health</h2><div class="scoreline"><div class="score">'+d.scores.seo+'</div><div><b>'+esc(d.title||'Untitled page')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div>'+checks(d.rubrics.seo)+'</div>'+
-      '<div class="card"><h2>GEO readiness</h2><div class="scoreline"><div class="score">'+d.scores.geo+'</div><div><b>AI-answer extraction signals</b><div class="muted">'+d.wordCount+' words · '+d.schema.types.length+' schema type(s)</div></div></div>'+checks(d.rubrics.geo)+'</div>'+
+      '<div class="card"><h2>'+(video?'Video SEO health':'SEO health')+'</h2><div class="scoreline"><div class="score">'+d.scores.seo+'</div><div><b>'+esc(d.title||'Untitled page')+'</b><div class="muted">'+esc(d.finalUrl)+'</div></div></div>'+checks(d.rubrics.seo)+'</div>'+
+      '<div class="card"><h2>'+(video?'Video GEO readiness':'GEO readiness')+'</h2><div class="scoreline"><div class="score">'+d.scores.geo+'</div><div><b>'+(video?'Video answer-engine signals':'AI-answer extraction signals')+'</b><div class="muted">'+(d.primaryContent?.wordCount||d.wordCount)+' primary words · '+((d.schema.videoSignals||[]).length+d.schema.types.length)+' structured signal(s)</div></div></div>'+checks(d.rubrics.geo)+'</div>'+
     '</div>'+
-    '<div class="grid three section">'+
-      kpi('Internal links',d.links.internal,d.links.total+' total links')+
-      kpi('Alt coverage',d.images.coverage===null?'N/A':d.images.coverage+'%',d.images.total?d.images.withAlt+'/'+d.images.total+' images':'No images detected')+
-      kpi('WordPress',d.signals.wordpress?'Likely':'Not detected',esc(d.signals.generator||'fingerprint check'))+
-    '</div>'+
+    metricCards+videoEvidence+
     '<div class="card section"><h2>Findings & recommended fixes</h2><table><tr><th>Priority</th><th>Evidence</th><th>Recommendation</th></tr>'+rows+'</table>'+
       '<div style="margin-top:12px" class="header-actions"><button class="secondary" id="copyAudit">Copy plain-language summary</button><button class="secondary" id="explainEditor">Explain to department editor</button><button class="secondary" id="exportAuditJson">Export JSON</button><button class="secondary" id="exportAuditCsv">Export CSV</button></div>'+
     '</div>';
@@ -231,7 +263,7 @@ function auditSummary(d){
   if(d.auditability && d.auditability.scorable===false){
     return 'SearchSignal audit diagnostic: '+d.finalUrl+'\nNot scorable — '+(d.auditability.reasons||[]).join(' · ')+'\nSEO/GEO scores suppressed.';
   }
-  return 'SearchSignal audit: '+d.finalUrl+'\nSEO '+d.scores.seo+'/100 · GEO '+d.scores.geo+'/100\n'+d.findings.map((f)=>f.severity+': '+f.label+' — '+f.fix).join('\n');
+  return 'SearchSignal audit: '+d.finalUrl+'\nType '+(d.pageType?.type||'webpage')+' · '+(d.scoringModel||'webpage-seo-geo-v1')+'\nSEO '+d.scores.seo+'/100 · GEO '+d.scores.geo+'/100\n'+d.findings.map((f)=>f.severity+': '+f.label+' — '+f.fix).join('\n');
 }
 
 function siteIntelligence(){
