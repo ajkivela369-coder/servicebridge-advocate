@@ -18,6 +18,7 @@ This index records how each portfolio app was built, upgraded, and verified. It 
 - WildTake Studio — wildtake-studio/BUILD_AND_UPGRADE.md
 - CareFlow Research Lab — careflow-research-lab/BUILD_AND_UPGRADE.md
 - Forge Builder — integrated Forge build history: ../forge-suite/current/BUILD_AND_UPGRADE.md
+- VocalForge — vocalforge/BUILD_AND_UPGRADE.md
 - Employer-facing portfolio website — WEBSITE_BUILD_AND_UPGRADE.md
 
 ## Verification rule
@@ -26,4 +27,4 @@ Each history separates implementation, automated/fixture verification, live depl
 
 ## Integrated Forge
 
-The current six-product Forge implementation has its own build and upgrade history in forge-suite/current/BUILD_AND_UPGRADE.md.
+The current Forge implementation has its own build and upgrade history in forge-suite/current/BUILD_AND_UPGRADE.md.
