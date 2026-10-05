@@ -15,7 +15,19 @@ A portfolio app is eligible for **QC PASS** only when the checks applicable to t
 
 Automation lives in `.github/workflows/portfolio-qc.yml`, `scripts/portfolio_qc.py`, and `scripts/live_portfolio_smoke.py`.
 
-## Current audit — 2026-10-01
+## Current audit — October 5, 2026
+
+Local repository audit: 109 checks passed; no failures. The portfolio manifest/syntax/encoding gate also passed. VocalForge documentation is now included in the inventory gate.
+
+Actual laptop products were inspected separately. GrimForge's low-resolution image sources, scene-length subtitles and procedural Blender blocks do not meet final delivery quality. Verified final-label, caption, decoder, audio-assembly and motion-capability issues were fixed locally. A real 12.02-second episode completed and remained correctly labeled preview. Vocal export headroom and pitch confidence were fixed; 20 combined delivery/runtime/vocal regressions passed.
+
+GitHub Actions jobs did not start because GitHub reported an account payment/spending-limit restriction. This is not a completed test run.
+
+Workspace/Learn and the local app pages returned HTTP 200. Hosted GrimForge, WildTake and StudyForge HTML returned 200; this establishes availability only. The portfolio homepage returned 403 to an automated request; browser behavior is not established.
+
+Full creative quality, anatomy accuracy, other apps' complete delivery workflows and source/live-version parity still require review.
+
+## Previous audit — October 1, 2026
 
 | Project | Delivery | Current QC evidence |
 |---|---|---|
@@ -33,7 +45,7 @@ Automation lives in `.github/workflows/portfolio-qc.yml`, `scripts/portfolio_qc.
 | CareFlow Research Lab | Source-only static demo | Repository/static-file gate; no public production URL currently claimed |
 | Benchmark Forge | Source-only | Python syntax/source gate; no public production URL currently claimed |
 | RaterLab | Source-only | Python syntax/source gate; no public production URL currently claimed |
-| Integrated Forge Suite | Private development repo + public showcase | GitHub CI passed on the current imported baseline; real Windows upgrade, Blender/ComfyUI visual quality, and narrator quality remain target-PC acceptance items |
+| Integrated Forge Suite | Private development repo + public showcase | Local repository checks passed; current GitHub Actions execution is account-blocked. Full Windows upgrade, visual and narrator quality remain acceptance items |
 
 ## Forge acceptance boundary
 
