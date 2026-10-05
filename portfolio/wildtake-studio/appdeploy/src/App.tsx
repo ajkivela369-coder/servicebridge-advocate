@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { api } from '@appdeploy/client';
+import { api } from './appApi';
 import {
   CheckCircle2,
   Clapperboard,
@@ -38,6 +38,8 @@ const referencePresets=[
   {id:'tierzoo',label:'TierZoo',url:'https://www.youtube.com/@TierZoo',summary:'Analytical animal behavior explained through playful systems thinking.',traits:['comparative analysis','game-like conceptual framing','dense but accessible humor'],formatPatterns:['premise → comparison → mechanics → ranking-style synthesis']},
   {id:'natgeo',label:'National Geographic',url:'https://www.youtube.com/@NatGeo',summary:'Polished documentary pacing with factual context and dramatic visual emphasis.',traits:['documentary authority','environmental context','measured escalation'],formatPatterns:['scene setter → behavior → stakes → context → resolution']},
 ];
+
+const FORGE_CORE = 'http://127.0.0.1:8787';
 
 const initialBeats: Beat[] = [
   {
@@ -82,6 +84,11 @@ function App() {
   const [queue, setQueue] = useState<[string, string][]>([]);
   const [videoUrl, setVideoUrl] = useState('');
   const [fileName, setFileName] = useState('');
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [comedyMode, setComedyMode] = useState('Dub Comedy');
+  const [renderStage, setRenderStage] = useState('');
+  const [renderResultUrl, setRenderResultUrl] = useState('');
+  const [renderBusy, setRenderBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const ready = rights !== 'Other / Unknown';
   const [energy, setEnergy] = useState(8);
@@ -135,19 +142,69 @@ function App() {
   const updateReferenceWeight=(id:string,weight:number)=>setReferenceProfiles(current=>current.map(x=>x.id===id?{...x,weight}:x));
   const removeReference=(id:string)=>setReferenceProfiles(current=>current.filter(x=>x.id!==id));
   const askCopilot=async(q=copilotInput)=>{if(!q.trim()||copilotBusy)return;setCopilotBusy(true);try{const {data}=await api.post('/api/copilot',{question:q,beats,script,creatorPack,narrator,energy,jokes,referenceProfiles,rights});setCopilotAnswer(data.answer);setCopilotInput('');}catch{setCopilotAnswer('I could not complete that request. Your current WildTake project is still intact.');}finally{setCopilotBusy(false);}};
-  const makeVideo = () =>
+  const makeVideo = async () => {
+    if (!sourceFile || renderBusy || !ready) return;
+    setRenderBusy(true);
+    setRenderResultUrl('');
+    setRenderStage('Uploading clip to local Forge Core…');
     setQueue([
       ['Rights Preflight', 'passed'],
-      [
-        'Analyze action beats',
-        'manual beats ready · vision provider not connected',
-      ],
-      ['Write commentary', creatorPack ? 'AI draft ready · editable' : 'manual script ready for review'],
-      ['Generate narration', 'blocked · premium TTS not connected'],
-      ['Mix sound', 'waiting'],
-      ['Render 1080×1920', 'waiting · render engine not connected'],
-      ['Final QC', 'waiting'],
+      ['Vision analysis', 'queued'],
+      ['Original comedy plan', 'queued'],
+      ['Multi-character narration', 'queued'],
+      ['SFX + source ambience', 'queued'],
+      ['Timed captions', 'queued'],
+      ['Render 1080×1920', 'queued'],
+      ['Final QC', 'queued'],
     ]);
+    try {
+      const body = new FormData();
+      body.append('file', sourceFile);
+      body.append('mode', comedyMode);
+      body.append('energy', String(energy));
+      body.append('jokes', String(jokes));
+      body.append('model', 'auto');
+      body.append('allow_basic_fallback', 'false');
+      const start = await fetch(FORGE_CORE + '/api/wildtake/render', { method: 'POST', body });
+      if (!start.ok) throw new Error(await start.text() || 'Forge Core rejected the render.');
+      const queued = await start.json();
+      if (!queued?.id) throw new Error('Forge Core did not return a render job ID.');
+      for (;;) {
+        await new Promise(resolve => setTimeout(resolve, 1400));
+        const poll = await fetch(FORGE_CORE + '/api/jobs/' + encodeURIComponent(queued.id));
+        if (!poll.ok) throw new Error('Could not read WildTake render progress.');
+        const job = await poll.json();
+        setRenderStage(job.stage || job.status || 'Working…');
+        setQueue(current => current.map((item, index) => {
+          const stage = String(job.stage || '').toLowerCase();
+          let state = item[1];
+          if (stage.includes('vision')) state = index === 1 ? 'running' : state;
+          if (stage.includes('writing')) state = index <= 1 ? 'done' : index === 2 ? 'running' : state;
+          if (stage.includes('voice') || stage.includes('character')) state = index <= 2 ? 'done' : index === 3 ? 'running' : state;
+          if (stage.includes('sfx')) state = index <= 3 ? 'done' : index === 4 ? 'running' : state;
+          if (stage.includes('caption') || stage.includes('mix')) state = index <= 4 ? 'done' : index === 5 ? 'running' : state;
+          if (stage.includes('render') || stage.includes('ffmpeg')) state = index <= 5 ? 'done' : index === 6 ? 'running' : state;
+          if (job.status === 'completed') state = 'done';
+          return [item[0], state] as [string, string];
+        }));
+        if (job.status === 'failed') throw new Error(job.error || 'WildTake render failed.');
+        if (job.status === 'completed') {
+          const raw = String(job.result?.video || '');
+          const name = raw.split(/[\\/]/).pop();
+          if (!name) throw new Error('Render completed but no final video path was returned.');
+          setRenderResultUrl(FORGE_CORE + '/api/outputs/' + encodeURIComponent(name));
+          setRenderStage('Finished — original dubbed Short is ready.');
+          break;
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'WildTake render failed.';
+      setRenderStage(message + ' Make sure Forge Core is running on 127.0.0.1:8787 and local vision/TTS are ready.');
+      setQueue(current => current.map(item => item[1] === 'running' ? [item[0], 'failed'] : item));
+    } finally {
+      setRenderBusy(false);
+    }
+  };
   return (
     <main className="shell">
       <header className="hero">
@@ -224,6 +281,9 @@ function App() {
                 if (videoUrl) URL.revokeObjectURL(videoUrl);
                 setVideoUrl(URL.createObjectURL(f));
                 setFileName(f.name);
+                setSourceFile(f);
+                setRenderResultUrl('');
+                setRenderStage('');
               }}
             />
             {videoUrl && (
@@ -282,6 +342,15 @@ function App() {
               ))}
             </select>
             <p className="desc">{narrators[narrator]}</p>
+            <label>
+              Comedy engine
+              <select value={comedyMode} onChange={e => setComedyMode(e.target.value)}>
+                <option>Dub Comedy</option>
+                <option>Observational Comedy</option>
+                <option>Sports Desk</option>
+              </select>
+            </label>
+            <p className="desc">Dub Comedy uses the animal's visible movements as beats for an original character premise, escalation, reversal, and final button.</p>
             {mode === 'Pro' && (
               <div className="pro-grid">
                 <label>
@@ -483,15 +552,19 @@ function App() {
       </section>
 
       <section className="make">
-        <button disabled={!ready} onClick={makeVideo}>
+        <button disabled={!ready || !sourceFile || renderBusy} onClick={makeVideo}>
           <Sparkles size={22} />
-          <span>MAKE MY VIDEO</span>
+          <span>{renderBusy ? 'MAKING EPISODE…' : 'MAKE MY VIDEO'}</span>
           <small>
-            {ready
-              ? 'Build the production queue'
-              : 'Resolve rights preflight first'}
+            {!ready
+              ? 'Resolve rights preflight first'
+              : !sourceFile
+                ? 'Choose a source clip first'
+                : 'Vision → comedy → voices → SFX → captions → final Short'}
           </small>
         </button>
+        {renderStage && <p className="desc" style={{marginTop:12,textAlign:'center'}}>{renderStage}</p>}
+        {renderResultUrl && <div style={{marginTop:16}}><video className="source-video" src={renderResultUrl} controls /><a href={renderResultUrl} target="_blank" rel="noreferrer">Open finished WildTake episode</a></div>}
       </section>
 
       <section className="panel queue">

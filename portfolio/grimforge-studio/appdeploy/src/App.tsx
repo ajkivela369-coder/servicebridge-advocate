@@ -214,7 +214,6 @@ function App() {
     return()=>{ if (previewTimer.current) window.clearTimeout(previewTimer.current); };
   },[previewPlaying,previewIndex]);
 
-  const selectedVoice=voices.find((v)=>v.name===voice)??voices[0];
   const selectedStyle=visualStyles.find((v)=>v.name===style)??visualStyles[0];
   const selectedDialogueMode=dialogueModes.find((item)=>item.name===dialogueMode)??dialogueModes[0];
   const googleBrowserVoices=useMemo(()=>browserVoices.filter((v)=>/google|microsoft|natural|online/i.test(v.name)),[browserVoices]);
@@ -325,7 +324,7 @@ function App() {
     if(!tts)return;
     setBusy(`Generating ${label} locally with Kokoro…`);
     try{
-      const audio=await tts.generate(text,{voice:kokoroVoice,speed:Math.max(.5,Math.min(2,voiceRate))});
+      const audio=await tts.generate(text,{voice:kokoroVoice as NonNullable<Parameters<KokoroTTS['generate']>[1]>['voice'],speed:Math.max(.5,Math.min(2,voiceRate))});
       const url=URL.createObjectURL(audio.toBlob());
       setKokoroAudioUrl(url);
       setKokoroOutputLabel(label);

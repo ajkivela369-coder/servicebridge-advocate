@@ -6,6 +6,8 @@
         "module": "ESNext",
         "skipLibCheck": true,
         "moduleResolution": "bundler",
+        "baseUrl": ".",
+        "paths": { "@appdeploy/client": ["src/appdeploy-local.ts"] },
         "allowImportingTsExtensions": true,
         "isolatedModules": true,
         "moduleDetection": "force",
