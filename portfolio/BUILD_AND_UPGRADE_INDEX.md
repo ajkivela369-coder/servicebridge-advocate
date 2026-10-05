@@ -5,7 +5,6 @@ This index records how each portfolio app was built, upgraded, and verified. It 
 ## Portfolio applications
 
 - SearchSignal — searchsignal/BUILD_AND_UPGRADE.md
-- AJ Job Fisher — aj-job-fisher/BUILD_AND_UPGRADE.md
 - NeuroEval — handshake-neuroeval/BUILD_AND_UPGRADE.md
 - HealthQA Auditor — meridial-healthqa/BUILD_AND_UPGRADE.md
 - Elias + Evidence Auditor — evidence-auditor/BUILD_AND_UPGRADE.md
@@ -28,3 +27,7 @@ Each history separates implementation, automated/fixture verification, live depl
 ## Integrated Forge
 
 The current Forge implementation has its own build and upgrade history in forge-suite/current/BUILD_AND_UPGRADE.md.
+
+## Archived applications
+
+- AJ Job Fisher - aj-job-fisher/BUILD_AND_UPGRADE.md (retired 2026-10-05; preserved in place)

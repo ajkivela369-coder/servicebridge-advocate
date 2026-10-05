@@ -19,12 +19,6 @@ The individual portfolio folders below remain useful project history and demonst
 
 A working higher-education web-operations portfolio app with secure public-URL auditing, bounded same-site crawling, linked-document inventory, redirect-chain validation, explainable SEO/GEO scoring, content/schema tooling, editable prioritization, analytics CSV workflows, WordPress support/training, and explicit technical-escalation boundaries. The Geisel interview edition provides a five-minute hiring-manager walkthrough; the published Floot v2 remains a separate live surface while its latest source parity is pending.
 
-### [AJ Job Fisher](aj-job-fisher/)
-**Live:** https://aj-job-fisher-a2507o.v2.appdeploy.ai/
-
-A job-search control center with weighted fit scoring, duplicate detection, guardrails for remote/pay/travel/credentials, job-URL ingestion, application-package preparation, queue/evidence tracking, and explicit stop conditions for questions or commitments that require human review.
-
-
 ### [NeuroEval](handshake-neuroeval/)
 Biology and neuroscience response evaluation with transparent scoring for concept coverage, mechanistic reasoning, uncertainty calibration, evidence language, clarity, and unsupported certainty.
 
@@ -83,3 +77,7 @@ A passing static/fixture gate does **not** convert unverified live-engine, clini
 ## Direction
 
 The portfolio is being built as a coherent lab rather than a collection of unrelated demos. Future apps and upgrades can extend into prompt-adversarial testing, multimodal/document-output QA, model regression testing, evaluation analytics, workflow-quality review, voice/video production, and creator tooling.
+
+## Archived applications
+
+- **AJ Job Fisher** - retired October 5, 2026 after portfolio QA. Source and build history remain preserved in [`aj-job-fisher/`](aj-job-fisher/), but it is no longer an active portfolio app or live-demo claim.

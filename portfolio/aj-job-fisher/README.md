@@ -1,8 +1,13 @@
-# AJ Job Fisher
+# ARCHIVED - AJ Job Fisher
 
-AJ Job Fisher is a private job-search control center deployed on AppDeploy.
+**Retired from the active portfolio: October 5, 2026.**
 
-Live app: https://aj-job-fisher-a2507o.v2.appdeploy.ai/
+This project is preserved in place for source/history reference only. The former AppDeploy deployment and scheduled scan are no longer treated as active portfolio functionality, and no further cron repair is planned as part of the current portfolio.
+
+
+AJ Job Fisher was a private job-search control center deployed on AppDeploy. This README is retained for historical reference.
+
+Former live app (retained for historical reference only): https://aj-job-fisher-a2507o.v2.appdeploy.ai/
 
 ## What it does
 
@@ -17,7 +22,7 @@ Live app: https://aj-job-fisher-a2507o.v2.appdeploy.ai/
 
 ## Automation policy
 
-The companion ChatGPT automation `AJ Job Fisher` runs every 3 hours. It searches for fully remote U.S. roles, scores them, prepares tailored packages, and is authorized to submit 85+ matches only when an authenticated supported submission path exists and no mandatory-stop condition is triggered.
+Historical behavior: the companion ChatGPT automation `AJ Job Fisher` ran every 3 hours. That recurring workflow is retired with the app and should remain disabled unless the project is deliberately restored.
 
 Mandatory-stop examples include medical/disability questions, background-check authorization, binding agreements, driving/vehicle requirements, criminal-history questions, drug/medical exams, relocation, >10% travel, unapproved references, uncertain answers, and other unsupported commitments.
 

@@ -21,7 +21,6 @@ Automation lives in `.github/workflows/portfolio-qc.yml`, `scripts/portfolio_qc.
 |---|---|---|
 | Main employer portfolio | Live web | Production HTTP/title/meta/assets smoke passed |
 | SearchSignal | Two live web surfaces + inspectable interview source | Geisel interview build: 6/6 Node QA passed; hosted homepage/assets/health/audit/site-scan/redirect checks passed; public Geisel audit + bounded crawl + HTTP→HTTPS redirect acceptance passed. Published Floot v2 remains live; latest v2 source parity is tracked separately as pending. |
-| AJ Job Fisher | Live web + source | Production HTTP/title/meta smoke passed; Vite build covered by portfolio QC |
 | Elias + Evidence Auditor | Live web + source | Production HTTP/title/meta smoke passed; core repo CI and evidence tests covered separately |
 | NeuroEval | Live web + source/tests | Production smoke passed; pytest + benchmark CI |
 | HealthQA Auditor | Live web + source/tests | Production smoke passed; pytest + benchmark CI |
@@ -48,3 +47,5 @@ When an app is added or materially changed:
 - if it has a public URL, add it to `scripts/live_portfolio_smoke.py`;
 - if it has a build/test process, add it to the GitHub Actions matrix;
 - do not mark the app fully passed when an applicable real-engine, hardware, external-service, or human-review gate is still pending.
+
+Archived: **AJ Job Fisher** was retired from the active portfolio on 2026-10-05. Its source/history remain preserved in `portfolio/aj-job-fisher/`, but it is no longer included in active live-smoke or release claims.

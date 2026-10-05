@@ -62,7 +62,6 @@ jobs:
     strategy:
       matrix:
         project:
-          - portfolio/aj-job-fisher
           - portfolio/evidence-auditor/00_CURRENT_APP/appdeploy
           - portfolio/grimforge-studio/appdeploy
           - portfolio/studyforge/appdeploy
