@@ -1,0 +1,31 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "evidence-auditor",
+  "version": "1.0.0",
+  "description": "Guide source provenance, chronology, contradictions, gaps, and evidence-package review through the existing private Forge laptop connection.",
+  "author": {
+    "name": "AJ Kivela"
+  },
+  "homepage": "https://evidence-auditor.ajkivela369.chatgpt.site",
+  "extensions": {
+    "com.openai": {
+      "apps": "./.app.json",
+      "interface": {
+        "displayName": "Evidence Auditor",
+        "shortDescription": "Traceable evidence review",
+        "longDescription": "Guide source provenance, chronology, contradictions, gaps, and evidence-package review through the existing private Forge laptop connection. Private use on the connected owner laptop; public multi-user deployment is separate.",
+        "developerName": "AJ Kivela",
+        "category": "Productivity",
+        "capabilities": [],
+        "defaultPrompt": [
+          "Check the Evidence Auditor workspace and its available workflows.",
+          "Review these authorized records for support, tensions, and missing evidence.",
+          "Help me build a traceable evidence package with source and page citations."
+        ],
+        "websiteURL": "https://evidence-auditor.ajkivela369.chatgpt.site",
+        "logo": "./assets/brand.png",
+        "composerIcon": "./assets/brand.png"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "GrimForge Cinema",
+    "shortDescription": "Private cinematic workflow",
+    "longDescription": "Guide the private Forge cinematic workflow through the existing Grim Forge Commander laptop connection. Private use on the connected owner laptop; public multi-user deployment is separate.",
+    "developerName": "AJ Kivela",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Check my local GrimForge production readiness.",
+      "Help me plan an original cinematic episode with continuity and English captions.",
+      "Review my rendered episode and identify the next quality improvement."
+    ],
+    "websiteURL": "https://grimforge-cinema.ajkivela369.chatgpt.site",
+    "logo": "./assets/brand.png",
+    "composerIcon": "./assets/brand.png"
+  },
+  "name": "grimforge-cinema",
+  "version": "1.0.0",
+  "description": "Guide the private Forge cinematic workflow through the existing Grim Forge Commander laptop connection.",
+  "author": {
+    "name": "AJ Kivela"
+  },
+  "keywords": [],
+  "homepage": "https://grimforge-cinema.ajkivela369.chatgpt.site",
+  "skills": "./skills"
+}

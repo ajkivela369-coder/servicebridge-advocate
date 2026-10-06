@@ -18,6 +18,8 @@ This index records how each portfolio app was built, upgraded, and verified. It 
 - CareFlow Research Lab — careflow-research-lab/BUILD_AND_UPGRADE.md
 - Forge Builder — integrated Forge build history: ../forge-suite/current/BUILD_AND_UPGRADE.md
 - VocalForge — vocalforge/BUILD_AND_UPGRADE.md
+- Grim Forge Commander V2 — grim-forge-commander/BUILD_AND_UPGRADE.md
+- Companion websites and private app plugins — COMPANION_SITES.md and plugins/README.md
 - Employer-facing portfolio website — WEBSITE_BUILD_AND_UPGRADE.md
 
 ## Verification rule

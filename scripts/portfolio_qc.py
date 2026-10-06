@@ -14,6 +14,11 @@ REQUIRED = {
     "citeguard": ["README.md", "dashboard.py", "requirements.txt"],
     "evidence-auditor": ["README.md", "00_CURRENT_APP"],
     "grimforge-studio": ["README.md", "appdeploy/package.json", "engine.py"],
+    "grim-forge-commander": ["README.md", "BUILD_AND_UPGRADE.md"],
+    "plugins/grim-forge-commander-v2": ["plugin.json", ".app.json", "assets/Grim_Forge_Commander_icon_256_4c.png"],
+    "plugins/grimforge-cinema": ["plugin.json", ".app.json", "assets/brand.png", "skills/grimforge-workflow/SKILL.md"],
+    "plugins/elias": ["plugin.json", ".app.json", "assets/brand.png", "skills/elias-workflow/SKILL.md"],
+    "plugins/evidence-auditor": ["plugin.json", ".app.json", "assets/brand.png", "skills/evidence-auditor-workflow/SKILL.md"],
     "handshake-neuroeval": ["README.md", "pyproject.toml", "tests/test_evaluator.py"],
     "meridial-healthqa": ["README.md", "pyproject.toml", "tests/test_auditor.py"],
     "pairrank": ["README.md", "dashboard.py", "requirements.txt"],
@@ -48,11 +53,12 @@ for project, required_paths in REQUIRED.items():
         if not (root / relative).exists():
             fail(f"{project}: missing {relative}")
 
-for package in PORTFOLIO.rglob("package.json"):
-    try:
-        json.loads(package.read_text(encoding="utf-8"))
-    except Exception as exc:
-        fail(f"invalid JSON in {package.relative_to(ROOT)}: {exc}")
+for pattern in ("package.json", "plugin.json", ".app.json", "companion-sites.json"):
+    for package in PORTFOLIO.rglob(pattern):
+        try:
+            json.loads(package.read_text(encoding="utf-8"))
+        except Exception as exc:
+            fail(f"invalid JSON in {package.relative_to(ROOT)}: {exc}")
 
 for source in PORTFOLIO.rglob("*.py"):
     try:

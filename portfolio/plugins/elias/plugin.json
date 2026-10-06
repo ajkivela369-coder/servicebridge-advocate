@@ -1,0 +1,31 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "elias",
+  "version": "1.0.0",
+  "description": "Guide general assistance and document reasoning in local Elias through the existing private Grim Forge Commander connection.",
+  "author": {
+    "name": "AJ Kivela"
+  },
+  "homepage": "https://elias.ajkivela369.chatgpt.site",
+  "extensions": {
+    "com.openai": {
+      "apps": "./.app.json",
+      "interface": {
+        "displayName": "Elias",
+        "shortDescription": "Source-grounded assistant",
+        "longDescription": "Guide general assistance and document reasoning in local Elias through the existing private Grim Forge Commander connection. Private use on the connected owner laptop; public multi-user deployment is separate.",
+        "developerName": "AJ Kivela",
+        "category": "Productivity",
+        "capabilities": [],
+        "defaultPrompt": [
+          "Check the local Elias assistant and available model route.",
+          "Help me reason through a document while keeping its sources visible.",
+          "Turn this complicated task into clear, reviewable next steps."
+        ],
+        "websiteURL": "https://elias.ajkivela369.chatgpt.site",
+        "logo": "./assets/brand.png",
+        "composerIcon": "./assets/brand.png"
+      }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "updated": "2026-10-06",
+  "products": [
+    {
+      "name": "Grim Forge Commander V2",
+      "slug": "grim-forge-commander",
+      "site": "https://grim-forge-commander.ajkivela369.chatgpt.site",
+      "plugin_slug": "grim-forge-commander-v2",
+      "plugin_url": null,
+      "version": "1.0.1",
+      "role": "Private laptop orchestration for Forge, Blender, FFmpeg, Git, and project automation.",
+      "site_audience": "owner-private",
+      "plugin_scope": "personal-private",
+      "source": "plugins/grim-forge-commander-v2/",
+      "plugin_installation_verified": false
+    },
+    {
+      "name": "GrimForge Cinema",
+      "slug": "grimforge-cinema",
+      "site": "https://grimforge-cinema.ajkivela369.chatgpt.site",
+      "plugin_slug": "grimforge-cinema",
+      "plugin_url": "https://chatgpt.com/plugins/plugins_6ac49641fa9c8191b0d87ee45606b7fd",
+      "version": "1.0.0",
+      "role": "Original cinematic planning, continuity, local production readiness, rendering, narration, captions, and review.",
+      "site_audience": "owner-private",
+      "plugin_scope": "personal-private",
+      "source": "plugins/grimforge-cinema/",
+      "plugin_installation_verified": false
+    },
+    {
+      "name": "Elias",
+      "slug": "elias",
+      "site": "https://elias.ajkivela369.chatgpt.site",
+      "plugin_slug": "elias",
+      "plugin_url": "https://chatgpt.com/plugins/plugins_6ac49646640c8191b3114777a696751a",
+      "version": "1.0.0",
+      "role": "General assistance, document questions, source-grounded reasoning, and clear next steps.",
+      "site_audience": "owner-private",
+      "plugin_scope": "personal-private",
+      "source": "plugins/elias/",
+      "plugin_installation_verified": false
+    },
+    {
+      "name": "Evidence Auditor",
+      "slug": "evidence-auditor",
+      "site": "https://evidence-auditor.ajkivela369.chatgpt.site",
+      "plugin_slug": "evidence-auditor",
+      "plugin_url": "https://chatgpt.com/plugins/plugins_6ac4964b0e248191b1bc2d7cc172a96c",
+      "version": "1.0.0",
+      "role": "Source/page provenance, chronology, support, tensions, missing evidence, and reviewed packets.",
+      "site_audience": "owner-private",
+      "plugin_scope": "personal-private",
+      "source": "plugins/evidence-auditor/",
+      "plugin_installation_verified": false
+    }
+  ],
+  "public_showcase": "https://github.com/ajkivela369-coder/forge-ai-showcase",
+  "public_indexing_verified": false
+}

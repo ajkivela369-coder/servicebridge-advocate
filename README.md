@@ -35,6 +35,21 @@ See [Forge Suite current source](forge-suite/current/), [acceptance status](forg
 Older Elias, Evidence Auditor, and GrimForge folders remain in the repository as development history.
 <!-- FORGE-SUITE-CURRENT:END -->
 
+## Featured Forge websites and plugins — October 6, 2026
+
+| Product | Companion website | ChatGPT plugin | Purpose |
+|---|---|---|---|
+| Grim Forge Commander V2 | [Website](https://grim-forge-commander.ajkivela369.chatgpt.site) | Existing private V2 installation | Private laptop orchestration for Forge, Blender, FFmpeg, Git, and project automation. |
+| GrimForge Cinema | [Website](https://grimforge-cinema.ajkivela369.chatgpt.site) | [Private plugin](https://chatgpt.com/plugins/plugins_6ac49641fa9c8191b0d87ee45606b7fd) | Original cinematic planning, continuity, local production readiness, rendering, narration, captions, and review. |
+| Elias | [Website](https://elias.ajkivela369.chatgpt.site) | [Private plugin](https://chatgpt.com/plugins/plugins_6ac49646640c8191b3114777a696751a) | General assistance, document questions, source-grounded reasoning, and clear next steps. |
+| Evidence Auditor | [Website](https://evidence-auditor.ajkivela369.chatgpt.site) | [Private plugin](https://chatgpt.com/plugins/plugins_6ac4964b0e248191b1bc2d7cc172a96c) | Source/page provenance, chronology, support, tensions, missing evidence, and reviewed packets. |
+
+The four companion websites are deployed with an owner-only audience at this snapshot. Their metadata, branded thumbnails, canonical URLs, structured data, robots files, and sitemaps are prepared for public sharing; private pages are not claimed to be publicly indexed. The three new app plugins are private workflow packages using the existing Grim Forge Commander connection. They do not expose a separate public app backend or an app-scoped security boundary.
+
+Local Elias is a general assistant. The hosted Elias evidence demo includes Evidence Auditor as its specialist workspace; the separate websites and plugins explain those roles without claiming identical local and hosted builds.
+
+See [the maintained association directory](portfolio/COMPANION_SITES.md), [plugin source](portfolio/plugins/), and [public-use/server readiness](portfolio/PUBLIC_READINESS.md).
+
 ## Featured app — Elias Evidence Auditor Pro
 
 **▶ Test the current production app:** https://elias-evidence-assistant-simscb.v2.appdeploy.ai/

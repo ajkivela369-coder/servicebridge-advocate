@@ -49,3 +49,17 @@ When an app is added or materially changed:
 - do not mark the app fully passed when an applicable real-engine, hardware, external-service, or human-review gate is still pending.
 
 Archived: **AJ Job Fisher** was retired from the active portfolio on 2026-10-05. Its source/history remain preserved in `portfolio/aj-job-fisher/`, but it is no longer included in active live-smoke or release claims.
+
+
+## October 6, 2026 — Commander, companion sites, and workflow plugins
+
+| Delivery | Verification | Remaining acceptance |
+|---|---|---|
+| GFC server 2.0.0 and branded plugin package 1.0.1 | Healthy server; 46 registered tools; 75 qualification checks; successful package upload shown in ChatGPT | Current native catalog remains 10 tools; refreshed discovery must be inspected in a fresh connection |
+| Four companion websites | Static HTML, assets, metadata, JSON, and JS checks; exact source pushes; private deployments succeeded | Browser visual/interaction review and public indexing pending; pages are owner-private |
+| Three private app plugins 1.0.0 | Workflow validation and a read-only GrimForge forward test; saved manifests, binding, release IDs, and asset inventory verified | Owner installation/fresh-chat skill loading and full app outputs not yet exercised |
+| Forge app connectivity | Read-only Core health/schema checks on target laptop | Multi-user isolation, paid-provider use, full renders, narration, and final media review remain separate |
+
+The workflow forward test identified GET routes with potential side effects. Default GrimForge preflight can configure a workflow and scene-assets/status can start configured ComfyUI. Plugin guidance uses health/schema for connectivity and production-mode preflight only within the appropriate authorized task. No real evidence corpus was needed to validate connectivity.
+
+The new Sites URLs are private and therefore are not added to the public HTTP smoke inventory at this snapshot. Add them and complete public smoke/visual checks when their audience becomes public. The private plugins reuse one GFC connection and do not grant separate app-scoped authorization.

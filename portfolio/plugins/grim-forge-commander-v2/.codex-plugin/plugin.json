@@ -1,0 +1,22 @@
+{
+  "apps": "./.app.json",
+  "author": {
+    "name": "App developer"
+  },
+  "description": "Private laptop control for Forge, Blender, FFmpeg, Git, and project automation.",
+  "interface": {
+    "capabilities": [],
+    "category": "Other",
+    "defaultPrompt": null,
+    "developerName": "App developer",
+    "displayName": "Grim Forge Commander V2",
+    "longDescription": "Private laptop control for Forge, Blender, FFmpeg, Git, and project automation.",
+    "shortDescription": "Private laptop control",
+    "websiteURL": "https://grim-forge-commander.ajkivela369.chatgpt.site",
+    "logo": "./assets/Grim_Forge_Commander_icon_256_4c.png",
+    "composerIcon": "./assets/Grim_Forge_Commander_icon_256_4c.png"
+  },
+  "name": "dev-6ac47daf74488191ab960941518c2e45",
+  "version": "1.0.1",
+  "homepage": "https://grim-forge-commander.ajkivela369.chatgpt.site"
+}

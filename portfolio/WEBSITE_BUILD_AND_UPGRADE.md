@@ -39,3 +39,13 @@ The website is a presentation layer. It must not upgrade a project from "impleme
 ## Reviewer path
 
 A reviewer should be able to move from the portfolio site → project → BUILD_AND_UPGRADE.md → source/tests → acceptance evidence without relying on private machine paths or private user data.
+
+## October 6, 2026 — Forge companion sites and private plugins
+
+Added separately branded GrimForge Cinema, Elias, and Evidence Auditor companion sites; updated the GFC website to feature the wider Forge portfolio. All four pages crosslink the related projects, public GitHub showcase, and employer-facing portfolio. The employer-facing Lovable site itself was not redeployed in this change.
+
+Reused the existing orange dragon, green Elias, and purple scales icons. Added page-specific titles/descriptions, canonical URLs, Open Graph/Twitter thumbnails, JSON-LD, robots files, and sitemaps. Interactive examples are fixed illustrations with clear labels. Each new page links its private ChatGPT plugin; each plugin links its own website.
+
+Static HTML/asset/fragment/metadata/JSON and JavaScript checks passed. Source was pushed through the Sites source workflow and each exact version deployed successfully with owner-only access. Saved plugin versions, website fields, logo/composer icons, binding, and asset inventory were read back. Actual fresh-chat installation and public indexing remain separate. Browser visual/interaction review was unavailable in the managed website environment, so this is not a browser-acceptance claim.
+
+The GitHub root/portfolio indexes, GFC history, association directory, public readiness plan, private plugin source, and QC inventory are updated together. Public informational access is pending an explicit audience change; the personal laptop connection remains private.
