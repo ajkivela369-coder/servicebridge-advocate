@@ -8,3 +8,9 @@
 6. Synced the current v0.5.6 Forge implementation and workflows into the portfolio source snapshot.
 7. Added regression tests, public deployment checks, and explicit privacy/source-control boundaries.
 8. Current boundary: AppDeploy is the authoritative production snapshot; the public repository must never contain real claimant records or private evidence.
+## 2026-10-05 — On-demand PDF runtime / startup performance
+
+- Moved PDF.js and its worker behind a shared on-demand loader so ordinary app startup no longer initializes document-rendering code.
+- Moved submission-PDF composition behind a dynamic import so jsPDF and its helper chunks load only when a packet is actually composed.
+- Preserved large-PDF ingestion, source-page rendering, Simple-mode PDF validation/preview, worker configuration, and the under-5-MB packet optimization workflow.
+- Verification: `npx tsc --noEmit` passed; `npm run build` passed. The main production JS chunk is now ~374 kB; PDF parsing and submission composition are separate lazy chunks (~365 kB and ~406 kB respectively, plus their dependency chunks).

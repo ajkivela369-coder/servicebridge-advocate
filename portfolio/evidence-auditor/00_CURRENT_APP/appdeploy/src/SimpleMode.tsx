@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { getDocument } from 'pdfjs-dist';
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist';
+import { loadPdfJs } from './pdfRuntime';
 import { Bot, CheckCircle2, CircleAlert, Cloud, Download, FileText, FolderOpen, LoaderCircle, LogOut, Paperclip, ShieldCheck, Sparkles, Trash2, WandSparkles, X } from 'lucide-react';
 
 type BenefitsProgram = 'VA / VBA' | 'Social Security (SSDI / SSI)' | 'New Hampshire' | 'Medical & Functional Evidence';
@@ -48,7 +49,7 @@ function PdfCanvasPreview({ blob, onValidation }: { blob: Blob; onValidation?: (
 
     useEffect(() => {
         let cancelled = false;
-        let loadingTask: ReturnType<typeof getDocument> | null = null;
+        let loadingTask: PDFDocumentLoadingTask | null = null;
 
         const render = async () => {
             setPages([]);
@@ -56,6 +57,7 @@ function PdfCanvasPreview({ blob, onValidation }: { blob: Blob; onValidation?: (
             setLoading(true);
             try {
                 const bytes = new Uint8Array(await blob.arrayBuffer());
+                const { getDocument } = await loadPdfJs();
                 loadingTask = getDocument({ data: bytes, isEvalSupported: false });
                 const pdf = await loadingTask.promise;
                 if (!pdf.numPages) throw new Error('The generated PDF contains no pages.');

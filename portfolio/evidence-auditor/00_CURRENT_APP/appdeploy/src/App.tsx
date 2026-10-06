@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, auth, image } from '@appdeploy/client';
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist';
 import { Archive, Bot, Brain, CircleAlert, CircleCheck, Cloud, Download, ExternalLink, FileImage, FileSearch, FileText, FolderOpen, Gauge, Globe2, Headphones, ImagePlus, LoaderCircle, LogIn, LogOut, Mail, MemoryStick, MessageSquarePlus, Mic2, Paperclip, PanelLeft, Play, PlugZap, Printer, Scale, Search, Send, ShieldCheck, Sparkles, Square, Trash2, Video, WandSparkles, X } from 'lucide-react';
-import { buildSubmissionPdf, type SubmissionBrief } from './submissionPdf';
+import type { SubmissionBrief } from './submissionPdf';
+import { loadPdfJs } from './pdfRuntime';
 import SimpleMode from './SimpleMode';
 import './simpleMode.css';
 
-GlobalWorkerOptions.workerSrc = pdfWorker;
 
 type User = { userId: string; email?: string; name?: string };
 type Memory = { enabled: boolean; caseLabel: string; goal: string; notes: string };
@@ -294,6 +293,7 @@ function App() {
         }
         const build = async () => {
             try {
+                const { buildSubmissionPdf } = await import('./submissionPdf');
                 let brief: SubmissionBrief = submissionBrief;
                 let optimizationNote = 'No derived visuals selected; no visual optimization was needed.';
                 if (selectedVisualPaths.length) {
@@ -459,9 +459,10 @@ function App() {
 
         updateUploadItem(uploadItemId, { stage: 'Reading', progress: 2, detail: 'Opening large PDF locally…' });
         setBusy(`Opening ${file.name} locally in large-PDF mode…`);
-        let loadingTask: ReturnType<typeof getDocument> | null = null;
+        let loadingTask: PDFDocumentLoadingTask | null = null;
         try {
             const bytes = new Uint8Array(await file.arrayBuffer());
+            const { getDocument } = await loadPdfJs();
             loadingTask = getDocument({ data: bytes, isEvalSupported: false });
             const pdf = await loadingTask.promise;
             const totalPages = pdf.numPages;
@@ -931,6 +932,7 @@ function App() {
         setBusy(`Rendering ${source.name} · page ${pageNumber}…`);
         setNotice('');
         try {
+            const { getDocument } = await loadPdfJs();
             const task = getDocument({ url: source.url, isEvalSupported: false });
             const pdf = await task.promise;
             const page = await pdf.getPage(pageNumber);
