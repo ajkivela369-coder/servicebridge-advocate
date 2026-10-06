@@ -60,7 +60,7 @@ const textContext = (docs: Array<DocumentRecord & { id: string }>, query = '') =
         };
         return score(b) - score(a);
     }) : docs;
-    return ranked.slice(0, 16).map((doc) => `SOURCE: ${doc.name}\n${doc.text.slice(0, 2600)}`).join('\n\n---\n\n').slice(0, 42000);
+    return ranked.slice(0, 16).map((doc) => `SOURCE: ${doc.name}\nAVAILABLE LOCATOR: ${vaultLocator(doc)}\n${doc.text.slice(0, 2600)}`).join('\n\n---\n\n').slice(0, 42000);
 };
 const thinkingMode = (speed: WorkMode) => speed === 'Quick' ? 'NONE' : speed === 'Deep' ? 'DEEP' : 'FAST';
 const outputTokens = (speed: WorkMode, base: number) => speed === 'Quick' ? Math.max(700, Math.round(base * 0.58)) : speed === 'Deep' ? Math.min(5200, Math.round(base * 1.35)) : base;
@@ -325,6 +325,43 @@ function vaultLocator(doc: DocumentRecord) {
     const match = doc.name.match(/__pages_(\d+)-(\d+)/i);
     if (match) return `Indexed source pages ${match[1]}-${match[2]}`;
     return `${Math.max(1, doc.pageCount)} indexed page${doc.pageCount === 1 ? '' : 's'}`;
+}
+
+type CitationAuditEntry = {
+    citation: string;
+    sourceId?: string;
+    source?: string;
+    locator?: string;
+    status: 'pinpoint' | 'broad' | 'invalid' | 'unresolved';
+    note: string;
+};
+
+function documentPageRange(doc: DocumentRecord) {
+    const chunk = doc.name.match(/__pages_(\d+)-(\d+)/i);
+    if (chunk) return { start: Number(chunk[1]), end: Number(chunk[2]) };
+    return { start: 1, end: Math.max(1, Number(doc.pageCount || 1)) };
+}
+
+function documentAliases(doc: DocumentRecord) {
+    const base = doc.name.replace(/__pages_\d+-\d+/i, '');
+    return Array.from(new Set([doc.name, base].filter(Boolean))).sort((a, b) => b.length - a.length);
+}
+
+function auditRecordCitation(value: unknown, docs: Array<DocumentRecord & { id: string }>): CitationAuditEntry {
+    const citation = String(value ?? '').trim();
+    const low = citation.toLowerCase();
+    const doc = docs.find((candidate) => documentAliases(candidate).some((alias) => low.includes(alias.toLowerCase())));
+    if (!doc) return { citation, status: 'unresolved', note: 'Citation does not resolve to an indexed claimant-record source.' };
+    const match = citation.match(/\b(?:pages?|p\.?)[\s:]*([0-9]+)(?:\s*(?:-|–|—|to)\s*([0-9]+))?/i);
+    if (!match) return { citation, sourceId: doc.id, source: doc.name, locator: vaultLocator(doc), status: 'broad', note: 'Source resolved, but no pinpoint page locator was supplied.' };
+    const start = Number(match[1]);
+    const end = Number(match[2] || match[1]);
+    const range = documentPageRange(doc);
+    const locator = start === end ? `Page ${start}` : `Pages ${start}-${end}`;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < range.start || end > range.end || end < start) {
+        return { citation, sourceId: doc.id, source: doc.name, locator, status: 'invalid', note: `Pinpoint locator falls outside available source pages ${range.start}-${range.end}.` };
+    }
+    return { citation, sourceId: doc.id, source: doc.name, locator, status: 'pinpoint', note: 'Resolved to an indexed source and valid pinpoint page range.' };
 }
 
 function evidenceCategory(doc: DocumentRecord): EvidenceCategory {
@@ -868,10 +905,11 @@ export const handler = router({
         const literature = await searchPubMed(program, issue);
         const authorityContext = scraped.map((source) => `AUTHORITY: ${source.label}\nKIND: ${source.kind}\nURL: ${source.url}\n${source.text.slice(0, 5000)}`).join('\n\n---\n\n').slice(0, 18000);
         const literatureContext = literature.map((source) => `${source.id}: ${source.citation}\nPUBMED: ${source.url}`).join('\n');
+        const sourceCatalog = docs.map((doc) => { const range = documentPageRange(doc); return `- ${doc.name} | available pages ${range.start}-${range.end}`; }).join('\n');
         try {
             const generated = await resilientGenerate({
                 system: `${ELIAS_PLAYBOOK}\nDraft an advocacy-focused disability-benefits submission brief, separate from the internal neutral audit. Present only favorable arguments actually supportable from the supplied record and cited authorities. Do not create a standalone weaknesses/adverse-evidence section, but never omit context needed for accuracy. For VA/VBA, build relevant duty-status chronology before nexus/aggravation analysis, distinguish direct/qualifying-duty/secondary/aggravation theories, treat missing LOD or diagnostic workup as a development gap rather than negative evidence unless an actual adverse finding says otherwise, reconcile favorable opinions, and analyze frequency/duration/recovery/attendance/pace/persistence/reliability. For SSA, use the five-step framework, MDI/severity/duration, Listings when raised, symptom evaluation, medical opinions, RFC by function, past work/other work, and sustained-work reliability; do not use service-connection framing. For New Hampshire, use the state standard and federal rules only where state authority incorporates them. Use literature only when tightly relevant to the selected public issue/mechanism.`, 
-                prompt: `PROGRAM: ${program}\nJURISDICTION: ${BENEFITS_JURISDICTION[program]}\nISSUE: ${issue}\nCASE LABEL: ${memory?.caseLabel ?? 'Evidence case'}\nADVOCACY GOAL: ${memory?.goal ?? ''}\n\nREQUIRED FILING STRUCTURE\nWhat Matters Now / Requested Action; Issues Presented; issue-specific evidence map; relevant chronology; Objective Findings; Favorable Evidence Map; Record-Grounded Medical & Legal Arguments; Functional Reliability / RFC or Work-Impact Table; Governing Authorities; only tightly relevant verified literature; Focused Questions / Next Development when appropriate; concise cited-source appendix; Requested Disposition. Every key proposition needs claimant-record support. Prefer pinpoint locators when the supplied source identity permits them.\n\nOFFICIAL LEGAL / PROGRAM AUTHORITIES\n${authorityContext || 'Live official text was not available; do not invent authority content.'}\n\nPUBMED LITERATURE METADATA\n${literatureContext || 'No PubMed results were available.'}\n\nCLAIMANT RECORD\n${textContext(docs, `${issue} ${memory?.goal ?? ''} strongest objective evidence functional impact treating opinion chronology`).slice(0, 30000)}\n\nBuild a concise filing-ready advocacy brief modeled on an evidence convergence/rebuttal packet. Use filenames in square brackets for claimant-record support. Legal citation names must match the supplied authority labels. Journal references must use only J1-J4 IDs supplied above. The requested action is advocacy language, not a prediction.`,
+                prompt: `PROGRAM: ${program}\nJURISDICTION: ${BENEFITS_JURISDICTION[program]}\nISSUE: ${issue}\nCASE LABEL: ${memory?.caseLabel ?? 'Evidence case'}\nADVOCACY GOAL: ${memory?.goal ?? ''}\n\nREQUIRED FILING STRUCTURE\nWhat Matters Now / Requested Action; Issues Presented; issue-specific evidence map; relevant chronology; Objective Findings; Favorable Evidence Map; Record-Grounded Medical & Legal Arguments; Functional Reliability / RFC or Work-Impact Table; Governing Authorities; only tightly relevant verified literature; Focused Questions / Next Development when appropriate; concise cited-source appendix; Requested Disposition. Every key proposition needs claimant-record support. CLAIMANT-RECORD CITATION CONTRACT: every sourceCitations entry must use an exact indexed filename and a pinpoint locator in exactly one of these forms: [EXACT FILE NAME | page N] or [EXACT FILE NAME | pages N-M]. Use only page numbers visible in the supplied PAGE markers and within the SOURCE CATALOG range. Never invent a page number, shorten a filename, or cite a source that is not in the catalog. If a material adverse statement conflicts with a favorable proposition, add a concise recordReconciliations item that states the conflict, the favorable evidence, the limiting context needed for accuracy, and pinpoint source citations; do not create a general weaknesses section.\n\nOFFICIAL LEGAL / PROGRAM AUTHORITIES\n${authorityContext || 'Live official text was not available; do not invent authority content.'}\n\nPUBMED LITERATURE METADATA\n${literatureContext || 'No PubMed results were available.'}\n\nSOURCE CATALOG\n${sourceCatalog}\n\nCLAIMANT RECORD\n${textContext(docs, `${issue} ${memory?.goal ?? ''} strongest objective evidence functional impact treating opinion chronology`).slice(0, 30000)}\n\nBuild a concise filing-ready advocacy brief modeled on an evidence convergence/rebuttal packet. Use filenames in square brackets for claimant-record support. Legal citation names must match the supplied authority labels. Journal references must use only J1-J4 IDs supplied above. The requested action is advocacy language, not a prediction.`,
                 schema: {
                     type: 'object',
                     properties: {
@@ -886,6 +924,7 @@ export const handler = router({
                         chronology: { type: 'array', items: { type: 'object', properties: { date: { type: 'string' }, event: { type: 'string' }, source: { type: 'string' }, significance: { type: 'string' } }, required: ['date', 'event', 'source', 'significance'] } },
                         objectiveFindings: { type: 'array', items: { type: 'string' } },
                         focusedQuestions: { type: 'array', items: { type: 'string' } },
+                        recordReconciliations: { type: 'array', items: { type: 'object', properties: { issue: { type: 'string' }, favorableEvidence: { type: 'string' }, limitingContext: { type: 'string' }, sourceCitations: { type: 'array', items: { type: 'string' } } }, required: ['issue', 'favorableEvidence', 'limitingContext', 'sourceCitations'] } },
                         requestedDisposition: { type: 'string' },
                     },
                     required: ['title', 'subtitle', 'requestedAction', 'executiveArgument', 'evidenceConvergence', 'arguments', 'functionalCase', 'medicalLiterature', 'requestedDisposition'],
@@ -904,28 +943,33 @@ export const handler = router({
             }).filter(Boolean);
             brief.legalAuthorities = scraped.map(({ label, url, kind, title }) => ({ label, url, kind, title }));
             const arguments = Array.isArray(brief.arguments) ? brief.arguments as Array<Record<string, unknown>> : [];
-            const citedNames = new Set<string>();
+            const convergence = Array.isArray(brief.evidenceConvergence) ? brief.evidenceConvergence as Array<Record<string, unknown>> : [];
+            const reconciliations = Array.isArray(brief.recordReconciliations) ? brief.recordReconciliations as Array<Record<string, unknown>> : [];
+            const citationValues: string[] = [];
             for (const argument of arguments) {
                 const citations = Array.isArray(argument.sourceCitations) ? argument.sourceCitations : [];
-                for (const citation of citations) {
-                    const value = String(citation);
-                    for (const doc of docs) if (value.includes(doc.name) || value.includes(`[${doc.name}]`)) citedNames.add(doc.name);
-                }
-                const support = String(argument.recordSupport ?? '');
-                for (const doc of docs) if (support.includes(doc.name) || support.includes(`[${doc.name}]`)) citedNames.add(doc.name);
+                for (const citation of citations) citationValues.push(String(citation));
             }
-            const convergence = Array.isArray(brief.evidenceConvergence) ? brief.evidenceConvergence as Array<Record<string, unknown>> : [];
-            for (const row of convergence) {
-                const source = String(row.source ?? '');
-                for (const doc of docs) if (source.includes(doc.name) || source.includes(`[${doc.name}]`)) citedNames.add(doc.name);
+            for (const row of convergence) if (String(row.source ?? '').trim()) citationValues.push(String(row.source));
+            for (const item of reconciliations) {
+                const citations = Array.isArray(item.sourceCitations) ? item.sourceCitations : [];
+                for (const citation of citations) citationValues.push(String(citation));
             }
+            const citationAudit = citationValues.map((citation) => auditRecordCitation(citation, docs));
             const seen = new Set<string>();
-            brief.sourceAppendix = docs.filter((doc) => citedNames.has(doc.name)).filter((doc) => {
-                const key = `${doc.name.toLowerCase()}|${vaultLocator(doc).toLowerCase()}`;
+            brief.sourceAppendix = citationAudit.filter((item) => item.sourceId && item.source).filter((item) => {
+                const key = `${item.sourceId}|${String(item.locator || '').toLowerCase()}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
-            }).slice(0, 70).map((doc) => ({ sourceId: doc.id, name: doc.name, locator: vaultLocator(doc), use: doc.sourceMode === 'web' || doc.sourceMode === 'search' ? 'Cited reference/research source' : 'Cited claimant-record evidence' }));
+            }).slice(0, 70).map((item) => ({ sourceId: item.sourceId, name: item.source!, locator: item.locator || 'Locator not supplied', use: item.status === 'pinpoint' ? 'Pinpoint-cited claimant-record evidence' : 'Cited claimant-record evidence requiring locator review' }));
+            brief.citationAudit = {
+                total: citationAudit.length,
+                pinpoint: citationAudit.filter((item) => item.status === 'pinpoint').length,
+                broad: citationAudit.filter((item) => item.status === 'broad').length,
+                invalid: citationAudit.filter((item) => item.status === 'invalid').map((item) => `${item.citation}: ${item.note}`),
+                unresolved: citationAudit.filter((item) => item.status === 'unresolved').map((item) => `${item.citation}: ${item.note}`),
+            };
             const blockers: string[] = [];
             const warnings: string[] = [];
             if (!scraped.length) blockers.push('Governing authorities are empty or unavailable.');
@@ -933,6 +977,10 @@ export const handler = router({
             if (arguments.some((argument) => !String(argument.recordSupport ?? '').trim() || !(Array.isArray(argument.sourceCitations) && argument.sourceCitations.length))) blockers.push('One or more key propositions lack claimant-record citation support.');
             if (!String(brief.requestedDisposition ?? '').trim()) blockers.push('Requested disposition is empty.');
             if ((brief.sourceAppendix as Array<unknown>).length === 0) blockers.push('No cited claimant-record sources could be resolved into the source appendix.');
+            if (citationAudit.some((item) => item.status === 'unresolved')) blockers.push('One or more claimant-record citations do not resolve to an indexed source.');
+            if (citationAudit.some((item) => item.status === 'invalid')) blockers.push('One or more claimant-record citations use page locators outside the available indexed page range.');
+            if (citationAudit.some((item) => item.status === 'broad')) blockers.push('One or more claimant-record citations lack a pinpoint page locator.');
+            if (citationAudit.length && !citationAudit.some((item) => item.status === 'pinpoint')) blockers.push('No valid pinpoint claimant-record citation was verified.');
             if ((brief.sourceAppendix as Array<{ locator: string }>).some((source) => /indexed source pages? \d+-\d+|indexed pages?/i.test(source.locator) && !/pages? \d+-\d+/i.test(source.locator))) warnings.push('One or more source locators are broad; verify pinpoint page/section locators before filing.');
             if (requestedLiterature.length > 0 && (brief.medicalLiterature as Array<unknown>).length === 0) warnings.push('Requested literature was excluded because it could not be verified against returned PubMed metadata.');
             const status = blockers.length ? 'Needs Review' : warnings.length ? 'Needs Review' : 'Ready to Submit';

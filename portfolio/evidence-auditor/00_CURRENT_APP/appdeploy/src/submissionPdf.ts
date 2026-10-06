@@ -7,15 +7,17 @@ export type SubmissionEvidence = { evidence: string; establishes: string; whyItM
 export type SubmissionArgument = { heading: string; proposition: string; recordSupport: string; medicalReasoning: string; legalReasoning: string; sourceCitations: string[]; authorityCitations: string[] };
 export type SubmissionSource = { sourceId?: string; name: string; locator: string; use: string };
 export type SubmissionPreflight = { status: 'Draft' | 'Needs Review' | 'Ready to Submit'; blockers: string[]; warnings: string[] };
+export type SubmissionCitationAudit = { total: number; pinpoint: number; broad: number; invalid: string[]; unresolved: string[] };
+export type SubmissionReconciliation = { issue: string; favorableEvidence: string; limitingContext: string; sourceCitations: string[] };
 export type SubmissionVisual = { data: string; mimeType: string; title: string; label: string; kind?: string; sources?: Array<{ name: string; locator: string }> };
-export type SubmissionBrief = { title: string; subtitle: string; requestedAction: string; executiveArgument: string; evidenceConvergence: SubmissionEvidence[]; arguments: SubmissionArgument[]; functionalCase: string[]; chronology?: Array<{ date: string; event: string; source: string; significance: string }>; objectiveFindings?: string[]; focusedQuestions?: string[]; medicalLiterature: SubmissionLiterature[]; requestedDisposition: string; legalAuthorities: SubmissionAuthority[]; sourceAppendix: SubmissionSource[]; visuals?: SubmissionVisual[]; preflight?: SubmissionPreflight; verificationNote: string };
+export type SubmissionBrief = { title: string; subtitle: string; requestedAction: string; executiveArgument: string; evidenceConvergence: SubmissionEvidence[]; arguments: SubmissionArgument[]; functionalCase: string[]; chronology?: Array<{ date: string; event: string; source: string; significance: string }>; objectiveFindings?: string[]; focusedQuestions?: string[]; recordReconciliations?: SubmissionReconciliation[]; medicalLiterature: SubmissionLiterature[]; requestedDisposition: string; legalAuthorities: SubmissionAuthority[]; sourceAppendix: SubmissionSource[]; visuals?: SubmissionVisual[]; preflight?: SubmissionPreflight; citationAudit?: SubmissionCitationAudit; verificationNote: string; demo?: boolean };
 
 type PdfWithTable = jsPDF & { lastAutoTable?: { finalY: number } };
 const clean = (value: string) => String(value ?? '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
 const safeFile = (value: string) => clean(value || 'Evidence_Case').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 70) || 'Evidence_Case';
 
 export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence Case') {
-    const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' });
+    const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait', compress: true });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const left = 48;
@@ -88,7 +90,12 @@ export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence
 
     callout('What Matters Now / Requested Action', brief.requestedAction);
     if (brief.preflight) {
-        callout(`Submission preflight · ${brief.preflight.status}`, [...brief.preflight.blockers.map((item) => `BLOCKER: ${item}`), ...brief.preflight.warnings.map((item) => `WARNING: ${item}`)].join(' ') || 'No blocking preflight findings.');
+        callout(`Submission preflight  |  ${brief.preflight.status}`, [...brief.preflight.blockers.map((item) => `BLOCKER: ${item}`), ...brief.preflight.warnings.map((item) => `WARNING: ${item}`)].join(' ') || 'No blocking preflight findings.');
+    }
+    if (brief.citationAudit) {
+        const audit = brief.citationAudit;
+        const problems = [...(audit.invalid || []), ...(audit.unresolved || [])];
+        callout('Citation integrity', `${audit.pinpoint} of ${audit.total} claimant-record citation${audit.total === 1 ? '' : 's'} verified with pinpoint pages${audit.broad ? `; ${audit.broad} broad citation${audit.broad === 1 ? '' : 's'} still need page locators` : ''}${problems.length ? `; ${problems.length} unresolved/invalid citation${problems.length === 1 ? '' : 's'} require correction` : ''}.`);
     }
     section('Executive Argument');
     paragraph(brief.executiveArgument, 10.5, 10);
@@ -99,16 +106,17 @@ export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence
         margin: { left, right },
         head: [['Evidence', 'What it establishes', 'Why it matters', 'Source']],
         body: (brief.evidenceConvergence || []).map((row) => [clean(row.evidence), clean(row.establishes), clean(row.whyItMatters), clean(row.source)]),
-        styles: { font: 'helvetica', fontSize: 7.4, cellPadding: 5, overflow: 'linebreak', valign: 'top' },
+        tableWidth: contentWidth,
+        styles: { font: 'helvetica', fontSize: 7.4, cellPadding: 5, overflow: 'linebreak', valign: 'top', minCellWidth: 0 },
         headStyles: { fillColor: navy, textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: pale },
-        columnStyles: { 0: { cellWidth: 92 }, 1: { cellWidth: 145 }, 2: { cellWidth: 145 }, 3: { cellWidth: 105 } },
+        columnStyles: { 0: { cellWidth: 92 }, 1: { cellWidth: 154 }, 2: { cellWidth: 154 }, 3: { cellWidth: 116 } },
     });
     y = ((doc as PdfWithTable).lastAutoTable?.finalY ?? y) + 22;
 
     if ((brief.chronology || []).length) {
         section('Chronology');
-        (brief.chronology || []).forEach((item) => paragraph(`${item.date} — ${item.event} [${item.source}] ${item.significance}`, 9, 5));
+        (brief.chronology || []).forEach((item) => { const source = clean(item.source); const cited = source.startsWith('[') ? source : `[${source}]`; paragraph(`${item.date} - ${item.event} ${cited} ${item.significance}`, 9, 5); });
     }
     if ((brief.objectiveFindings || []).length) {
         section('Objective Findings');
@@ -123,31 +131,44 @@ export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence
         doc.text(`${index + 1}. ${clean(argument.heading)}`, left, y);
         y += 17;
         paragraph(argument.proposition, 10, 5, 'bold');
-        callout('Primary record support', `${argument.recordSupport} ${(argument.sourceCitations || []).join(' · ')}`);
+        callout('Primary record support', `${argument.recordSupport} ${(argument.sourceCitations || []).join('  |  ')}`);
         if (clean(argument.medicalReasoning)) callout('Medical reasoning', argument.medicalReasoning);
-        if (clean(argument.legalReasoning)) callout('Legal / regulatory reasoning', `${argument.legalReasoning} ${(argument.authorityCitations || []).join(' · ')}`);
+        if (clean(argument.legalReasoning)) callout('Legal / regulatory reasoning', `${argument.legalReasoning} ${(argument.authorityCitations || []).join('  |  ')}`);
         y += 4;
     });
+
+    if ((brief.recordReconciliations || []).length) {
+        section('Record Reconciliation Notes');
+        paragraph('These notes are limited to conflicts or limiting context that materially affect the favorable arguments above. This is not a general weakness inventory.', 8.5, 9, 'bold');
+        (brief.recordReconciliations || []).forEach((item, index) => {
+            newPageIfNeeded(72);
+            paragraph(`${index + 1}. ${item.issue}`, 9.5, 4, 'bold');
+            callout('Favorable evidence', `${item.favorableEvidence} ${(item.sourceCitations || []).join(' | ')}`);
+            paragraph(`Context needed for accuracy: ${item.limitingContext}`, 8.8, 7);
+        });
+    }
 
     if ((brief.functionalCase || []).length) {
         section('Functional Case');
         (brief.functionalCase || []).forEach((item, index) => paragraph(`${index + 1}. ${item}`, 9.5, 5));
     }
 
-    section('Legal & Program Authorities');
-    (brief.legalAuthorities || []).forEach((authority, index) => {
-        newPageIfNeeded(34);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.setTextColor(35, 48, 61);
-        doc.text(`${index + 1}. ${clean(authority.label)}`, left, y);
-        y += 12;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(...teal);
-        doc.textWithLink(clean(authority.url), left + 10, y, { url: authority.url });
-        y += 16;
-    });
+    if ((brief.legalAuthorities || []).length) {
+        section('Legal & Program Authorities');
+        (brief.legalAuthorities || []).forEach((authority, index) => {
+            newPageIfNeeded(34);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(35, 48, 61);
+            doc.text(`${index + 1}. ${clean(authority.label)}`, left, y);
+            y += 12;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...teal);
+            doc.textWithLink(clean(authority.url), left + 10, y, { url: authority.url });
+            y += 16;
+        });
+    }
 
     if ((brief.medicalLiterature || []).length) {
         section('Peer-Reviewed Medical Literature');
@@ -179,7 +200,7 @@ export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence
             doc.setTextColor(128, 221, 226);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(8);
-            doc.text('DERIVED VISUAL · ORIGINAL RECORD CONTROLS', left, 28);
+            doc.text('DERIVED VISUAL  |  ORIGINAL RECORD CONTROLS', left, 28);
             doc.setTextColor(255, 255, 255);
             doc.setFont('times', 'bold');
             doc.setFontSize(18);
@@ -202,7 +223,7 @@ export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence
                 callout('Visual unavailable', 'The selected derived visual could not be embedded in this PDF. Review the source/provenance record before filing.');
             }
             callout('Derived visual status', visual.label || 'Derived explanatory visual. Original record controls.');
-            if ((visual.sources || []).length) paragraph(`Supporting sources: ${(visual.sources || []).map((source) => `${source.name} — ${source.locator}`).join(' · ')}`, 8.2, 6);
+            if ((visual.sources || []).length) paragraph(`Supporting sources: ${(visual.sources || []).map((source) => `${source.name} - ${source.locator}`).join('  |  ')}`, 8.2, 6);
         });
     }
 
@@ -216,10 +237,11 @@ export function buildSubmissionPdf(brief: SubmissionBrief, caseLabel = 'Evidence
         margin: { left, right },
         head: [['ID', 'Source file', 'Locator', 'Use']],
         body: (brief.sourceAppendix || []).map((source, index) => [clean(source.sourceId || String(index + 1).padStart(2, '0')), clean(source.name), clean(source.locator), clean(source.use)]),
-        styles: { font: 'helvetica', fontSize: 7.4, cellPadding: 5, overflow: 'linebreak', valign: 'top' },
+        tableWidth: contentWidth,
+        styles: { font: 'helvetica', fontSize: 7.4, cellPadding: 5, overflow: 'linebreak', valign: 'top', minCellWidth: 0 },
         headStyles: { fillColor: navy, textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: pale },
-        columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 210 }, 2: { cellWidth: 105 }, 3: { cellWidth: 140 } },
+        columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 220 }, 2: { cellWidth: 110 }, 3: { cellWidth: 156 } },
     });
     y = ((doc as PdfWithTable).lastAutoTable?.finalY ?? y) + 22;
 

@@ -14,3 +14,15 @@
 - Moved submission-PDF composition behind a dynamic import so jsPDF and its helper chunks load only when a packet is actually composed.
 - Preserved large-PDF ingestion, source-page rendering, Simple-mode PDF validation/preview, worker configuration, and the under-5-MB packet optimization workflow.
 - Verification: `npx tsc --noEmit` passed; `npm run build` passed. The main production JS chunk is now ~374 kB; PDF parsing and submission composition are separate lazy chunks (~365 kB and ~406 kB respectively, plus their dependency chunks).
+
+## 2026-10-05 — Pinpoint citation integrity + synthetic filing demo
+
+- Upgraded claimant-record citations to a machine-checkable contract: `[EXACT FILE NAME | page N]` or `[EXACT FILE NAME | pages N-M]`.
+- Added backend citation auditing that resolves each citation to an indexed source, validates page numbers against the available source/page range, and blocks `Ready to Submit` when citations are unresolved, out of range, or lack pinpoint pages.
+- The cited-source appendix is now derived from actual filing citations instead of broad source-name matches, with pinpoint locators retained.
+- Added focused record-reconciliation notes for material conflicts/limiting context without turning the advocacy filing into a generic weaknesses section.
+- Added a visible Citation Integrity summary to the PDF and enabled jsPDF compression.
+- Added a fully fictional, public-safe synthetic evidence case that can be loaded from Packet Studio without uploading private records.
+- Cleaned PDF-facing legacy glyph/separator issues, removed empty authorities sections, fixed chronology citation wrapping, and matched AutoTable column geometry to the printable Letter-page width.
+- Export acceptance: synthetic packet generated with the real PDF builder at 3 pages / ~9.3 KB; 3/3 pages rendered successfully; 0 replacement glyphs; 0 double-wrapped citations; human visual review found no clipping/overlap/black glyphs.
+- Verification: `npx tsc --noEmit` passed and `npm run build` passed with PDF.js and submission composition still retained as lazy chunks.

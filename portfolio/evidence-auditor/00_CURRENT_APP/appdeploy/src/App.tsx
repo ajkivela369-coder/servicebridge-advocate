@@ -3,6 +3,7 @@ import { api, auth, image } from '@appdeploy/client';
 import type { PDFDocumentLoadingTask } from 'pdfjs-dist';
 import { Archive, Bot, Brain, CircleAlert, CircleCheck, Cloud, Download, ExternalLink, FileImage, FileSearch, FileText, FolderOpen, Gauge, Globe2, Headphones, ImagePlus, LoaderCircle, LogIn, LogOut, Mail, MemoryStick, MessageSquarePlus, Mic2, Paperclip, PanelLeft, Play, PlugZap, Printer, Scale, Search, Send, ShieldCheck, Sparkles, Square, Trash2, Video, WandSparkles, X } from 'lucide-react';
 import type { SubmissionBrief } from './submissionPdf';
+import { syntheticSubmissionDemo } from './syntheticDemo';
 import { loadPdfJs } from './pdfRuntime';
 import SimpleMode from './SimpleMode';
 import './simpleMode.css';
@@ -312,12 +313,12 @@ function App() {
                     };
                     let visuals = await Promise.all(rawVisuals.map((visual) => prepare(visual, false)));
                     brief = { ...submissionBrief, visuals };
-                    let candidate = buildSubmissionPdf(brief, memory.caseLabel || 'Evidence_Case');
+                    let candidate = buildSubmissionPdf(brief, brief.demo ? 'Elias_Synthetic_Demo' : memory.caseLabel || 'Evidence_Case');
                     optimizationNote = `${visuals.length} derived visual${visuals.length === 1 ? '' : 's'} optimized for the packet; stored originals/derived assets were not modified.`;
                     if (candidate.blob.size > 5 * 1024 * 1024 && visuals.length) {
                         visuals = await Promise.all(rawVisuals.map((visual) => prepare(visual, true)));
                         brief = { ...submissionBrief, visuals };
-                        candidate = buildSubmissionPdf(brief, memory.caseLabel || 'Evidence_Case');
+                        candidate = buildSubmissionPdf(brief, brief.demo ? 'Elias_Synthetic_Demo' : memory.caseLabel || 'Evidence_Case');
                         optimizationNote = `The first visual packet exceeded 5 MB, so packet-only image copies were reduced more aggressively. Stored originals/derived assets were not modified. Final exact size: ${(candidate.blob.size / (1024 * 1024)).toFixed(2)} MB.`;
                     }
                     if (cancelled) return;
@@ -328,7 +329,7 @@ function App() {
                     setPdfOptimizationNote(optimizationNote);
                     return;
                 }
-                const built = buildSubmissionPdf(brief, memory.caseLabel || 'Evidence_Case');
+                const built = buildSubmissionPdf(brief, brief.demo ? 'Elias_Synthetic_Demo' : memory.caseLabel || 'Evidence_Case');
                 if (cancelled) return;
                 objectUrl = URL.createObjectURL(built.blob);
                 setSubmissionPreviewBlob(built.blob);
@@ -855,6 +856,12 @@ function App() {
             setNotice(errorMessage(err, 'Full case package creation failed. Your indexed sources remain intact.'));
         } finally { setBusy(''); }
     }; 
+
+    const loadSyntheticSubmissionDemo = () => {
+        setSelectedVisualPaths([]);
+        setSubmissionBrief(syntheticSubmissionDemo);
+        setNotice('Synthetic public demo loaded. Every source, page, finding, and reconciliation note is fictional and safe to show in a portfolio walkthrough.');
+    };
 
     const createSubmissionBrief = async () => {
         if (!documents.length || busy || copilotBusy) return;
@@ -1431,7 +1438,7 @@ function App() {
             {view === 'packet' && <section className='workspace'>
                 <div className='page-head nonprint'><div><p className='eyebrow'>Upload → audit → package</p><h1>Packet Studio</h1><p>One click can audit the loaded evidence, compare the selected benefits framework with live official sources, and build a visual PDF-ready case package.</p></div><div className='packet-head-actions'><button className='secondary' disabled={copilotBusy || !!busy} onClick={() => void runCopilot(quickEliasActions[5].prompt, 'Packet Assurance')}><ShieldCheck size={17} /> Preflight</button><button className='primary one-click-create' disabled={!!busy || copilotBusy || !documents.length} onClick={() => void oneClickPacket()}><Sparkles size={17} /> Build Full Case Package</button><button className='primary' onClick={() => void generatePacket()}><WandSparkles size={17} /> Packet only · {workMode}</button></div></div>
                 <div className='package-focus nonprint'><div><strong>Package focus</strong><small>Choose the program Elias should cross-check against the record.</small></div><label>Program<select value={benefitsProgram} onChange={(e) => { const next = e.target.value as BenefitsProgram; setBenefitsProgram(next); setLawIssue(benefitsIssueOptions[next][0]); setLawLens(null); }}><option>VA / VBA</option><option>Social Security (SSDI / SSI)</option><option>New Hampshire</option><option>Medical & Functional Evidence</option></select></label><label>Issue<select value={lawIssue} onChange={(e) => { setLawIssue(e.target.value); setLawLens(null); }}>{benefitsIssueOptions[benefitsProgram].map((issue) => <option key={issue}>{issue}</option>)}</select></label><span className='web-ready'><Globe2 size={12} /> Official-source web crosswalk included · broader live search {integrations.webSearch ? 'connected' : 'optional'}</span></div>
-                <section className='submission-panel nonprint'><div><span className='result-kicker'>AGENCY FILING OUTPUT</span><h2>Submission Advocacy PDF</h2><p>A separate claimant-side filing brief modeled on an evidence-convergence/rebuttal packet. It includes only supportable favorable evidence and advocacy arguments—no standalone weaknesses section—while preserving source accuracy and necessary limiting context.</p></div><div className='submission-actions'><button className='primary' disabled={!documents.length || !!busy} onClick={() => void createSubmissionBrief()}><FileText size={16} /> Create Submission Brief</button><button className='secondary' disabled={!submissionPreviewBlob || !!busy} onClick={downloadSubmissionBrief}><Download size={16} /> Download exact PDF</button><button className='secondary' disabled={!submissionPreviewBlob || !!busy} onClick={() => void saveSubmissionToVault()}><Cloud size={16} /> Save exact PDF to Vault</button></div></section>
+                <section className='submission-panel nonprint'><div><span className='result-kicker'>AGENCY FILING OUTPUT</span><h2>Submission Advocacy PDF</h2><p>A separate claimant-side filing brief modeled on an evidence-convergence/rebuttal packet. It includes only supportable favorable evidence and advocacy arguments—no standalone weaknesses section—while preserving source accuracy and necessary limiting context.</p></div><div className='submission-actions'><button className='primary' disabled={!documents.length || !!busy} onClick={() => void createSubmissionBrief()}><FileText size={16} /> Create Submission Brief</button><button className='secondary' disabled={!!busy} onClick={loadSyntheticSubmissionDemo}><Sparkles size={16} /> Load synthetic demo</button><button className='secondary' disabled={!submissionPreviewBlob || !!busy} onClick={downloadSubmissionBrief}><Download size={16} /> Download exact PDF</button><button className='secondary' disabled={!submissionPreviewBlob || !!busy} onClick={() => void saveSubmissionToVault()}><Cloud size={16} /> Save exact PDF to Vault</button></div></section>
                 <section className='vault-panel nonprint'>
                     <div className='vault-head'><div><span className='result-kicker'>VISUAL PACKET COMPOSER</span><h2>Derived Visual Library</h2><p>Select approved page captures and illustrations to add as polished, dedicated visual-evidence pages in the exact submission PDF. The combined PDF is what Simple Mode previews and size-checks.</p></div><ImagePlus size={26} /></div>
                     {derivedVisuals.length ? <><div className='vault-actions'><button className='secondary' onClick={() => setSelectedVisualPaths(derivedVisuals.slice(0, 6).map((visual) => visual.path))}>Select up to 6</button><button className='secondary' onClick={() => setSelectedVisualPaths([])}>Clear visuals</button><span className='vault-note'>{selectedVisualPaths.length} selected</span></div><div className='packet-evidence-grid'>{derivedVisuals.map((visual) => <label className='packet-evidence-card' key={visual.path}><input type='checkbox' checked={selectedVisualPaths.includes(visual.path)} onChange={() => setSelectedVisualPaths((current) => current.includes(visual.path) ? current.filter((path) => path !== visual.path) : current.length < 6 ? [...current, visual.path] : current)} /><img src={visual.url} alt={visual.metadata.title || visual.name} /><span>{visual.metadata.kind || 'DERIVED VISUAL'}</span><strong>{visual.metadata.title || visual.name}</strong><small>{visual.metadata.label || 'Derived visual. Original record controls.'}</small></label>)}</div></> : <div className='empty-panel'>No derived visuals yet. Use Source Page Lab or Illustration Lab in Evidence Cloud, then return here.</div>}
