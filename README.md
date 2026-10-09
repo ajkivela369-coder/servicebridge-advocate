@@ -20,7 +20,11 @@
 | CiteGuard | [Open](https://aj-forge-portfolio.vercel.app/apps/citeguard/) |
 | GrimForge War Theater | [Open](https://aj-forge-portfolio.vercel.app/apps/grimforge/) |
 
-Forge manages the source, checks, Git snapshots, GitHub sync, and deployment. Public HTTPS uses Forge Builder's existing Vercel adapter. **Forge is primary; Floot is the fallback.** SearchSignal has a published [Floot backup](https://forgesearcher.floot.app/); the other six demos currently use Forge. The private local evidence API is separate from public demos. Evaluation scores are transparent rules or human judgments; the GrimForge public demo produces a playable storyboard and planning exports.
+Forge manages the source, checks, Git snapshots, GitHub sync, and deployment. Public HTTPS uses Forge Builder's existing Vercel adapter. **Forge is primary; Floot is a backup only when the required operation works without credits.** SearchSignal has a published [Floot backup](https://forgesearcher.floot.app/); the other six demos currently use Forge. The private local evidence API is separate from public demos. Evaluation scores are transparent rules or human judgments; the GrimForge public demo produces a playable storyboard and planning exports.
+
+**Standing no-credit rule:** use our own apps, tools, and servers first, and build missing capabilities ourselves. Do not depend on credit-based apps, including free or trial credit balances, or purchase credits or paid plans.
+
+The four evaluation apps provide live Europe PMC research and Elias workspace actions. Their transparent signals and imported abstracts support human review; a generative model is not connected.
 
 ## Portfolio highlights
 
