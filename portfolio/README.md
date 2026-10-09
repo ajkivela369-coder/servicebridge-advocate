@@ -4,6 +4,10 @@ A growing collection of compact, auditable AI applications spanning neuroscience
 
 ## Current Forge-managed live portfolio — October 9, 2026
 
+All seven Forge-managed demos now provide Simple/Pro modes and floating Elias usage help. SearchSignal starts with a public URL and keeps specialist tools in Pro. The public usage guide answers built-in workflow questions; no live AI model is connected to it.
+
+Validation: typecheck, production build, source-linked evidence/PDF and episode-timing checks, and all 12 evaluation regression tests passed. Seven public app routes and deployed mode/help assets were verified. Full visual/browser acceptance remains pending after automatic approval review reached the session usage limit.
+
 [Open all seven demos](https://aj-forge-portfolio.vercel.app/#projects). Forge is the primary deployment workflow; public HTTPS uses its existing Vercel adapter. SearchSignal has a published [Floot backup](https://forgesearcher.floot.app/). The other six demos currently use Forge.
 
 | App | Current live demo |
