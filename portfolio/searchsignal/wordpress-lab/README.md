@@ -1,6 +1,6 @@
-# SearchSignal WordPress Multisite Lab
+﻿# SearchSignal WordPress Multisite Lab
 
-This is a **real WordPress Multisite training environment** powered by the official WordPress Playground. It is intentionally separate from Dartmouth/Geisel production systems.
+This is a **real WordPress Multisite training environment** powered by the official WordPress Playground. It is intentionally separate from any outside organization's production systems.
 
 ## Launch
 

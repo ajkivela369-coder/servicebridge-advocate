@@ -1,5 +1,5 @@
 # WordPress lab acceptance — September 30, 2026
-Independent training environments; no Dartmouth production administration claim.
+Independent training environments; no production administration claim for any outside organization.
 
 ## Local Apache/PHP/MariaDB lab
 - Earlier automated run: 24/24 read-only checks passed; see evidence/local-multisite-acceptance.json.

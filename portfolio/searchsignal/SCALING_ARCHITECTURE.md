@@ -40,6 +40,6 @@ The public demo intentionally caps synchronous crawling. A 20,000-page / 15,000-
 
 The hosted SearchSignal app proves the crawler, sitemap/robots logic, document audit, link graph, duplicate detection, context-aware GEO, imports, and remediation workflows on bounded samples.
 
-The **20K + 15K Scale Lab** exercises large-record triage locally in the browser using synthetic records. It is not presented as evidence that 35,000 Dartmouth resources were crawled.
+The **20K + 15K Scale Lab** exercises large-record triage locally in the browser using synthetic records. It is not presented as evidence that 35,000 real institutional resources were crawled.
 
 This distinction is intentional: scale architecture and operational restraint are part of the demonstration.

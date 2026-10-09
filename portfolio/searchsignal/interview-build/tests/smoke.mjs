@@ -43,17 +43,17 @@ test('health endpoint reports SearchSignal ready', async () => {
   assert.equal(data.service, 'SearchSignal');
 });
 
-test('interview workflow and priority engine ship in the client', async () => {
+test('case-study workflow and priority engine ship in the client', async () => {
   const r = await fetch(`${base}/app.js`);
   const js = await r.text();
   assert.equal(r.status, 200);
-  assert.match(js, /Geisel Interview Mode/);
+  assert.match(js, /Case Studies/);
   assert.match(js, /Site Intelligence/);
   assert.match(js, /Demand \/ capacity pressure/);
   assert.match(js, /Run live public-page audit/);
   assert.match(js, /Run bounded site scan/);
-  assert.match(js, /Geisel homepage fix pack/);
-  assert.match(js, /Download fix pack/);
+  assert.match(js, /Sample remediation pack/);
+  assert.match(js, /Download sample pack/);
 });
 
 test('private network audit targets are blocked', async () => {
@@ -135,7 +135,7 @@ test('prioritization runs server-side', async () => {
 test('recommendation generation runs server-side', async () => {
   const r = await fetch(`${base}/api/recommendations`, {
     method: 'POST', headers: {'content-type':'application/json'},
-    body: JSON.stringify({text:'Geisel School of Medicine at Dartmouth offers medical and health sciences education.'})
+    body: JSON.stringify({text:'Example organization offers public programs, research, services, and educational resources.'})
   });
   assert.equal(r.status, 200);
   const data = await r.json();

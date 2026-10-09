@@ -1,8 +1,8 @@
-const state={lastAudit:null,lastSiteScan:null,caseStudyUrl:'https://geiselmed.dartmouth.edu/',changeLab:null,scaleRun:null};
+const state={lastAudit:null,lastSiteScan:null,caseStudyUrl:'https://aj-kivela-portfolio.lovable.app/',changeLab:null,scaleRun:null};
 
 const pages=[
   ['dashboard','Dashboard'],
-  ['interview','Geisel Interview Mode'],
+  ['interview','Case Studies'],
   ['auditor','Live URL Auditor'],
   ['changelab','Change Lab'],
   ['site','Site Intelligence'],
@@ -17,7 +17,7 @@ const pages=[
   ['wordpress','WordPress Support'],
   ['training','Training Center'],
   ['lab','Technical Lab'],
-  ['coverage','Requirements Coverage']
+  ['coverage','Capabilities Coverage']
 ];
 
 const nav=document.getElementById('nav');
@@ -67,38 +67,38 @@ function dashboard(){
       kpi('Schema coverage','63%','priority pages','kpi-layers.png')+
     '</div>'+
     '<div class="grid two section" style="margin-top:16px">'+
-      '<div class="card"><h2>Priority roadmap</h2><table><tr><th>Subsite</th><th>Finding</th><th>Phase</th><th>Owner</th></tr>'+
-      '<tr><td>Admissions</td><td>Duplicate program titles + weak canonicals</td><td>Now</td><td>Web</td></tr>'+
-      '<tr><td>Research</td><td>Faculty pages missing Person schema</td><td>Now</td><td>Comms</td></tr>'+
-      '<tr><td>Student Affairs</td><td>Thin landing pages / weak internal links</td><td>Next</td><td>Dept.</td></tr>'+
+      '<div class="card"><h2>Priority roadmap</h2><table><tr><th>Area</th><th>Finding</th><th>Phase</th><th>Owner</th></tr>'+
+      '<tr><td>Primary site</td><td>Duplicate service titles + weak canonicals</td><td>Now</td><td>Web</td></tr>'+
+      '<tr><td>Knowledge hub</td><td>Entity pages missing supported schema</td><td>Now</td><td>Comms</td></tr>'+
+      '<tr><td>Resource center</td><td>Thin landing pages / weak internal links</td><td>Next</td><td>Dept.</td></tr>'+
       '<tr><td>News</td><td>Article author/date markup inconsistent</td><td>Later</td><td>Editors</td></tr></table></div>'+
       '<div class="card"><h2>Operating model</h2><p><b>Reactive:</b> WordPress support, broken links, redirects, publishing help.</p><p><b>Proactive:</b> technical audits, GEO improvements, schema, internal linking, reporting.</p><div class="callout">Every score is explainable. Recommendations are tied to observable evidence or clearly labeled demo data.</div></div>'+
     '</div>';
 }
 
 function interview(){
-  setTitle('Geisel Interview Mode','A five-minute public-data case study: inspect → prioritize → support → measure.');
+  setTitle('Case Study · Institutional Web Operations','An employer-neutral public-data case study: inspect → prioritize → support → measure.');
   const d=state.lastAudit;
   const auditState=d?status('work','Live audit completed'):status('ready','Ready to run');
   const auditDetail=d
     ? '<b>'+esc(d.title||'Audited page')+'</b><div class="muted mini">SEO '+d.scores.seo+'/100 · GEO '+d.scores.geo+'/100 · '+d.findings.length+' findings</div>'
-    : '<b>Geisel public homepage</b><div class="muted mini">No internal systems or private data required.</div>';
-  const geiselMetaDraft="Explore MD education, health sciences master's programs, research, news, events, centers, and affiliated hospitals at Geisel School of Medicine at Dartmouth.";
-  const geiselSchemaDraft={"@context":"https://schema.org","@type":"WebPage","name":"Geisel School of Medicine at Dartmouth","url":"https://geiselmed.dartmouth.edu/","isPartOf":{"@type":"WebSite","name":"Geisel School of Medicine at Dartmouth","url":"https://geiselmed.dartmouth.edu/"}};
+    : '<b>Employer-neutral public demo</b><div class="muted mini">Run a live audit to replace illustrative inputs with current evidence.</div>';
+  const sampleMetaDraft='Explore programs, services, research, resources, news, and support information in a clear, accessible public website experience.';
+  const sampleSchemaDraft={"@context":"https://schema.org","@type":"WebPage","name":"Institutional Web Hub","url":"https://example.org/","isPartOf":{"@type":"WebSite","name":"Institutional Website","url":"https://example.org/"}};
   view.innerHTML=
-    '<div class="card section"><div class="eyebrow">INTERVIEW CASE STUDY</div><h2>How I would approach Geisel\'s web-visibility work</h2><p>Start with observable evidence, rank the work transparently, make safe changes, help content owners, then measure whether the change helped.</p><div class="header-actions"><button id="startCaseAudit" class="primary">Run live public-page audit</button><button data-go="site" class="secondary">Run bounded site scan</button><button data-go="roadmap" class="secondary">Open prioritization engine</button></div><p class="muted mini">Work-in-progress independent portfolio prototype. Public data only; no Dartmouth credentials, analytics access, or production administration is implied.</p></div>'+
-    '<div class="card section"><div class="eyebrow">PUBLIC GEISEL SNAPSHOT · OCT 1, 2026</div><h2>What SearchSignal already found</h2><p class="muted">A fresh public homepage audit plus a bounded six-page same-origin sample. These are observable web signals, not claims about Geisel\'s internal priorities.</p><div class="grid three" style="margin-top:14px"><div><div class="metric">80</div><b>SEO rubric</b><p class="muted mini">Homepage snapshot</p></div><div><div class="metric">41</div><b>GEO readiness</b><p class="muted mini">Homepage snapshot</p></div><div><div class="metric">0</div><b>Fetch errors</b><p class="muted mini">6-page sample</p></div></div><div class="table-wrap" style="margin-top:14px"><table><tr><th>Observed signal</th><th>Public evidence</th><th>Practical next move</th></tr><tr><td><b>Missing meta description</b></td><td>Homepage audit did not detect one.</td><td>Write a specific plain-language summary for search snippets.</td></tr><tr><td><b>No JSON-LD detected</b></td><td>No schema types detected on the homepage.</td><td>Add truthful schema.org markup that matches visible content.</td></tr><tr><td><b>Placeholder / empty links</b></td><td>14 targets flagged on the homepage.</td><td>Review whether they are intentional controls; replace broken or placeholder hrefs.</td></tr><tr><td><b>Site-sample consistency</b></td><td>3/6 pages missing descriptions; 2/6 missing canonicals; 1/6 with an H1 issue.</td><td>Turn these into a prioritized, owner-aware cleanup queue.</td></tr></table></div><div class="callout" style="margin-top:14px"><b>The point:</b> the app turns a vague “improve web visibility” assignment into evidence, a ranked work queue, safe implementation boundaries, editor support, and measurable follow-up.</div></div>'+
-    '<div class="card section"><div class="eyebrow">READY-TO-REVIEW REMEDIATION</div><h2>Geisel homepage fix pack</h2><p>This does not publish anything to Dartmouth. It converts two verified public findings into implementation-ready drafts and turns the 14 link flags into a human-review task.</p><div class="grid two"><div><h3>Meta description draft</h3><div class="callout">'+esc(geiselMetaDraft)+'</div><p><button id="copyGeiselMeta" class="secondary">Copy meta description</button></p><p class="muted mini">Drafted only from information visible on the public homepage; editorial approval still required.</p></div><div><h3>Minimal WebPage JSON-LD draft</h3><pre>'+esc(JSON.stringify(geiselSchemaDraft,null,2))+'</pre><p><button id="copyGeiselSchema" class="secondary">Copy JSON-LD</button> <button data-go="schema" class="secondary">Open schema studio</button></p></div></div><div class="callout warn" style="margin-top:14px"><b>Link-review task:</b> SearchSignal flagged 14 empty/placeholder href targets. Some may be intentional JavaScript controls, so they should be inspected in context before any change. The fix is not “delete 14 links”; it is “review 14 flagged targets and repair only the unintended ones.”</div><div class="header-actions" style="margin-top:14px"><button id="downloadGeiselFixPack" class="primary">Download fix pack</button><span class="muted mini">Includes evidence, drafts, and review notes.</span></div></div>'+
+    '<div class="card section"><div class="eyebrow">EMPLOYER-NEUTRAL CASE STUDY</div><h2>Institutional web-visibility operations</h2><p>Start with observable evidence, rank the work transparently, prepare safe changes, support content owners, and measure whether the change helped. The workflow transfers across higher education, healthcare, nonprofit, public-sector, and commercial web teams.</p><div class="header-actions"><button id="startCaseAudit" class="primary">Run live public-page audit</button><button data-go="site" class="secondary">Run bounded site scan</button><button data-go="roadmap" class="secondary">Open prioritization engine</button></div><p class="muted mini">Independent portfolio product. Public data and clearly labeled demo inputs only; analysis does not imply employer affiliation, internal credentials, analytics access, or production authorization.</p></div>'+
+    '<div class="card section"><div class="eyebrow">ILLUSTRATIVE BASELINE</div><h2>How SearchSignal turns a vague assignment into an operating queue</h2><p class="muted">The figures below are sample scenario inputs—not observations about a named employer. Run the live auditor and site scan to replace them with current public evidence.</p><div class="grid three" style="margin-top:14px"><div><div class="metric">80</div><b>SEO rubric</b><p class="muted mini">Illustrative baseline</p></div><div><div class="metric">41</div><b>GEO readiness</b><p class="muted mini">Illustrative baseline</p></div><div><div class="metric">0</div><b>Fetch errors</b><p class="muted mini">Illustrative sample</p></div></div><div class="table-wrap" style="margin-top:14px"><table><tr><th>Example signal</th><th>Evidence standard</th><th>Practical next move</th></tr><tr><td><b>Missing meta description</b></td><td>Confirm on the audited page before acting.</td><td>Draft a specific plain-language summary for editorial review.</td></tr><tr><td><b>No supported JSON-LD</b></td><td>Check rendered markup and visible content.</td><td>Add only truthful schema.org markup supported by the page.</td></tr><tr><td><b>Placeholder / empty links</b></td><td>Inspect flagged targets in context.</td><td>Repair only confirmed broken or placeholder targets.</td></tr><tr><td><b>Cross-site consistency</b></td><td>Use a bounded crawl to measure recurring metadata, canonical, heading, and document issues.</td><td>Convert repeated findings into an owner-aware remediation queue.</td></tr></table></div><div class="callout" style="margin-top:14px"><b>The point:</b> SearchSignal converts “improve web visibility” into evidence, a ranked work queue, safe implementation boundaries, support documentation, and measurable follow-up.</div></div>'+
+    '<div class="card section"><div class="eyebrow">REUSABLE REMEDIATION PATTERN</div><h2>Sample remediation pack</h2><p>This is an employer-neutral template, not a proposed production change. Replace sample content with evidence from the target page before implementation.</p><div class="grid two"><div><h3>Meta description pattern</h3><div class="callout">'+esc(sampleMetaDraft)+'</div><p><button id="copySampleMeta" class="secondary">Copy sample description</button></p><p class="muted mini">Template only; page-specific editorial review is required.</p></div><div><h3>Minimal WebPage JSON-LD pattern</h3><pre>'+esc(JSON.stringify(sampleSchemaDraft,null,2))+'</pre><p><button id="copySampleSchema" class="secondary">Copy sample JSON-LD</button> <button data-go="schema" class="secondary">Open schema studio</button></p></div></div><div class="callout warn" style="margin-top:14px"><b>Link-review pattern:</b> crawler flags must be inspected in context. Repair only confirmed defects rather than changing every automated flag.</div><div class="header-actions" style="margin-top:14px"><button id="downloadSampleFixPack" class="primary">Download sample pack</button><span class="muted mini">Includes the demo boundary, reusable drafts, and review notes.</span></div></div>'+
     '<div class="grid three section">'+
       '<div class="card"><div class="stepnum">01</div><h3>Inspect</h3>'+auditState+'<p>'+auditDetail+'</p><p class="muted">Technical SEO, content structure, schema, links, accessibility signals, and AI-answer extractability.</p></div>'+
-      '<div class="card"><div class="stepnum">02</div><h3>Prioritize</h3>'+status('work','Working model')+'<p><b>Why this work first?</b></p><p class="muted">Balance visibility gap, competition, demand/capacity pressure, institutional impact, staff capacity, and implementation effort.</p></div>'+
-      '<div class="card"><div class="stepnum">03</div><h3>Fix safely</h3>'+status('work','Defined boundary')+'<p><b>Page-level work vs. escalation</b></p><p class="muted">Handle content, metadata, links, media and approved redirects; escalate risky server, authentication, theme/PHP, and architecture changes.</p></div>'+
+      '<div class="card"><div class="stepnum">02</div><h3>Prioritize</h3>'+status('work','Working model')+'<p><b>Why this work first?</b></p><p class="muted">Balance visibility gap, competition, demand/capacity pressure, organizational impact, team capacity, and implementation effort.</p></div>'+
+      '<div class="card"><div class="stepnum">03</div><h3>Fix safely</h3>'+status('work','Defined boundary')+'<p><b>Page-level work vs. escalation</b></p><p class="muted">Handle approved content, metadata, links, media and redirects; escalate risky server, authentication, theme/framework, and architecture changes.</p></div>'+
     '</div>'+
     '<div class="grid two section">'+
-      '<div class="card"><h2>04 · Support the people maintaining the site</h2><p>Translate technical findings into plain-language actions for faculty and staff, then leave behind training that prevents the same problem from recurring.</p><button data-go="wordpress" class="secondary">WordPress support workflow</button> <button data-go="training" class="secondary">Training center</button></div>'+
+      '<div class="card"><h2>04 · Support the people maintaining the site</h2><p>Translate technical findings into plain-language actions for content owners and editors, then leave behind training that prevents the same problem from recurring.</p><button data-go="wordpress" class="secondary">CMS support workflow</button> <button data-go="training" class="secondary">Training center</button></div>'+
       '<div class="card"><h2>05 · Measure and report</h2><p>Show what changed, what evidence supports it, what still needs attention, and whether search or AI visibility moved afterward.</p><button data-go="analytics" class="secondary">Measurement workspace</button></div>'+
     '</div>'+
-    '<div class="card section"><h2>First 90 days — interview discussion draft</h2><table><tr><th>Period</th><th>Focus</th><th>Evidence of progress</th></tr><tr><td>Days 1–30</td><td>Inventory, baselines, stakeholder map, urgent defects, support intake.</td><td>Repeatable audit + triage process; clear ownership and escalation paths.</td></tr><tr><td>Days 31–60</td><td>Priority-page SEO/GEO improvements, redirects, schema, internal linking, editor training.</td><td>Completed changes tied to before/after evidence and documented decisions.</td></tr><tr><td>Days 61–90</td><td>Scale the workflow, refine reporting, identify recurring support issues, expand successful patterns.</td><td>Transparent backlog, reusable training, trend reporting, and a defensible next-quarter roadmap.</td></tr></table><p class="muted mini">This is an interview planning framework, not a claim about Geisel\'s internal priorities or systems.</p></div>';
+    '<div class="card section"><h2>90-day operating-plan example</h2><table><tr><th>Period</th><th>Focus</th><th>Evidence of progress</th></tr><tr><td>Days 1–30</td><td>Inventory, baselines, stakeholder map, urgent defects, support intake.</td><td>Repeatable audit + triage process; clear ownership and escalation paths.</td></tr><tr><td>Days 31–60</td><td>Priority-page SEO/GEO improvements, redirects, schema, internal linking, editor training.</td><td>Completed changes tied to before/after evidence and documented decisions.</td></tr><tr><td>Days 61–90</td><td>Scale the workflow, refine reporting, identify recurring support issues, expand successful patterns.</td><td>Transparent backlog, reusable training, trend reporting, and a defensible next-quarter roadmap.</td></tr></table><p class="muted mini">Illustrative operating framework only; actual priorities should come from live evidence, stakeholder needs, and authorized data.</p></div>';
   document.getElementById('startCaseAudit').onclick=()=>{
     show('auditor');
     setTimeout(()=>{
@@ -115,19 +115,19 @@ function interview(){
     button.textContent='Copied';
     setTimeout(()=>button.textContent=prior,1200);
   };
-  document.getElementById('copyGeiselMeta').onclick=()=>copyText('copyGeiselMeta',geiselMetaDraft);
-  document.getElementById('copyGeiselSchema').onclick=()=>copyText('copyGeiselSchema',JSON.stringify(geiselSchemaDraft,null,2));
-  document.getElementById('downloadGeiselFixPack').onclick=()=>{
+  document.getElementById('copySampleMeta').onclick=()=>copyText('copySampleMeta',sampleMetaDraft);
+  document.getElementById('copySampleSchema').onclick=()=>copyText('copySampleSchema',JSON.stringify(sampleSchemaDraft,null,2));
+  document.getElementById('downloadSampleFixPack').onclick=()=>{
     const pack={
-      generated:'2026-10-01',
-      target:'https://geiselmed.dartmouth.edu/',
-      boundary:'Independent public-data portfolio draft. Review and approval required before any production change.',
-      observed:{seo:80,geo:41,homepageFindings:['Missing meta description','No JSON-LD detected','14 empty/placeholder href targets flagged for contextual review'],siteSample:{pages:6,fetchErrors:0,missingDescriptions:3,missingCanonicals:2,h1Issues:1}},
-      proposed:{metaDescription:geiselMetaDraft,jsonLd:geiselSchemaDraft,linkReview:'Inspect the 14 flagged href targets in context; repair only unintended empty/placeholder links.'}
+      generated:new Date().toISOString().slice(0,10),
+      target:state.lastAudit?.finalUrl||state.caseStudyUrl,
+      boundary:'Employer-neutral portfolio template. Verify all observations against the selected public page and obtain approval before any production change.',
+      illustrative:true, observed:{seo:80,geo:41,homepageFindings:['Example: missing meta description','Example: unsupported or missing JSON-LD','Example: suspicious link targets requiring contextual review'],siteSample:{pages:6,fetchErrors:0,missingDescriptions:3,missingCanonicals:2,h1Issues:1}},
+      proposed:{metaDescription:sampleMetaDraft,jsonLd:sampleSchemaDraft,linkReview:'Inspect the 14 flagged href targets in context; repair only unintended empty/placeholder links.'}
     };
     const blob=new Blob([JSON.stringify(pack,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download='geisel-homepage-fix-pack-2026-10-01.json';a.click();URL.revokeObjectURL(url);
+    const a=document.createElement('a');a.href=url;a.download='searchsignal-sample-remediation-pack.json';a.click();URL.revokeObjectURL(url);
   };
 }
 
@@ -135,7 +135,7 @@ function auditor(){
   setTitle('Live URL Auditor','Inspect a public page for technical SEO and AI-answer readiness with transparent scoring.');
   view.innerHTML=
     '<div class="card section"><h2>Audit a public page</h2>'+
-      '<div class="form-row"><input id="auditUrl" value="https://geiselmed.dartmouth.edu/" aria-label="URL"><button id="auditBtn" class="primary">Run audit</button></div>'+
+      '<div class="form-row"><input id="auditUrl" value="https://aj-kivela-portfolio.lovable.app/" aria-label="URL"><button id="auditBtn" class="primary">Run audit</button></div>'+
       '<p class="muted mini">Server-side fetch with private-network blocking, redirect checks, timeout, HTML-only validation, and a 2 MB response limit.</p>'+
     '</div><div id="auditOut"></div>';
   document.getElementById('auditBtn').onclick=runAudit;
@@ -341,23 +341,23 @@ function schemaStudio(){
 function roadmap(){
   setTitle('Priority Roadmap','Turn competing requests into a transparent, defensible sequence of work.');
   const areas=[
-    {area:'Admissions',work:'Program discovery + conversion path',impact:5,gap:4,competition:5,demand:5,staff:3,effort:2},
-    {area:'Research',work:'Faculty + research discoverability',impact:4,gap:4,competition:4,demand:3,staff:3,effort:3},
-    {area:'Student Affairs',work:'Navigation + internal linking',impact:4,gap:3,competition:3,demand:4,staff:2,effort:3},
+    {area:'Programs',work:'Program discovery + conversion path',impact:5,gap:4,competition:5,demand:5,staff:3,effort:2},
+    {area:'Research',work:'Research and expert discoverability',impact:4,gap:4,competition:4,demand:3,staff:3,effort:3},
+    {area:'Support / Services',work:'Navigation + internal linking',impact:4,gap:3,competition:3,demand:4,staff:2,effort:3},
     {area:'News',work:'Author/date + Article schema consistency',impact:3,gap:3,competition:2,demand:2,staff:4,effort:2},
     {area:'Legacy PDFs',work:'Metadata + discoverability cleanup',impact:4,gap:5,competition:2,demand:3,staff:2,effort:4}
   ];
   const factors=[
     ['impact','Impact'],['gap','Visibility gap'],['competition','Competition'],
-    ['demand','Demand / capacity pressure'],['staff','Dept. web capacity'],['effort','Effort']
+    ['demand','Demand / capacity pressure'],['staff','Team capacity'],['effort','Effort']
   ];
   const cell=(a,i,f)=>'<input class="prio-input" type="number" min="1" max="5" value="'+a[f]+'" data-i="'+i+'" data-f="'+f+'" aria-label="'+f+' for '+esc(a.area)+'">';
   let lastRanked=[];
   view.innerHTML=
     '<div class="callout section"><b>Protected prioritization model:</b> the public interface exposes the decision factors and resulting rank, while the weighting logic stays server-side. Every input remains editable so assumptions can still be challenged.</div>'+
-    '<div class="card section"><h2>Interview scenario inputs</h2><p class="muted">These starting values are illustrative—not Geisel internal data. In practice I would replace them with stakeholder priorities, Search Console/Analytics evidence, service demand, and available staff capacity.</p></div>'+
+    '<div class="card section"><h2>Scenario inputs</h2><p class="muted">These starting values are illustrative demo data. In a real engagement they would be replaced with stakeholder priorities, Search Console/Analytics evidence, service demand, and available team capacity.</p></div>'+
     '<div class="table-wrap"><table><thead><tr><th>Area</th><th>Work</th>'+factors.map((f)=>'<th>'+f[1]+'<div class="muted mini">1–5</div></th>').join('')+'<th>Phase</th><th>Score</th></tr></thead><tbody id="roadmapRows"></tbody></table></div>'+
-    '<div class="section" style="margin-top:12px"><button class="secondary" id="copyRoadmap">Copy ranked roadmap</button> <button class="secondary" data-go="interview">Back to interview mode</button></div>';
+    '<div class="section" style="margin-top:12px"><button class="secondary" id="copyRoadmap">Copy ranked roadmap</button> <button class="secondary" data-go="interview">Open neutral case study</button></div>';
   const render=async()=>{
     const tbody=document.getElementById('roadmapRows');
     tbody.innerHTML='<tr><td colspan="'+(factors.length+4)+'">Calculating priorities…</td></tr>';
@@ -399,7 +399,7 @@ function analytics(){
     '<div class="grid three section">'+
       '<div class="card"><h3>Google Search Console</h3>'+status('ready','CSV import')+'<p class="muted">Queries, pages, impressions, clicks, CTR and average position.</p><input id="gscFile" type="file" accept=".csv,text/csv" hidden><button id="gscImport" class="secondary">Import CSV</button><div id="gscResult" class="muted mini" style="margin-top:9px">No file imported.</div></div>'+
       '<div class="card"><h3>Google Analytics</h3>'+status('ready','CSV import')+'<p class="muted">Organic sessions, landing pages and before/after trend analysis.</p><input id="gaFile" type="file" accept=".csv,text/csv" hidden><button id="gaImport" class="secondary">Import CSV</button><div id="gaResult" class="muted mini" style="margin-top:9px">No file imported.</div></div>'+
-      '<div class="card"><h3>AI visibility log</h3>'+status('work','Working demo')+'<p class="muted">Record engine, query, citation/mention, date and source URL without inventing automated measurement.</p><div class="callout">Manual evidence is intentional here: capture engine, query, date, whether Geisel was cited/mentioned, and the source URL.</div></div>'+
+      '<div class="card"><h3>AI visibility log</h3>'+status('work','Working demo')+'<p class="muted">Record engine, query, citation/mention, date and source URL without inventing automated measurement.</p><div class="callout">Manual evidence is intentional here: capture engine, query, date, whether the target brand, organization, or page was cited/mentioned, and the source URL.</div></div>'+
     '</div>'+
     '<div class="card"><h2>Demo performance trend</h2><table><tr><th>Metric</th><th>Baseline</th><th>Current</th><th>Change</th></tr><tr><td>Organic clicks</td><td>8,420</td><td>9,615</td><td>+14.2%</td></tr><tr><td>CTR</td><td>3.8%</td><td>4.4%</td><td>+0.6 pp</td></tr><tr><td>Pages with valid schema</td><td>49%</td><td>63%</td><td>+14 pp</td></tr></table><p class="muted mini">Sample data for interface demonstration only. Imported CSV files are read locally in the browser and are not uploaded by this demo.</p></div>';
   const wireCsv=(buttonId,inputId,resultId)=>{
@@ -457,7 +457,7 @@ function lab(){
 }
 
 function coverage(){
-  setTitle('Requirements Coverage','A defensible map from job responsibilities to concrete portfolio evidence.');
+  setTitle('Capabilities Coverage','A defensible map from SearchSignal capabilities to concrete portfolio evidence.');
   const rows=[
     ['Technical/content SEO audits','Live URL Auditor inspects crawl/index, metadata, canonical, headings, links, alt text and schema.',status('work','Working')],
     ['Site crawl / documents / redirects','Site Intelligence crawls a bounded same-origin sample, inventories linked PDF/Office documents, and traces redirect chains.',status('work','Working')],
@@ -473,8 +473,8 @@ function coverage(){
     ['Large decentralized environment','Dashboard + roadmap + ownership/status patterns model multi-department governance.',status('work','Working demo')]
   ];
   view.innerHTML=
-    '<div class="card section"><h2>Portfolio evidence</h2><p>This application is designed to show how AJ approaches the actual workflow: inspect evidence, explain the finding, prioritize the work, support the content owner, document the change, and measure the result.</p><p><a href="https://aj-kivela-portfolio.lovable.app/" target="_blank" rel="noopener">AJ Kivela Portfolio</a></p><p class="muted mini">Source code is private. Selected implementation details can be reviewed by screen share during an interview.</p></div>'+
-    '<table><tr><th>Role requirement</th><th>Evidence in SearchSignal</th><th>Status</th></tr>'+
+    '<div class="card section"><h2>Portfolio evidence</h2><p>SearchSignal demonstrates an accountable workflow: inspect evidence, explain the finding, prioritize the work, support the content owner, document the change, and measure the result.</p><p><a href="https://aj-kivela-portfolio.lovable.app/" target="_blank" rel="noopener">AJ Kivela Portfolio</a></p><p class="muted mini">Source and implementation notes are available in the public portfolio repository.</p></div>'+
+    '<table><tr><th>Capability</th><th>Evidence in SearchSignal</th><th>Status</th></tr>'+
     rows.map((r)=>'<tr><td><b>'+r[0]+'</b></td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+
     '</table>'+
     '<div class="callout section" style="margin-top:16px"><b>Accuracy boundary:</b> SearchSignal demonstrates real auditing logic, structured-data generation, prioritization, support workflows and technical concepts. It does not present unconnected Search Console, Analytics, WordPress, Apache, PHP or MariaDB systems as production experience.</div>';
@@ -505,7 +505,7 @@ function changeLab(){
   view.innerHTML=
     '<div class="callout section"><b>Safety boundary:</b> No production site modified. Every change below applies only to a synthetic sandbox copy.</div>'+
     '<div class="grid two section">'+
-      '<div class="card"><div class="eyebrow">SANDBOX PAGE</div><h2>Synthetic Health Sciences Program page</h2><p class="muted">Use this page to demonstrate implementation mechanics without touching Dartmouth or any external CMS.</p><div class="header-actions"><button id="labAnalyze" class="secondary">1 · Detect issues</button><button id="labPrepare" class="secondary">2 · Prepare fix</button><button id="labApply" class="primary">3 · Apply to sandbox</button><button id="labVerify" class="secondary">4 · Verify</button><button id="labReset" class="secondary">Reset</button></div></div>'+
+      '<div class="card"><div class="eyebrow">SANDBOX PAGE</div><h2>Synthetic Health Sciences Program page</h2><p class="muted">Use this page to demonstrate implementation mechanics without touching any external production CMS.</p><div class="header-actions"><button id="labAnalyze" class="secondary">1 · Detect issues</button><button id="labPrepare" class="secondary">2 · Prepare fix</button><button id="labApply" class="primary">3 · Apply to sandbox</button><button id="labVerify" class="secondary">4 · Verify</button><button id="labReset" class="secondary">Reset</button></div></div>'+
       '<div class="card"><h2>Workflow state</h2><div id="labState">'+status('ready','Ready')+'<p class="muted">Start with issue detection.</p></div></div>'+
     '</div>'+
     '<div id="changeLabOut"></div>';
@@ -794,9 +794,9 @@ function progressReporting(){
 }
 
 function scaleSimulator(){
-  setTitle('20K Scale Simulator','Model batching, rate limits, caching, checkpoints, and prioritization without crawling Geisel.');
+  setTitle('20K Scale Simulator','Model batching, rate limits, caching, checkpoints, and prioritization without crawling any external site.');
   view.innerHTML=
-    '<div class="callout section"><b>Synthetic workload only:</b> this simulator does not crawl Geisel or any external site. It models the mechanics of handling a 20,000-page / 15,000-document inventory.</div>'+
+    '<div class="callout section"><b>Synthetic workload only:</b> this simulator does not crawl any external site. It models the mechanics of handling a 20,000-page / 15,000-document inventory.</div>'+
     '<div class="grid two section"><div class="card"><h2>Inventory model</h2><label>Pages<input id="scalePages" type="number" min="100" max="100000" value="20000"></label><br><label>Documents<input id="scaleDocs" type="number" min="0" max="100000" value="15000"></label><br><label>Batch size<input id="scaleBatch" type="number" min="10" max="1000" value="250"></label><br><label>Rate / sec<input id="scaleRate" type="number" min="0.5" max="20" step="0.5" value="4"></label><div class="header-actions" style="margin-top:12px"><button id="scaleRunBtn" class="primary">Run simulation</button><button id="scalePause" class="secondary" disabled>Pause</button><button id="scaleResume" class="secondary" disabled>Resume</button></div></div>'+
       '<div class="card"><h2>Execution progress</h2><div class="progress-track"><div id="scaleBar" class="progress-bar" style="width:0%"></div></div><div id="scaleProgress" class="metric">0%</div><p id="scaleProgressNote" class="muted">Ready.</p></div></div>'+
     '<div id="scaleOut"></div>';
@@ -830,7 +830,7 @@ function renderScaleResult(d){
 }
 
 function coverageV2(){
-  setTitle('Requirements Coverage','Open each requirement to see implementation, automated-test, and live-verification evidence separately.');
+  setTitle('Capabilities Coverage','Open each capability to see implementation, automated-test, and live-verification evidence separately.');
   const rows=[
     {name:'Technical/content SEO audits',evidence:'Live URL Auditor inspects metadata, indexability, canonical, headings, links, schema, image-alt coverage, generic-link text and form-label signals.',implemented:true,tested:true,live:true,date:'2026-09-30',notes:'Public audit endpoint live-verified. Accessibility items are heuristic signals, not conformance claims.'},
     {name:'Find → fix → verify implementation',evidence:'Change Lab demonstrates a synthetic page moving from detected issue to exact safe change, validation, and re-audit.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Sandbox-only by design; no production site is modified.'},
@@ -840,7 +840,7 @@ function coverageV2(){
     {name:'WordPress end-user support',evidence:'Interactive support scenarios produce diagnosis, editor-safe steps, escalation, plain-language response, and KB draft.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Support simulation; no live admin connection claimed.'},
     {name:'Search/analytics measurement',evidence:'Browser-local CSV workflow compares 7/30/90-day windows around a change date and generates a plain-English report.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'No authenticated Google access is represented.'},
     {name:'Progress reporting',evidence:'Roadmap register tracks owner, status, expected impact, evidence/result, and next review; weekly update generator included.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Illustrative register until connected to an approved production change log.'},
-    {name:'Large decentralized environment',evidence:'20K/15K synthetic scale simulator models batching, rate limits, caching, checkpoints, pause/resume, and prioritization.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Synthetic workload only; intentionally does not crawl Geisel at scale.'},
+    {name:'Large decentralized environment',evidence:'20K/15K synthetic scale simulator models batching, rate limits, caching, checkpoints, pause/resume, and prioritization.',implemented:true,tested:true,live:false,date:'2026-10-02',notes:'Synthetic workload only; intentionally does not crawl any external organization at scale.'},
     {name:'Training & documentation',evidence:'Training Center provides editor-focused mini-modules with plain-language guidance and escalation rules.',implemented:true,tested:true,live:true,date:'2026-09-30',notes:'Portfolio training content is visible in the hosted build.'}
   ];
   const badge=(label,on)=>'<span class="evidence-pill '+(on?'yes':'pending')+'">'+label+': '+(on?'Yes':'Pending')+'</span>';
@@ -852,4 +852,4 @@ function coverageV2(){
 
 window.addEventListener('hashchange',()=>{const id=location.hash.slice(1);if(pages.some((p)=>p[0]===id))show(id);});
 const initialPage=location.hash.slice(1);
-show(pages.some((p)=>p[0]===initialPage)?initialPage:'interview');
+show(pages.some((p)=>p[0]===initialPage)?initialPage:'dashboard');

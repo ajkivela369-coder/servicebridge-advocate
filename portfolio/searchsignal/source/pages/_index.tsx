@@ -100,7 +100,7 @@ export default function HomePage() {
 
         {view==="evidence" && <section className={styles.panel}><p className={styles.kicker}>Truth-labeled portfolio evidence</p><h2>Requirements Coverage</h2><p className={styles.muted}>This project is an independent capability demonstration. It distinguishes implemented functionality, connector-ready integrations, and safe technical-learning examples.</p>{[["SEO/GEO auditing","Working"],["Content optimization workflow","Working"],["Structured data/schema","Working"],["Prioritized roadmap","Working"],["Analytics CSV workflow","Working"],["Google Search Console + Analytics","Connector-ready"],["WordPress multisite support","Connector-ready"],["Apache / PHP / MariaDB","Technical lab"]].map(([a,b])=><div className={styles.coverage} key={a}><strong>{a}</strong><Badge variant={b==="Working"?"success":"outline"}>{b}</Badge></div>)}<div className={styles.links}><Button variant="outline" onClick={()=>window.open("https://aj-kivela-portfolio.lovable.app/","_blank")}><Link2 size={16}/> Portfolio</Button><span className={styles.muted}>Source code is private; selected implementation details can be reviewed by screen share.</span></div></section>}
 
-        <footer className={styles.footer}>© 2026 Alexander J. Kivela. Proprietary portfolio software. All rights reserved. Independent portfolio demonstration. Not affiliated with or endorsed by Dartmouth College or the Geisel School of Medicine.</footer>
+        <footer className={styles.footer}>© 2026 Alexander J. Kivela. Proprietary portfolio software. All rights reserved. Independent portfolio demonstration. Analysis of a public site does not imply affiliation with or endorsement by that organization.</footer>
       </main>
     </div>
   );

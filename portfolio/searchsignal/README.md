@@ -1,54 +1,49 @@
 # SearchSignal — SEO + GEO Operations Lab
 
-**Geisel interview build:** https://searchsignal-geisel-interview.vercel.app/
+**Current standalone source:** [`interview-build/`](interview-build/)
 
 **Published v2:** https://forgesearcher.floot.app/
 
-SearchSignal is an independent portfolio project demonstrating higher-education web operations across traditional SEO, generative/AI engine optimization (GEO), structured data, content optimization, analytics workflows, WordPress support, training, and technical change boundaries. The standalone Geisel interview build adds a guided hiring-manager walkthrough, bounded site intelligence, document inventory, redirect validation, editable prioritization, and repeatable Node QA.
+SearchSignal is an independent, employer- and industry-neutral portfolio project for evaluating public websites and turning SEO, GEO/AI-readiness, structured data, content quality, analytics evidence, CMS support, training, and web-governance findings into an accountable operating workflow.
 
 ## What is working
 
 - Server-side public-URL auditing with URL validation, private-network blocking, redirect checks, timeouts, HTML content-type validation, and response-size limits.
-- Explainable SEO and GEO scoring with per-check evidence, rationale, and point contributions.
-- Inspection of title, meta description, canonical, robots directives, language, heading structure, word count, links, image-alt coverage, JSON-LD/schema types, and common WordPress fingerprints.
-- Rule-based content optimization drafts and AI-answer-readiness preview.
-- JSON-LD generation for WebPage, Article, Course, and FAQPage.
-- Now / Next / Later prioritization workflow.
-- CSV-based analytics import demonstration and a manual AI-visibility evidence log.
+- Bounded same-origin site intelligence with page inventory, linked PDF/Office discovery, architecture summaries, JSON evidence export, and redirect-chain validation.
+- Explainable SEO and GEO scoring with evidence-linked findings and proprietary weighting retained server-side.
+- Inspection of titles, descriptions, canonicals, robots/noindex, language, headings, links, image-alt coverage, JSON-LD/schema, authorship/date signals, Q&A patterns, and common CMS fingerprints.
+- Structured-data drafting, content optimization, and AI-answer-readiness workflows.
+- Editable Now / Next / Later prioritization using transparent scenario inputs.
+- Browser-local Search Console / Analytics CSV summaries and manual AI-visibility evidence logging.
+- CMS support, training, escalation, and technical-learning workflows.
+- Repeatable Node QA covering syntax, health, case-study workflow presence, private-network protection, public auditing, site scanning, redirect validation, and security boundaries.
 
-## Connector-ready / learning surfaces
+## Accuracy boundary
 
-Google Search Console, Google Analytics, self-hosted WordPress, and WordPress.com are shown as connector-ready only. They are **not presented as authenticated production integrations** in the public demo.
+SearchSignal analyzes public pages and uses clearly labeled demo data where live account connections are not present. Analysis of a public site does not imply affiliation, internal credentials, analytics access, production administration, or authorization to publish changes.
 
-The independent local Apache/PHP/MariaDB Multisite lab passed 24 automated checks, followed by browser verification of departmental navigation and authenticated Network Admin. The separate Playground Blueprint also launched successfully. See [lab acceptance](wordpress-lab/ACCEPTANCE.md). This is hands-on training evidence, not production administration employment.
+Google Search Console, Google Analytics, self-hosted WordPress, and WordPress.com are connector-ready surfaces only when a real account is connected. Apache, PHP/WordPress template safety, and MariaDB/MySQL concepts are represented as learning-lab material rather than production-administration claims.
 
-See [LICENSE_BOUNDARY.md](LICENSE_BOUNDARY.md) for the historical MIT/community snapshot boundary and the current proprietary licensing posture.
+The independent local WordPress Multisite lab passed automated checks and browser verification as a training environment. See [lab acceptance](wordpress-lab/ACCEPTANCE.md). This is hands-on project evidence, not paid employment.
+
+See [LICENSE_BOUNDARY.md](LICENSE_BOUNDARY.md) for the historical MIT/community snapshot boundary and current proprietary licensing posture.
 
 ## Source snapshots
 
-The [`interview-build/`](interview-build/) directory is the current standalone, inspectable source for the public Geisel interview build. It includes its own server, client, deployment config, smoke tests, build history, and five-minute walkthrough.
+The [`interview-build/`](interview-build/) directory is the current standalone, inspectable source for the neutral case-study build. The directory name is retained for repository continuity; the runtime itself is no longer tied to a particular employer or hiring process. It includes its own server, client, deployment config, smoke tests, and build history.
 
-The `source/` directory contains an earlier six-file Floot implementation snapshot. Current v2 parity is blocked pending source access; see [V2 synchronization status](V2_SYNC_STATUS.md):
-
-- `source/pages/_index.tsx` — application UI and portfolio workflows
-- `source/pages/_index.module.css` — responsive interface styling
-- `source/endpoints/audit_POST.ts` — secure server-side crawler and scoring logic
-- `source/endpoints/audit_POST.schema.ts` — typed endpoint contract
-- `source/base.css` — visual tokens
-- `source/design-principles.md` — design rationale
-
-Floot supplies shared UI primitives and hosting/runtime infrastructure, so this snapshot is intended for code review rather than as a standalone clone.
+The `source/` directory contains an earlier six-file Floot implementation snapshot. Current v2 parity remains separate; see [V2 synchronization status](V2_SYNC_STATUS.md).
 
 ## Quality status
 
-On 2026-10-02, GitHub CI and Portfolio Quality Control passed for the upgraded Geisel interview build. The standalone Vercel project was previewed and then manually redeployed to production; hosted smoke checks returned HTTP 200 for the app and health endpoint, and the new Change Lab verification and 20K/15K synthetic scale endpoints returned successful bounded responses. Earlier live acceptance also verified public-page auditing, bounded site scanning, redirect validation, and private-network blocking. Feature-level live-verification claims remain separated in the Requirements Coverage screen.
+The standalone build has repeatable local QA for the public app and backend. Current employer-neutral changes preserve the verified security and audit boundaries while replacing organization-specific labels, defaults, examples, and downloadable artifacts with reusable case-study language.
 
 See [Portfolio Quality Control](../QUALITY_CONTROL.md) for the shared QC contract and automation.
 
 ## Build + upgrade history
 
-See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) for the step-by-step implementation and upgrade trail, including what is verified live versus connector-ready.
+See [BUILD_AND_UPGRADE.md](BUILD_AND_UPGRADE.md) and [`interview-build/BUILD_AND_UPGRADE.md`](interview-build/BUILD_AND_UPGRADE.md) for the implementation trail and current neutralization work.
 
 ## Provenance
 
-Independent portfolio demonstration by AJ Kivela. Not affiliated with or endorsed by Dartmouth College or the Geisel School of Medicine. Demo/sample metrics are labeled as such, and unconnected integrations are not represented as live.
+Independent portfolio demonstration by AJ Kivela. Public-site analysis does not imply affiliation with the organization being analyzed. Demo/sample metrics are labeled as such, and unconnected integrations are not represented as live.

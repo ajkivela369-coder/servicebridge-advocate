@@ -31,11 +31,11 @@ Local Elias is a general assistant. The hosted Elias evidence demo includes Evid
 Private laptop orchestration for Forge, Blender, FFmpeg, Git, and project automation. Server 2.0.0 registers 46 tools; the current ChatGPT connection retains 10 native tools. The branded 1.0.1 plugin package and its companion website are separate from the server upgrade archive. See its [build history](grim-forge-commander/BUILD_AND_UPGRADE.md).
 
 ### [SearchSignal — SEO + GEO Operations Lab](searchsignal/)
-**Geisel interview build:** https://searchsignal-geisel-interview.vercel.app/
+**Current standalone source:** [searchsignal/interview-build/](searchsignal/interview-build/)
 
 **Published v2:** https://forgesearcher.floot.app/
 
-A working higher-education web-operations portfolio app with secure public-URL auditing, bounded same-site crawling, linked-document inventory, redirect-chain validation, explainable SEO/GEO scoring, content/schema tooling, editable prioritization, analytics CSV workflows, WordPress support/training, and explicit technical-escalation boundaries. The Geisel interview edition provides a five-minute hiring-manager walkthrough; the published Floot v2 remains a separate live surface while its latest source parity is pending.
+An employer- and industry-neutral web-operations portfolio app with secure public-URL auditing, bounded same-site crawling, linked-document inventory, redirect-chain validation, explainable SEO/GEO scoring, content/schema tooling, editable prioritization, analytics CSV workflows, CMS support/training, and explicit technical-escalation boundaries. The case-study workflow uses public evidence and clearly labeled demo inputs rather than employer-specific assumptions.
 
 ### [NeuroEval](handshake-neuroeval/)
 Biology and neuroscience response evaluation with transparent scoring for concept coverage, mechanistic reasoning, uncertainty calibration, evidence language, clarity, and unsupported certainty.

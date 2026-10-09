@@ -549,7 +549,7 @@ app.post('/api/scale-sim', (req, res) => {
       {priority:'Next',work:'Orphaned/oversized document review'},
       {priority:'Later',work:'Long redirect-chain cleanup after owner validation'}
     ],
-    boundary:'Synthetic scale model only. This endpoint does not crawl Geisel or any external site.'
+    boundary:'Synthetic scale model only. This endpoint does not crawl any external site.'
   });
 });
 
