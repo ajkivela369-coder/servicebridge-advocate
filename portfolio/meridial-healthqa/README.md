@@ -1,3 +1,7 @@
+Current guided browser app: https://ai-evaluation-lab-eta.vercel.app/healthqa
+
+[Maintained browser source and usage guide](../ai-evaluation-lab/). This directory preserves the earlier Python project.
+
 # HealthQA Auditor — Safety-First Health-Science AI Evaluation
 
 A reviewer-oriented quality and safety harness for AI-generated health-science content. The project demonstrates how an evaluator can separate content quality from clinical-risk signals, produce structured labels, benchmark decisions, and route questionable outputs to human review.

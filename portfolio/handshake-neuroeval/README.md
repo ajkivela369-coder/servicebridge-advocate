@@ -1,3 +1,7 @@
+Current guided browser app: https://ai-evaluation-lab-eta.vercel.app/neuroeval
+
+[Maintained browser source and usage guide](../ai-evaluation-lab/). This directory preserves the earlier Python project.
+
 # NeuroEval — Biology & Neuroscience AI Response Evaluator
 
 An auditable evaluation harness for reviewing AI-generated biology and neuroscience answers. It demonstrates the core work of AI evaluation: define a rubric, make judgments reproducible, flag unsupported certainty, quantify benchmark behavior, and return structured reviewer output.

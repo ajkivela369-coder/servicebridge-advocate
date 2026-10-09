@@ -22,10 +22,10 @@ Automation lives in `.github/workflows/portfolio-qc.yml`, `scripts/portfolio_qc.
 | Main employer portfolio | Live web | Production HTTP/title/meta/assets smoke passed |
 | SearchSignal | Live employer-neutral operations lab + earlier published v2 + inspectable standalone source | Rechecked 2026-10-09: 17/17 Node QA passed; `https://searchsignal-operations-lab.vercel.app/` passed neutral-homepage, health, live-audit, bounded site-scan, redirect-chain, and private-network-block checks. The earlier Floot v2 remains linked separately; source parity is tracked rather than assumed. |
 | Elias + Evidence Auditor | Live web + source | Production HTTP/title/meta smoke passed; core repo CI and evidence tests covered separately |
-| NeuroEval | Live web + source/tests | Production smoke passed; pytest + benchmark CI |
-| HealthQA Auditor | Live web + source/tests | Production smoke passed; pytest + benchmark CI |
-| CiteGuard | Live web + source | Production smoke passed; Python syntax/source gate |
-| PairRank | Live web + source | Production smoke passed; Python syntax/source gate |
+| NeuroEval | Guided browser app + shared source | 2026-10-09: 12/12 engine tests; desktop example/edit/export checks; production HTML/assets smoke. Human factual/source review remains required. |
+| HealthQA Auditor | Guided browser app + shared source | 2026-10-09: 12/12 engine tests; desktop example/edit/export checks; production HTML/assets smoke. Human factual/source review remains required. |
+| CiteGuard | Guided browser app + shared source | 2026-10-09: 12/12 engine tests; desktop example/edit/export checks; production HTML/assets smoke. Human factual/source review remains required. |
+| PairRank | Guided browser app + shared source | 2026-10-09: 12/12 engine tests; desktop example/edit/export checks; production HTML/assets smoke. Human factual/source review remains required. |
 | GrimForge Studio | Live web + local Forge successor | Production web smoke passed; source build gate. Full cinematic/voice quality is **not** considered passed by web smoke alone |
 | StudyForge | Live web + source | Production smoke passed; Vite build gate |
 | WildTake Studio | Live web + source | Production smoke passed; Vite build gate |

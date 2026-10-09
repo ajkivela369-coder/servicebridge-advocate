@@ -1,3 +1,7 @@
+Current guided browser app: https://ai-evaluation-lab-eta.vercel.app/citeguard
+
+[Maintained browser source and usage guide](../ai-evaluation-lab/). This directory preserves the earlier Python project.
+
 # CiteGuard
 
 CiteGuard is a scientific claim-to-source auditing demo.

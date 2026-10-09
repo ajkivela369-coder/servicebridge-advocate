@@ -90,6 +90,21 @@ jobs:
       - name: Run SearchSignal operations-lab QA
         run: npm run qa --prefix portfolio/searchsignal/interview-build
 
+  browser-evaluation-lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate browser workflows
+        working-directory: portfolio/ai-evaluation-lab
+        run: |
+          node --check app.js
+          node --check engine.js
+          node --check examples.js
+          npm test
+
   public-smoke:
     runs-on: ubuntu-latest
     steps:

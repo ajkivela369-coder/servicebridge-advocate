@@ -2,6 +2,19 @@
 
 A growing collection of compact, auditable AI applications spanning neuroscience, health-science safety, evidence review, pairwise preference evaluation, citation QA, annotation calibration, benchmark authoring, and creative media production.
 
+## Guided browser apps - updated October 9, 2026
+
+The four public evaluation apps now explain their purpose, who should use them, and each step from sample inputs to a reviewed report. Start in Simple mode; Pro adds inspectable output and controls.
+
+| App | Use it for | Live app |
+|---|---|---|
+| NeuroEval | Review an explanation against expected concepts across eight neuroscience topics or your own topic | [Open NeuroEval](https://ai-evaluation-lab-eta.vercel.app/neuroeval) |
+| HealthQA Auditor | Inspect configured health-content warning patterns and record human review | [Open HealthQA](https://ai-evaluation-lab-eta.vercel.app/healthqa) |
+| PairRank | Rate two answers with a shared rubric and explain your preference | [Open PairRank](https://ai-evaluation-lab-eta.vercel.app/pairrank) |
+| CiteGuard | Find source-match candidates, then record whether the source actually supports each claim | [Open CiteGuard](https://ai-evaluation-lab-eta.vercel.app/citeguard) |
+
+[Current shared source and usage guide](ai-evaluation-lab/) - [Upgrade record](ai-evaluation-lab/BUILD_AND_UPGRADE.md) - [Verification](ai-evaluation-lab/VERIFICATION.md). Earlier Python projects below remain available as project history.
+
 <!-- FORGE-SUITE-PORTFOLIO:START -->
 ## Current integrated Forge Suite
 

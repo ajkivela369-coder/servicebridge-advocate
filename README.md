@@ -229,3 +229,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 ## License
 
 Proprietary — all rights reserved. See [LICENSE](LICENSE).
+
+## Guided AI evaluation apps
+
+[Four updated browser workflows, live links, and current source](portfolio/ai-evaluation-lab/). NeuroEval now includes eight topics and custom inputs. All four apps include usage steps, examples, human decisions, and readable exports.

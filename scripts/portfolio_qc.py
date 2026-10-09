@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PORTFOLIO = ROOT / "portfolio"
 
 REQUIRED = {
+    "ai-evaluation-lab": ["README.md", "BUILD_AND_UPGRADE.md", "VERIFICATION.md", "app.js", "engine.js", "examples.js", "styles.css", "package.json", "tests/engine.test.js"],
     "aj-job-fisher": ["README.md", "package.json", "src/App.tsx"],
     "benchmark-forge": ["README.md", "dashboard.py", "requirements.txt"],
     "careflow-research-lab": ["README.md", "index.html"],

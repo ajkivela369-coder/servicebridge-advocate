@@ -1,3 +1,7 @@
+Current guided browser app: https://ai-evaluation-lab-eta.vercel.app/pairrank
+
+[Maintained browser source and usage guide](../ai-evaluation-lab/). This directory preserves the earlier Python project.
+
 # PairRank
 
 PairRank is a pairwise LLM-response evaluation workspace for comparing two model outputs against a weighted rubric.
