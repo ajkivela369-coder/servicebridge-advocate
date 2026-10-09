@@ -110,7 +110,8 @@ require("implementation candidate" in root_readme.lower(),
         "Forge: README preserves implementation-candidate boundary")
 require("live acceptance runbook" in root_readme.lower() and "live gates remain pending" in root_readme.lower(),
         "Forge: README preserves defined-but-pending live-validation boundary")
-require("searchsignal-operations-lab.vercel.app" in root_readme.lower(),
+require("searchsignal-operations-lab.vercel.app" in root_readme.lower() or
+        "aj-forge-portfolio.vercel.app/apps/searchsignal/" in root_readme.lower(),
         "root README links the current employer-neutral SearchSignal live app")
 require("forgesearcher.floot.app" in root_readme.lower(),
         "root README preserves the earlier SearchSignal v2 link")
