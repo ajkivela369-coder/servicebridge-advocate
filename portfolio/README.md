@@ -2,7 +2,23 @@
 
 A growing collection of compact, auditable AI applications spanning neuroscience, health-science safety, evidence review, pairwise preference evaluation, citation QA, annotation calibration, benchmark authoring, and creative media production.
 
-## Guided browser apps - updated October 9, 2026
+## Current Forge-managed live portfolio — October 9, 2026
+
+[Open all seven demos](https://aj-forge-portfolio.vercel.app/#projects). Forge is the primary deployment workflow; public HTTPS uses its existing Vercel adapter. SearchSignal has a published [Floot backup](https://forgesearcher.floot.app/). The other six demos currently use Forge.
+
+| App | Current live demo |
+|---|---|
+| Evidence Auditor | [Open](https://aj-forge-portfolio.vercel.app/apps/evidence/) |
+| SearchSignal | [Open](https://aj-forge-portfolio.vercel.app/apps/searchsignal/) |
+| NeuroEval | [Open](https://aj-forge-portfolio.vercel.app/apps/neuroeval/) |
+| HealthQA Auditor | [Open](https://aj-forge-portfolio.vercel.app/apps/healthqa/) |
+| PairRank | [Open](https://aj-forge-portfolio.vercel.app/apps/pairrank/) |
+| CiteGuard | [Open](https://aj-forge-portfolio.vercel.app/apps/citeguard/) |
+| GrimForge War Theater | [Open](https://aj-forge-portfolio.vercel.app/apps/grimforge/) |
+
+The public evidence workflow handles browser-side document review and reviewed PDF/ZIP exports. Evaluation tools expose deterministic scoring or human judgments. GrimForge's public demo generates a playable storyboard and planning exports; full local rendering remains a separate Forge workflow. Preserved standalone sources and earlier build records below describe their own versions.
+
+## Preserved guided browser apps - October 9, 2026
 
 The four public evaluation apps now explain their purpose, who should use them, and each step from sample inputs to a reviewed report. Start in Simple mode; Pro adds inspectable output and controls.
 
@@ -46,9 +62,9 @@ Private laptop orchestration for Forge, Blender, FFmpeg, Git, and project automa
 ### [SearchSignal — SEO + GEO Operations Lab](searchsignal/)
 **Current standalone source:** [searchsignal/interview-build/](searchsignal/interview-build/)
 
-**Live employer-neutral build:** https://searchsignal-operations-lab.vercel.app/
+**Current Forge-managed employer-neutral demo:** https://aj-forge-portfolio.vercel.app/apps/searchsignal/
 
-**Earlier published v2:** https://forgesearcher.floot.app/
+**Published Floot backup:** https://forgesearcher.floot.app/
 
 An employer- and industry-neutral web-operations portfolio app with secure public-URL auditing, bounded same-site crawling, Change Lab verification, recurring site-pattern analysis, linked-document intelligence, redirect-chain validation, explainable SEO/GEO scoring, content/schema tooling, editable prioritization, reporting, analytics CSV workflows, CMS support/training, explicit technical-escalation boundaries, and synthetic 20K-page / 15K-document scale simulation. The case-study workflow uses public evidence and clearly labeled demo inputs rather than employer-specific assumptions.
 
