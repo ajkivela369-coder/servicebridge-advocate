@@ -1,18 +1,34 @@
 # ServiceBridge Advocate
 
 **AJ Kivela — Applied AI, Health Data & Evidence Systems**  
-**Employer-facing portfolio:** https://aj-kivela-portfolio.lovable.app
+**Employer-facing portfolio:** https://aj-forge-portfolio.vercel.app
 
 [![CI](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/ci.yml)
 [![Portfolio QC](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/portfolio-qc.yml/badge.svg)](https://github.com/ajkivela369-coder/servicebridge-advocate/actions/workflows/portfolio-qc.yml)
 
+## Current live portfolio — October 9, 2026
+
+[Open the Forge-managed portfolio](https://aj-forge-portfolio.vercel.app/#projects).
+
+| App | Live demo |
+|---|---|
+| Evidence Auditor | [Open](https://aj-forge-portfolio.vercel.app/apps/evidence/) |
+| SearchSignal | [Open](https://aj-forge-portfolio.vercel.app/apps/searchsignal/) |
+| NeuroEval | [Open](https://aj-forge-portfolio.vercel.app/apps/neuroeval/) |
+| HealthQA Auditor | [Open](https://aj-forge-portfolio.vercel.app/apps/healthqa/) |
+| PairRank | [Open](https://aj-forge-portfolio.vercel.app/apps/pairrank/) |
+| CiteGuard | [Open](https://aj-forge-portfolio.vercel.app/apps/citeguard/) |
+| GrimForge War Theater | [Open](https://aj-forge-portfolio.vercel.app/apps/grimforge/) |
+
+Forge manages the source, checks, Git snapshots, GitHub sync, and deployment. Public HTTPS uses Forge Builder's existing Vercel adapter. **Forge is primary; Floot is the fallback.** SearchSignal has a published [Floot backup](https://forgesearcher.floot.app/); the other six demos currently use Forge. The private local evidence API is separate from public demos. Evaluation scores are transparent rules or human judgments; the GrimForge public demo produces a playable storyboard and planning exports.
+
 ## Portfolio highlights
 
-- **SearchSignal — SEO + GEO Operations Lab:** [live employer-neutral app](https://searchsignal-operations-lab.vercel.app/) · [current source](portfolio/searchsignal/) · [earlier published v2](https://forgesearcher.floot.app/) — secure public-URL auditing, bounded site intelligence, Change Lab verification, site-pattern/document intelligence, explainable SEO/GEO scoring, prioritization, reporting, analytics workflows, CMS support/training, and 20K/15K scale simulation.
+- **SearchSignal — SEO + GEO Operations Lab:** [live employer-neutral app](https://aj-forge-portfolio.vercel.app/apps/searchsignal/) · [current source](portfolio/searchsignal/) · [Floot backup](https://forgesearcher.floot.app/) — secure public-URL auditing, bounded site intelligence, Change Lab verification, site-pattern/document intelligence, explainable SEO/GEO scoring, prioritization, reporting, analytics workflows, CMS support/training, and 20K/15K scale simulation.
 - **Application portfolio index:** [portfolio/README.md](portfolio/README.md)
 - **Portfolio quality-control contract and status:** [portfolio/QUALITY_CONTROL.md](portfolio/QUALITY_CONTROL.md)
 - **Step-by-step app build/upgrade index:** [portfolio/BUILD_AND_UPGRADE_INDEX.md](portfolio/BUILD_AND_UPGRADE_INDEX.md)
-- **Employer-facing portfolio:** https://aj-kivela-portfolio.lovable.app/
+- **Employer-facing portfolio:** https://aj-forge-portfolio.vercel.app/
 
 SearchSignal and the other portfolio applications are independent project work. Demo data, connector-ready integrations, source-only prototypes, and live production functionality are labeled separately rather than being represented as paid employment or unverified production experience.
 
@@ -52,11 +68,11 @@ See [the maintained association directory](portfolio/COMPANION_SITES.md), [plugi
 
 ## Featured app — Elias Evidence Auditor Pro
 
-**▶ Test the current production app:** https://elias-evidence-assistant-simscb.v2.appdeploy.ai/
+**▶ Test the current Forge-managed browser demo:** https://aj-forge-portfolio.vercel.app/apps/evidence/
 
-**Current app entry point:** [`portfolio/evidence-auditor/00_CURRENT_APP/`](portfolio/evidence-auditor/00_CURRENT_APP/)
+**Preserved signed-in app source:** [`portfolio/evidence-auditor/00_CURRENT_APP/`](portfolio/evidence-auditor/00_CURRENT_APP/)
 
-Elias is the newest Evidence Auditor build: a signed-in, source-grounded workspace with large-PDF indexing, OCR and multimodal intake, floating one-click Copilot actions, VA Law & Rater Lens, case review, voice, web research, and packet drafting. The older Streamlit implementation is preserved under `portfolio/evidence-auditor/legacy-streamlit/` so the current build is no longer buried among legacy modules.
+The current public browser demo has a chat-first workflow, browser-side TXT/PDF/DOCX intake, source-linked review, and human-reviewed PDF/ZIP export. The preserved signed-in Elias build adds large-PDF indexing, OCR and multimodal intake, Copilot actions, VA Law & Rater Lens, voice, web research, and packet drafting; those capabilities are not presented as identical to the public demo. The older Streamlit implementation is preserved under `portfolio/evidence-auditor/legacy-streamlit/` so the current build is no longer buried among legacy modules.
 
 **A privacy-first, evidence-grounded AI advocate for medical complexity, veterans, disability
 benefits, and accommodations.**
