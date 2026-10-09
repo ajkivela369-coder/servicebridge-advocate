@@ -18,16 +18,16 @@ A growing collection of compact, auditable AI applications spanning neuroscience
 
 The public evidence workflow handles browser-side document review and reviewed PDF/ZIP exports. Evaluation tools expose deterministic scoring or human judgments. GrimForge's public demo generates a playable storyboard and planning exports; full local rendering remains a separate Forge workflow. Preserved standalone sources and earlier build records below describe their own versions.
 
-## Preserved guided browser apps - October 9, 2026
+## Guided Forge browser apps - October 9, 2026
 
 The four public evaluation apps now explain their purpose, who should use them, and each step from sample inputs to a reviewed report. Start in Simple mode; Pro adds inspectable output and controls.
 
 | App | Use it for | Live app |
 |---|---|---|
-| NeuroEval | Review an explanation against expected concepts across eight neuroscience topics or your own topic | [Open NeuroEval](https://ai-evaluation-lab-eta.vercel.app/neuroeval) |
-| HealthQA Auditor | Inspect configured health-content warning patterns and record human review | [Open HealthQA](https://ai-evaluation-lab-eta.vercel.app/healthqa) |
-| PairRank | Rate two answers with a shared rubric and explain your preference | [Open PairRank](https://ai-evaluation-lab-eta.vercel.app/pairrank) |
-| CiteGuard | Find source-match candidates, then record whether the source actually supports each claim | [Open CiteGuard](https://ai-evaluation-lab-eta.vercel.app/citeguard) |
+| NeuroEval | Review an explanation against expected concepts across eight neuroscience topics or your own topic | [Open NeuroEval](https://aj-forge-portfolio.vercel.app/apps/neuroeval/) |
+| HealthQA Auditor | Inspect configured health-content warning patterns and record human review | [Open HealthQA](https://aj-forge-portfolio.vercel.app/apps/healthqa/) |
+| PairRank | Rate two answers with a shared rubric and explain your preference | [Open PairRank](https://aj-forge-portfolio.vercel.app/apps/pairrank/) |
+| CiteGuard | Find source-match candidates, then record whether the source actually supports each claim | [Open CiteGuard](https://aj-forge-portfolio.vercel.app/apps/citeguard/) |
 
 [Current shared source and usage guide](ai-evaluation-lab/) - [Upgrade record](ai-evaluation-lab/BUILD_AND_UPGRADE.md) - [Verification](ai-evaluation-lab/VERIFICATION.md). Earlier Python projects below remain available as project history.
 
