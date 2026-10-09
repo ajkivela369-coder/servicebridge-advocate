@@ -192,7 +192,9 @@ function runReview(event) {
     // A changed input always clears the prior result; keep any existing reviewer notes visible.
     liveStatus('Review complete. Read the results, record your judgment, and download your report.');
     updateExport(); stash();
-    if (window.matchMedia('(max-width: 980px)').matches) $('resultHeading').scrollIntoView({behavior:'smooth',block:'start'});
+    $('resultHeading').setAttribute('tabindex', '-1');
+    $('resultHeading').focus({preventScroll:true});
+    if (window.matchMedia('(max-width: 980px)').matches) $('resultHeading').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'});
   } catch (error) {
     emptyResults();
     $('formError').textContent = error.message; $('formError').hidden = false;

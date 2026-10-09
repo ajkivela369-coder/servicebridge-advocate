@@ -9,3 +9,7 @@ NeuroEval replaces the single hard-coded action-potential sample with eight inde
 The floating Elias guide provides built-in usage answers; no AI model is connected. Drafts stay in tab session storage; no input is sent to a backend or model service.
 
 Deployment preserves the shared production URLs. Earlier Python projects and the pre-upgrade Windows source backup remain preserved. This static source directory is the current maintained browser implementation.
+
+## Final usability polish
+
+Removed the results panel scroll trap so decisions and exports follow normal page scrolling. Review completion moves keyboard focus to the results heading. Small-screen controls have larger touch targets and 16px text inputs; navigation spacing is reduced to fit narrower screens. Reduced-motion settings are respected when scrolling to results.
