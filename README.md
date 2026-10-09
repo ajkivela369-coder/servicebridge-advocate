@@ -8,7 +8,7 @@
 
 ## Portfolio highlights
 
-- **SearchSignal — SEO + GEO Operations Lab:** [current source](portfolio/searchsignal/) · [published v2](https://forgesearcher.floot.app/) — employer-neutral public-URL auditing, bounded site intelligence, document/redirect checks, explainable SEO/GEO scoring, prioritization, structured-data/content tooling, analytics workflows, and CMS support/training.
+- **SearchSignal — SEO + GEO Operations Lab:** [live employer-neutral app](https://searchsignal-operations-lab.vercel.app/) · [current source](portfolio/searchsignal/) · [earlier published v2](https://forgesearcher.floot.app/) — secure public-URL auditing, bounded site intelligence, Change Lab verification, site-pattern/document intelligence, explainable SEO/GEO scoring, prioritization, reporting, analytics workflows, CMS support/training, and 20K/15K scale simulation.
 - **Application portfolio index:** [portfolio/README.md](portfolio/README.md)
 - **Portfolio quality-control contract and status:** [portfolio/QUALITY_CONTROL.md](portfolio/QUALITY_CONTROL.md)
 - **Step-by-step app build/upgrade index:** [portfolio/BUILD_AND_UPGRADE_INDEX.md](portfolio/BUILD_AND_UPGRADE_INDEX.md)

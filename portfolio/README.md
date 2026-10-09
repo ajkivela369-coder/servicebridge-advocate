@@ -33,9 +33,11 @@ Private laptop orchestration for Forge, Blender, FFmpeg, Git, and project automa
 ### [SearchSignal — SEO + GEO Operations Lab](searchsignal/)
 **Current standalone source:** [searchsignal/interview-build/](searchsignal/interview-build/)
 
-**Published v2:** https://forgesearcher.floot.app/
+**Live employer-neutral build:** https://searchsignal-operations-lab.vercel.app/
 
-An employer- and industry-neutral web-operations portfolio app with secure public-URL auditing, bounded same-site crawling, linked-document inventory, redirect-chain validation, explainable SEO/GEO scoring, content/schema tooling, editable prioritization, analytics CSV workflows, CMS support/training, and explicit technical-escalation boundaries. The case-study workflow uses public evidence and clearly labeled demo inputs rather than employer-specific assumptions.
+**Earlier published v2:** https://forgesearcher.floot.app/
+
+An employer- and industry-neutral web-operations portfolio app with secure public-URL auditing, bounded same-site crawling, Change Lab verification, recurring site-pattern analysis, linked-document intelligence, redirect-chain validation, explainable SEO/GEO scoring, content/schema tooling, editable prioritization, reporting, analytics CSV workflows, CMS support/training, explicit technical-escalation boundaries, and synthetic 20K-page / 15K-document scale simulation. The case-study workflow uses public evidence and clearly labeled demo inputs rather than employer-specific assumptions.
 
 ### [NeuroEval](handshake-neuroeval/)
 Biology and neuroscience response evaluation with transparent scoring for concept coverage, mechanistic reasoning, uncertainty calibration, evidence language, clarity, and unsupported certainty.

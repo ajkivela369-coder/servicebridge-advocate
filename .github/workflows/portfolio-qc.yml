@@ -78,16 +78,16 @@ jobs:
       - name: Production build validation
         run: npm run build --prefix "${{ matrix.project }}"
 
-  searchsignal-interview:
+  searchsignal-operations-lab:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install SearchSignal interview dependencies
+      - name: Install SearchSignal operations-lab dependencies
         run: npm ci --prefix portfolio/searchsignal/interview-build --no-audit --no-fund
-      - name: Run SearchSignal interview QA
+      - name: Run SearchSignal operations-lab QA
         run: npm run qa --prefix portfolio/searchsignal/interview-build
 
   public-smoke:

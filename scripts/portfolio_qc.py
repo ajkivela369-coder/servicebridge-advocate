@@ -32,7 +32,7 @@ REQUIRED = {
         "interview-build/server.js",
         "interview-build/public/app.js",
         "interview-build/tests/smoke.mjs",
-        "interview-build/GEISEL_INTERVIEW_WALKTHROUGH.md",
+        "interview-build/CASE_STUDY_WALKTHROUGH.md",
     ],
     "studyforge": ["README.md", "appdeploy/package.json"],
     "wildtake-studio": ["README.md", "appdeploy/package.json"],

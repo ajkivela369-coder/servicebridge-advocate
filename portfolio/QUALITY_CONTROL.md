@@ -20,7 +20,7 @@ Automation lives in `.github/workflows/portfolio-qc.yml`, `scripts/portfolio_qc.
 | Project | Delivery | Current QC evidence |
 |---|---|---|
 | Main employer portfolio | Live web | Production HTTP/title/meta/assets smoke passed |
-| SearchSignal | Two live web surfaces + inspectable interview source | Geisel interview build: 6/6 Node QA passed; hosted homepage/assets/health/audit/site-scan/redirect checks passed; public Geisel audit + bounded crawl + HTTP→HTTPS redirect acceptance passed. Published Floot v2 remains live; latest v2 source parity is tracked separately as pending. |
+| SearchSignal | Live employer-neutral operations lab + earlier published v2 + inspectable standalone source | Rechecked 2026-10-09: 17/17 Node QA passed; `https://searchsignal-operations-lab.vercel.app/` passed neutral-homepage, health, live-audit, bounded site-scan, redirect-chain, and private-network-block checks. The earlier Floot v2 remains linked separately; source parity is tracked rather than assumed. |
 | Elias + Evidence Auditor | Live web + source | Production HTTP/title/meta smoke passed; core repo CI and evidence tests covered separately |
 | NeuroEval | Live web + source/tests | Production smoke passed; pytest + benchmark CI |
 | HealthQA Auditor | Live web + source/tests | Production smoke passed; pytest + benchmark CI |

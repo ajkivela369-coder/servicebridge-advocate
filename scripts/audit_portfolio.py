@@ -93,7 +93,7 @@ searchsignal = PORTFOLIO / "searchsignal" / "README.md"
 require(searchsignal.is_file(), "SearchSignal: README exists")
 if searchsignal.is_file():
     body = searchsignal.read_text(encoding="utf-8", errors="replace").lower()
-    for marker in ("https://forgesearcher.floot.app/", "independent portfolio", "connector-ready", "not affiliated"):
+    for marker in ("https://searchsignal-operations-lab.vercel.app/", "https://forgesearcher.floot.app/", "independent portfolio", "connector-ready", "not affiliated"):
         require(marker in body, f"SearchSignal truth/status marker present: {marker}")
     require((PORTFOLIO / "searchsignal/source/endpoints/audit_POST.ts").is_file(),
             "SearchSignal: audit endpoint source snapshot exists")
@@ -110,8 +110,10 @@ require("implementation candidate" in root_readme.lower(),
         "Forge: README preserves implementation-candidate boundary")
 require("live acceptance runbook" in root_readme.lower() and "live gates remain pending" in root_readme.lower(),
         "Forge: README preserves defined-but-pending live-validation boundary")
+require("searchsignal-operations-lab.vercel.app" in root_readme.lower(),
+        "root README links the current employer-neutral SearchSignal live app")
 require("forgesearcher.floot.app" in root_readme.lower(),
-        "root README links the newest SearchSignal live app")
+        "root README preserves the earlier SearchSignal v2 link")
 
 for forbidden in ("private_data", "records", "case_files", "uploads"):
     path = ROOT / forbidden

@@ -2,7 +2,9 @@
 
 **Current standalone source:** [`interview-build/`](interview-build/)
 
-**Published v2:** https://forgesearcher.floot.app/
+**Live employer-neutral build:** https://searchsignal-operations-lab.vercel.app/
+
+**Earlier published v2:** https://forgesearcher.floot.app/
 
 SearchSignal is an independent, employer- and industry-neutral portfolio project for evaluating public websites and turning SEO, GEO/AI-readiness, structured data, content quality, analytics evidence, CMS support, training, and web-governance findings into an accountable operating workflow.
 
@@ -20,7 +22,7 @@ SearchSignal is an independent, employer- and industry-neutral portfolio project
 
 ## Accuracy boundary
 
-SearchSignal analyzes public pages and uses clearly labeled demo data where live account connections are not present. Analysis of a public site does not imply affiliation, internal credentials, analytics access, production administration, or authorization to publish changes.
+SearchSignal analyzes public pages and uses clearly labeled demo data where live account connections are not present. SearchSignal is not affiliated with any analyzed organization. Analysis of a public site does not imply affiliation, internal credentials, analytics access, production administration, or authorization to publish changes.
 
 Google Search Console, Google Analytics, self-hosted WordPress, and WordPress.com are connector-ready surfaces only when a real account is connected. Apache, PHP/WordPress template safety, and MariaDB/MySQL concepts are represented as learning-lab material rather than production-administration claims.
 
