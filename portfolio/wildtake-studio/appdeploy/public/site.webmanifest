@@ -1,0 +1,14 @@
+{
+  "name": "WildForge Studio",
+  "short_name": "WildForge",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#15110f",
+  "background_color": "#15110f",
+  "display": "standalone"
+}
