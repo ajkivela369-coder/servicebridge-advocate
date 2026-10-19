@@ -1,7 +1,7 @@
 type ApiResponse<T=any>={data:T};
 
 async function post<T=any>(path:string, body:unknown):Promise<ApiResponse<T>>{
-  const response=await fetch(path,{
+  const target=location.pathname.startsWith('/wildtake-studio/')&&path.startsWith('/api/')?'/wildtake-studio'+path:path; const response=await fetch(target,{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body),

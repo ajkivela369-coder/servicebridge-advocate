@@ -1,4 +1,4 @@
-import { ai, error, json, router } from '@appdeploy/sdk';
+import { ai, error, json, router } from './forge-local-sdk.mjs';
 
 type Beat = { time?: string; action?: string; angle?: string };
 type ReferenceProfile = { id?:string; label?:string; sourceUrl?:string; summary?:string; traits?:string[]; formatPatterns?:string[]; weight?:number; originalityBoundary?:string };

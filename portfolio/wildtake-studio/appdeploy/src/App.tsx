@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useForgeState, useForgePageMode, useForgeAssistant } from './forge-hooks';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './appApi';
 import {
   CheckCircle2,
@@ -61,21 +62,21 @@ const initialBeats: Beat[] = [
 ];
 
 function App() {
-  const [mode, setMode] = useState<'Simple' | 'Pro'>('Simple');
-  const [rights, setRights] = useState<Rights>('I own this footage');
-  const [credit, setCredit] = useState('');
-  const [narrator, setNarrator] = useState<keyof typeof narrators>(
-    'Aussie Wildlife Commentator'
+  const [mode, setMode] = useForgePageMode<'Simple' | 'Pro'>('Simple');
+  const [rights, setRights] = useForgeState<Rights>("wildtake.rights",'I own this footage');
+  const [credit, setCredit] = useForgeState("wildtake.credit",'');
+  const [narrator, setNarrator] = useForgeState<keyof typeof narrators>(
+    "wildtake.narrator",'Aussie Wildlife Commentator'
   );
-  const [beats, setBeats] = useState<Beat[]>(initialBeats);
-  const [script, setScript] = useState(
-    initialBeats.map(b => `[${b.time}] ${b.angle}`).join('\n')
+  const [beats, setBeats] = useForgeState<Beat[]>("wildtake.beats",initialBeats);
+  const [script, setScript] = useForgeState(
+    "wildtake.script",initialBeats.map(b => `[${b.time}] ${b.angle}`).join('\n')
   );
-  const [creatorPack, setCreatorPack] = useState<CreatorPack | null>(null);
+  const [creatorPack, setCreatorPack] = useForgeState<CreatorPack | null>("wildtake.creatorPack",null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiNotice, setAiNotice] = useState('');
-  const [referenceUrl,setReferenceUrl]=useState('');
-  const [referenceProfiles,setReferenceProfiles]=useState<ReferenceProfile[]>([]);
+  const [referenceUrl,setReferenceUrl]=useForgeState("wildtake.referenceUrl",'');
+  const [referenceProfiles,setReferenceProfiles]=useForgeState<ReferenceProfile[]>("wildtake.referenceProfiles",[]);
   const [referenceBusy,setReferenceBusy]=useState(false);
   const [copilotOpen,setCopilotOpen]=useState(false);
   const [copilotInput,setCopilotInput]=useState('');
@@ -85,28 +86,57 @@ function App() {
   const [videoUrl, setVideoUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [sourceFile, setSourceFile] = useState<File | null>(null);
-  const [comedyMode, setComedyMode] = useState('Dub Comedy');
+  const [comedyMode, setComedyMode] = useForgeState("wildtake.comedyMode",'Rapid Duo Dub');
   const [renderStage, setRenderStage] = useState('');
   const [renderResultUrl, setRenderResultUrl] = useState('');
   const [renderBusy, setRenderBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const ready = rights !== 'Other / Unknown';
-  const [energy, setEnergy] = useState(8);
-  const [jokes, setJokes] = useState(7);
-  const [quality, setQuality] = useState('Highest available');
-  const [fps, setFps] = useState(30);
-  const [bitrate, setBitrate] = useState('16 Mbps');
+  const [energy, setEnergy] = useForgeState("wildtake.energy",8);
+  const [jokes, setJokes] = useForgeState("wildtake.jokes",7);
+  const [quality, setQuality] = useForgeState("wildtake.quality",'Highest available');
+  const [fps, setFps] = useForgeState("wildtake.fps",30);
+  const [bitrate, setBitrate] = useForgeState("wildtake.bitrate",'16 Mbps');
+  const [forgeStatus, setForgeStatus] = useState({ core: false, vision: false, voice: false, video: false, voiceEngine: '' });
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const [healthResponse, capabilityResponse, visionResponse] = await Promise.all([
+          fetch(FORGE_CORE + '/api/health'),
+          fetch(FORGE_CORE + '/api/capabilities'),
+          fetch(FORGE_CORE + '/api/vision/status'),
+        ]);
+        if (!healthResponse.ok || !capabilityResponse.ok || !visionResponse.ok) throw new Error('Forge Core status unavailable');
+        const health = await healthResponse.json();
+        const capabilities = await capabilityResponse.json();
+        const vision = await visionResponse.json();
+        if (active) setForgeStatus({
+          core: Boolean(health?.ok),
+          vision: Boolean(vision?.ready),
+          voice: Boolean(capabilities?.voice?.ready),
+          video: Boolean(capabilities?.video?.ready),
+          voiceEngine: String(capabilities?.voice?.preferred || ''),
+        });
+      } catch {
+        if (active) setForgeStatus({ core: false, vision: false, voice: false, video: false, voiceEngine: '' });
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(refresh, 15000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
   const qc = useMemo(
     () =>
       [
         ['Rights preflight', ready],
         ['Source clip', Boolean(videoUrl)],
         ['AI commentary writer', true],
-        ['Vision analysis provider', false],
-        ['Premium narration provider', false],
-        ['Render engine', false],
+        ['Local vision analysis', forgeStatus.core && forgeStatus.vision],
+        ['Character voice engine', forgeStatus.core && forgeStatus.voice],
+        ['FFmpeg render engine', forgeStatus.core && forgeStatus.video],
       ] as const,
-    [ready, videoUrl]
+    [ready, videoUrl, forgeStatus]
   );
   const updateBeat = (i: number, key: keyof Beat, value: string) =>
     setBeats(x => x.map((b, n) => (n === i ? { ...b, [key]: value } : b)));
@@ -141,7 +171,7 @@ function App() {
   };
   const updateReferenceWeight=(id:string,weight:number)=>setReferenceProfiles(current=>current.map(x=>x.id===id?{...x,weight}:x));
   const removeReference=(id:string)=>setReferenceProfiles(current=>current.filter(x=>x.id!==id));
-  const askCopilot=async(q=copilotInput)=>{if(!q.trim()||copilotBusy)return;setCopilotBusy(true);try{const {data}=await api.post('/api/copilot',{question:q,beats,script,creatorPack,narrator,energy,jokes,referenceProfiles,rights});setCopilotAnswer(data.answer);setCopilotInput('');}catch{setCopilotAnswer('I could not complete that request. Your current WildTake project is still intact.');}finally{setCopilotBusy(false);}};
+  const askCopilot=async(q=copilotInput)=>{if(!q.trim()||copilotBusy)return;setCopilotBusy(true);try{const {data}=await api.post('/api/copilot',{question:q,beats,script,creatorPack,narrator,energy,jokes,referenceProfiles,rights});setCopilotAnswer(data.answer);setCopilotInput('');}catch{setCopilotAnswer('I could not complete that request. Your current WildForge project is still intact.');}finally{setCopilotBusy(false);}};
   const makeVideo = async () => {
     if (!sourceFile || renderBusy || !ready) return;
     setRenderBusy(true);
@@ -164,7 +194,7 @@ function App() {
       body.append('energy', String(energy));
       body.append('jokes', String(jokes));
       body.append('model', 'auto');
-      body.append('allow_basic_fallback', 'false');
+      body.append('allow_basic_fallback', 'true');
       const start = await fetch(FORGE_CORE + '/api/wildtake/render', { method: 'POST', body });
       if (!start.ok) throw new Error(await start.text() || 'Forge Core rejected the render.');
       const queued = await start.json();
@@ -172,7 +202,7 @@ function App() {
       for (;;) {
         await new Promise(resolve => setTimeout(resolve, 1400));
         const poll = await fetch(FORGE_CORE + '/api/jobs/' + encodeURIComponent(queued.id));
-        if (!poll.ok) throw new Error('Could not read WildTake render progress.');
+        if (!poll.ok) throw new Error('Could not read WildForge render progress.');
         const job = await poll.json();
         setRenderStage(job.stage || job.status || 'Working…');
         setQueue(current => current.map((item, index) => {
@@ -187,25 +217,27 @@ function App() {
           if (job.status === 'completed') state = 'done';
           return [item[0], state] as [string, string];
         }));
-        if (job.status === 'failed') throw new Error(job.error || 'WildTake render failed.');
+        if (job.status === 'failed') throw new Error(job.error || 'WildForge render failed.');
         if (job.status === 'completed') {
           const raw = String(job.result?.video || '');
           const name = raw.split(/[\\/]/).pop();
           if (!name) throw new Error('Render completed but no final video path was returned.');
           setRenderResultUrl(FORGE_CORE + '/api/outputs/' + encodeURIComponent(name));
-          setRenderStage('Finished — original dubbed Short is ready.');
+          setRenderStage('Finished — original WildForge Short is ready.');
           break;
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'WildTake render failed.';
+      const message = err instanceof Error ? err.message : 'WildForge render failed.';
       setRenderStage(message + ' Make sure Forge Core is running on 127.0.0.1:8787 and local vision/TTS are ready.');
       setQueue(current => current.map(item => item[1] === 'running' ? [item[0], 'failed'] : item));
     } finally {
       setRenderBusy(false);
     }
   };
-  return (
+
+  useForgeAssistant("wildtake",{rights,narrator,beats,script,creatorPack,energy,jokes},["Study a channel or website","Production DNA mixer","Mix plan","Render intent"],true);
+return (
     <main className="shell">
       <header className="hero">
         <div className="brand">
@@ -214,7 +246,7 @@ function App() {
           </div>
           <div>
             <p className="eyebrow">Original short-form video studio</p>
-            <h1>WildTake Studio</h1>
+            <h1>WildForge</h1>
             <p>
               Animal footage → action beats → comedy commentary → narration →
               captions → final Short.
@@ -242,21 +274,21 @@ function App() {
           <ShieldCheck size={17} />
           <span>Rights-first workflow</span>
         </div>
-        <div className="warn">
+        <div className={forgeStatus.voice ? '' : 'warn'}>
           <Mic2 size={17} />
-          <span>Premium TTS not connected</span>
+          <span>{forgeStatus.voice ? `Voice ready · ${forgeStatus.voiceEngine || 'local'}` : 'Voice engine not detected'}</span>
         </div>
         <div>
           <Sparkles size={17} />
           <span>AI commentary writer connected</span>
         </div>
-        <div className="warn">
+        <div className={forgeStatus.vision ? '' : 'warn'}>
           <Sparkles size={17} />
-          <span>Vision analysis not connected</span>
+          <span>{forgeStatus.vision ? 'Local vision ready' : 'Local vision not detected'}</span>
         </div>
-        <div className="warn">
+        <div className={forgeStatus.video ? '' : 'warn'}>
           <FileVideo2 size={17} />
-          <span>Render engine not connected</span>
+          <span>{forgeStatus.video ? 'FFmpeg render ready' : 'FFmpeg render not detected'}</span>
         </div>
       </div>
 
@@ -345,12 +377,13 @@ function App() {
             <label>
               Comedy engine
               <select value={comedyMode} onChange={e => setComedyMode(e.target.value)}>
+                <option>Rapid Duo Dub</option>
                 <option>Dub Comedy</option>
                 <option>Observational Comedy</option>
                 <option>Sports Desk</option>
               </select>
             </label>
-            <p className="desc">Dub Comedy uses the animal's visible movements as beats for an original character premise, escalation, reversal, and final button.</p>
+            <p className="desc">{comedyMode === 'Rapid Duo Dub' ? 'Rapid Duo Dub targets fast two-character turns, tiny reaction beats, a late reversal, chunked dialogue captions, and a final button — while keeping all wording and character work original.' : 'Dub Comedy uses the animal’s visible movements as beats for an original character premise, escalation, reversal, and final button.'}</p>
             {mode === 'Pro' && (
               <div className="pro-grid">
                 <label>
@@ -379,7 +412,7 @@ function App() {
 
           <section className="panel reference-lab">
             <div className="section-head"><div><p className="eyebrow">4 · Reference Lab</p><h2>Study a channel or website</h2></div><Globe2 size={20}/></div>
-            <p className="desc">Import a public YouTube channel/video or website. WildTake extracts accessible high-level production traits, then uses those traits to create original material — not cloned scripts, voices, catchphrases, or creator identity.</p>
+            <p className="desc">Import a public YouTube channel/video or website. WildForge extracts accessible high-level production traits, then uses those traits to create original material — not cloned scripts, voices, catchphrases, or creator identity.</p>
             <div className="reference-import"><input value={referenceUrl} onChange={e=>setReferenceUrl(e.target.value)} placeholder="https://youtube.com/@channel or public website"/><button className="ai-write" onClick={analyzeReference} disabled={!referenceUrl.trim()||referenceBusy}>{referenceBusy?'Studying…':'Study reference'}</button></div>
             <div className="preset-grid">{referencePresets.map(p=><article key={p.id} className="preset-reference"><strong>{p.label}</strong><span>{p.summary}</span><small>{p.traits.slice(0,2).join(' · ')}</small><button onClick={()=>addPreset(p)} disabled={referenceProfiles.some(x=>x.id===p.id)}><Plus size={14}/>{referenceProfiles.some(x=>x.id===p.id)?'Added':'Add to blend'}</button></article>)}</div>
             {referenceProfiles.length>0&&<div className="active-blend"><div className="section-head"><div><p className="eyebrow">Active blend</p><h3>Production DNA mixer</h3></div><span className="badge">{referenceProfiles.length} reference{referenceProfiles.length===1?'':'s'}</span></div>{referenceProfiles.map(profile=><div className="blend-row" key={profile.id}><div><strong>{profile.label}</strong><small>{profile.traits.slice(0,3).join(' · ')}</small></div><label>Weight <b>{profile.weight}%</b><input type="range" min="5" max="100" value={profile.weight} onChange={e=>updateReferenceWeight(profile.id,Number(e.target.value))}/></label><button onClick={()=>removeReference(profile.id)}>Remove</button></div>)}</div>}
@@ -465,7 +498,7 @@ function App() {
               ) : (
                 <div>
                   <FileVideo2 size={38} />
-                  <strong>WildTake Preview</strong>
+                  <strong>WildForge Preview</strong>
                   <span>Upload a clip to preview it here.</span>
                 </div>
               )}
@@ -481,7 +514,7 @@ function App() {
                 <strong>{x}</strong>
                 <span>
                   {i === 0
-                    ? 'Premium TTS not connected'
+                    ? (forgeStatus.voice ? `Ready · ${forgeStatus.voiceEngine || 'local voice'}` : 'Voice engine not detected')
                     : i === 1
                       ? 'Preserve / duck under voice'
                       : 'Optional'}
@@ -564,7 +597,7 @@ function App() {
           </small>
         </button>
         {renderStage && <p className="desc" style={{marginTop:12,textAlign:'center'}}>{renderStage}</p>}
-        {renderResultUrl && <div style={{marginTop:16}}><video className="source-video" src={renderResultUrl} controls /><a href={renderResultUrl} target="_blank" rel="noreferrer">Open finished WildTake episode</a></div>}
+        {renderResultUrl && <div style={{marginTop:16}}><video className="source-video" src={renderResultUrl} controls /><a href={renderResultUrl} target="_blank" rel="noreferrer">Open finished WildForge episode</a></div>}
       </section>
 
       <section className="panel queue">
@@ -580,17 +613,17 @@ function App() {
           ))
         ) : (
           <p className="desc">
-            Nothing queued yet. WildTake will never label storyboard or
+            Nothing queued yet. WildForge will never label storyboard or
             placeholder output as a completed render.
           </p>
         )}
       </section>
 
       <button className="wild-copilot-fab" onClick={()=>setCopilotOpen(true)}><Bot size={20}/><div><strong>Wild Copilot</strong><small>Original creator assistant</small></div></button>
-      {copilotOpen&&<aside className="wild-copilot"><header><div><p className="eyebrow">Floating creator copilot</p><h3>Wild Copilot</h3></div><button onClick={()=>setCopilotOpen(false)}><X size={17}/></button></header><div className="copilot-body"><div className="copilot-answer">{copilotBusy?'Reviewing your current cut…':copilotAnswer}</div><div className="copilot-tools">{['Give me 3 stronger hooks','Make the script funnier without copying anyone','Tighten this to 20 seconds','Give me 5 caption ideas','Use my reference blend to propose a new Short'].map(q=><button key={q} onClick={()=>askCopilot(q)}>{q}</button>)}</div></div><div className="copilot-compose"><textarea rows={2} value={copilotInput} onChange={e=>setCopilotInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void askCopilot();}}} placeholder="Ask about this WildTake project…"/><button onClick={()=>void askCopilot()} disabled={!copilotInput.trim()||copilotBusy}><Send size={17}/></button></div></aside>}
+      {copilotOpen&&<aside className="wild-copilot"><header><div><p className="eyebrow">Floating creator copilot</p><h3>Wild Copilot</h3></div><button onClick={()=>setCopilotOpen(false)}><X size={17}/></button></header><div className="copilot-body"><div className="copilot-answer">{copilotBusy?'Reviewing your current cut…':copilotAnswer}</div><div className="copilot-tools">{['Give me 3 stronger hooks','Make the script funnier without copying anyone','Tighten this to 20 seconds','Give me 5 caption ideas','Use my reference blend to propose a new Short'].map(q=><button key={q} onClick={()=>askCopilot(q)}>{q}</button>)}</div></div><div className="copilot-compose"><textarea rows={2} value={copilotInput} onChange={e=>setCopilotInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void askCopilot();}}} placeholder="Ask about this WildForge project…"/><button onClick={()=>void askCopilot()} disabled={!copilotInput.trim()||copilotBusy}><Send size={17}/></button></div></aside>}
 
       <footer>
-        WildTake Studio uses original narrator presets. “Aussie Wildlife
+        WildForge uses original narrator presets. “Aussie Wildlife
         Commentator” describes a broad accent and comedy energy only; it does
         not imitate Ozzy Man Reviews / Ethan Marrell's voice, scripts,
         catchphrases, branding, or persona.
