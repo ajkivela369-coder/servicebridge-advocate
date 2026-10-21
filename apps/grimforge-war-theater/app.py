@@ -1,3 +1,4 @@
+import base64
 import html
 import json
 import random
@@ -120,6 +121,48 @@ if "project_notice" not in st.session_state:
 if "full_episode_profile" not in st.session_state:
     st.session_state.full_episode_profile = "Cinematic"
 
+# Upgraded source-locked media layer. This is intentionally separate from
+# generative reference media: the source stays pixel-stable while Forge moves
+# the virtual camera and overlays labels/narration on top.
+if "source_media_mode" not in st.session_state:
+    st.session_state.source_media_mode = "None"
+if "source_media_url" not in st.session_state:
+    st.session_state.source_media_url = ""
+if "source_media_data_uri" not in st.session_state:
+    st.session_state.source_media_data_uri = ""
+if "source_media_name" not in st.session_state:
+    st.session_state.source_media_name = ""
+if "source_media_rights" not in st.session_state:
+    st.session_state.source_media_rights = "User-provided / owned or permitted"
+if "source_media_lock_geometry" not in st.session_state:
+    st.session_state.source_media_lock_geometry = True
+if "source_media_motion" not in st.session_state:
+    st.session_state.source_media_motion = "Scene focus"
+if "source_media_opacity" not in st.session_state:
+    st.session_state.source_media_opacity = 92
+
+
+def source_media_src():
+    if st.session_state.source_media_mode == "Public image URL":
+        return st.session_state.source_media_url.strip()
+    if st.session_state.source_media_mode == "Upload image":
+        return st.session_state.source_media_data_uri
+    return ""
+
+
+def current_source_media_payload():
+    return {
+        "mode": st.session_state.source_media_mode,
+        "url": st.session_state.source_media_url,
+        "data_uri": st.session_state.source_media_data_uri,
+        "name": st.session_state.source_media_name,
+        "rights": st.session_state.source_media_rights,
+        "lock_geometry": bool(st.session_state.source_media_lock_geometry),
+        "motion": st.session_state.source_media_motion,
+        "opacity": int(st.session_state.source_media_opacity),
+    }
+
+
 def current_project_payload():
     episode_payload = st.session_state.episode.to_dict() if st.session_state.episode else None
     return {
@@ -143,6 +186,7 @@ def current_project_payload():
         "reference_url": st.session_state.reference_url,
         "reference_library": list(st.session_state.reference_library),
         "full_episode_profile": st.session_state.full_episode_profile,
+        "source_media": current_source_media_payload(),
         "episode": episode_payload,
     }
 
@@ -157,6 +201,16 @@ def load_project_payload(payload):
     ]:
         if key in payload:
             st.session_state[key] = payload[key]
+    source_media = payload.get("source_media", {})
+    if isinstance(source_media, dict):
+        st.session_state.source_media_mode = source_media.get("mode", st.session_state.source_media_mode)
+        st.session_state.source_media_url = source_media.get("url", st.session_state.source_media_url)
+        st.session_state.source_media_data_uri = source_media.get("data_uri", st.session_state.source_media_data_uri)
+        st.session_state.source_media_name = source_media.get("name", st.session_state.source_media_name)
+        st.session_state.source_media_rights = source_media.get("rights", st.session_state.source_media_rights)
+        st.session_state.source_media_lock_geometry = bool(source_media.get("lock_geometry", st.session_state.source_media_lock_geometry))
+        st.session_state.source_media_motion = source_media.get("motion", st.session_state.source_media_motion)
+        st.session_state.source_media_opacity = int(source_media.get("opacity", st.session_state.source_media_opacity))
     st.session_state.episode = episode_from_dict(payload["episode"]) if payload.get("episode") else None
 
 
@@ -186,6 +240,7 @@ with st.sidebar:
     st.divider()
     st.markdown("**Provider status**")
     st.caption("Episode generator: local/deterministic")
+    st.caption("Source-locked media: connected")
     st.caption("Reference analyzer: not connected")
     st.caption("Video renderer: provider selectable · execution not connected")
     st.caption("Open-source TTS: Kokoro / KittenTTS / MeloTTS / Piper planned")
@@ -314,11 +369,12 @@ with bench_right:
 
 st.subheader("Production Readiness")
 route = render_route_advice(st.session_state.video_engine, st.session_state.gpu_backend)
-r1, r2, r3, r4 = st.columns(4)
+r1, r2, r3, r4, r5 = st.columns(5)
 r1.metric("Episode engine", "Ready")
 r2.metric("Narration preview", "Ready" if st.session_state.narrator_enabled else "Muted")
-r3.metric("Video render", "Planned")
-r4.metric("Final MP4", "Blocked")
+r3.metric("Source lock", "Ready" if source_media_src() else "Optional")
+r4.metric("Video render", "Planned")
+r5.metric("Final MP4", "Blocked")
 st.markdown(
     f'<div class="gf-summary"><strong>{html.escape(route["label"])}</strong> · '
     f'<span class="gf-muted">{html.escape(route["reason"])}</span><br>'
@@ -342,6 +398,85 @@ st.markdown(
 st.subheader("Reference Theater")
 ref_col, lens_col = st.columns([1.2, 0.8], gap="large")
 with ref_col:
+    st.markdown("**Source-Locked Visuals · Upgraded**")
+    st.caption(
+        "Use a real photo, map, scan, diagram, screenshot, or other truth-layer image. "
+        "Forge can pan/zoom it and add overlays without redrawing the source."
+    )
+    source_modes = ["None", "Public image URL", "Upload image"]
+    st.session_state.source_media_mode = st.radio(
+        "Truth-layer source",
+        source_modes,
+        horizontal=True,
+        index=source_modes.index(st.session_state.source_media_mode)
+        if st.session_state.source_media_mode in source_modes else 0,
+        key="source_media_mode_control",
+    )
+
+    if st.session_state.source_media_mode == "Public image URL":
+        st.session_state.source_media_url = st.text_input(
+            "Direct public image URL",
+            st.session_state.source_media_url,
+            placeholder="https://.../image.jpg",
+            help="Use a direct, publicly fetchable image URL. For Google Earth/Maps, upload a screenshot you are permitted to use rather than hotlinking the interactive map.",
+        )
+        if st.session_state.source_media_url.strip():
+            st.session_state.source_media_name = st.text_input(
+                "Source label",
+                st.session_state.source_media_name or "Public web image",
+                key="source_media_public_name",
+            )
+    elif st.session_state.source_media_mode == "Upload image":
+        uploaded_source = st.file_uploader(
+            "Upload source image",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="source_media_upload",
+            help="Uploaded images are embedded into the exported GrimForge project so the truth layer can travel with the project.",
+        )
+        if uploaded_source is not None:
+            source_bytes = uploaded_source.getvalue()
+            source_mime = uploaded_source.type or "image/png"
+            encoded = base64.b64encode(source_bytes).decode("ascii")
+            st.session_state.source_media_data_uri = f"data:{source_mime};base64,{encoded}"
+            st.session_state.source_media_name = uploaded_source.name
+
+    active_source = source_media_src()
+    if active_source:
+        st.session_state.source_media_lock_geometry = st.toggle(
+            "Lock source geometry",
+            value=st.session_state.source_media_lock_geometry,
+            help="When on, Forge treats this image as the visual truth layer. Camera transforms and overlays are allowed; generative redraws are not.",
+        )
+        motion_options = ["Static", "Slow push", "Scene focus"]
+        st.session_state.source_media_motion = st.selectbox(
+            "Source camera behavior",
+            motion_options,
+            index=motion_options.index(st.session_state.source_media_motion)
+            if st.session_state.source_media_motion in motion_options else 2,
+        )
+        st.session_state.source_media_opacity = st.slider(
+            "Source visibility",
+            40, 100, int(st.session_state.source_media_opacity), 1,
+            help="Lower this only when overlays need more contrast.",
+        )
+        st.session_state.source_media_rights = st.text_input(
+            "Rights / source note",
+            st.session_state.source_media_rights,
+            help="Record ownership, license, attribution, permission, or source context.",
+        )
+        try:
+            st.image(active_source, caption=st.session_state.source_media_name or "Source-locked visual", use_container_width=True)
+        except Exception:
+            st.warning("Forge saved the source, but the preview could not be displayed. Check that a public URL points directly to an image.")
+        lock_label = "GEOMETRY LOCKED" if st.session_state.source_media_lock_geometry else "REFERENCE ONLY"
+        st.markdown(
+            f'<div class="gf-status"><span class="ok">SOURCE CONNECTED</span><span>{html.escape(lock_label)}</span>'
+            f'<span>{html.escape(st.session_state.source_media_motion)}</span></div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.info("Add a source image to activate source-locked animatics. The existing generative workflow remains available when no truth layer is selected.")
+
     st.markdown("**Reference Library**")
     library_text = st.text_area(
         "One URL per line",
@@ -464,6 +599,12 @@ else:
                     st.text_area("Visual", scene.visual, key=f"v_{scene.id}")
                     st.text_area("Narration", scene.narration, key=f"n_{scene.id}")
                     st.text_area("Dialogue", scene.dialogue, key=f"d_{scene.id}")
+                    if source_media_src():
+                        st.markdown("**Source-locked framing**")
+                        f1, f2, f3 = st.columns(3)
+                        scene.focus_x = f1.slider("Focus X", 0, 100, int(scene.focus_x), 1, key=f"fx_{scene.id}")
+                        scene.focus_y = f2.slider("Focus Y", 0, 100, int(scene.focus_y), 1, key=f"fy_{scene.id}")
+                        scene.source_zoom = f3.slider("Zoom", 1.0, 2.5, float(scene.source_zoom), 0.05, key=f"fz_{scene.id}")
         else:
             st.info("Forge an episode to edit generated scenes.")
     with tabs[5]:
@@ -534,10 +675,15 @@ if episode is None:
 else:
     st.divider()
     st.subheader("Playable Animatic")
+    source_lock_badge = (
+        '<span class="gf-badge">SOURCE-LOCKED VISUAL</span>'
+        if source_media_src() and st.session_state.source_media_lock_geometry
+        else ''
+    )
     st.markdown(
         f'<div class="gf-summary"><strong>{html.escape(episode.title)}</strong><br>'
         f'<span class="gf-muted">{html.escape(episode.logline)}</span><br>'
-        f'<span class="gf-badge">PLAYABLE ANIMATIC</span>'
+        f'<span class="gf-badge">PLAYABLE ANIMATIC</span>{source_lock_badge}'
         f'<span class="gf-badge">Story target {round(episode.runtime_seconds/60,1)} min</span>'
         f'<span class="gf-badge">VIDEO: {html.escape(st.session_state.video_engine)} · planned</span>'
         f'<span class="gf-badge">GPU: {html.escape(st.session_state.gpu_backend)}</span>'
@@ -554,6 +700,7 @@ else:
         narrator_voice=st.session_state.narrator_voice,
         reference_url=st.session_state.reference_url,
     )
+    full_episode_manifest["source_media"] = current_source_media_payload()
     st.markdown(
         f'<div class="gf-summary"><strong>Whole-video plan</strong> · '
         f'<span class="gf-badge">{html.escape(st.session_state.full_episode_profile)}</span>'
@@ -578,6 +725,7 @@ else:
         narrator_voice=st.session_state.narrator_voice,
         reference_url=st.session_state.reference_url,
     )
+    render_manifest["source_media"] = current_source_media_payload()
     file_col1, file_col2 = st.columns(2)
     with file_col1:
         st.download_button(
@@ -612,16 +760,24 @@ else:
             "narration": s.narration, "dialogue": s.dialogue,
             "visual": s.visual, "camera": s.camera, "sound": s.sound,
             "continuity": s.continuity, "palette": s.palette, "intensity": s.intensity,
+            "focus_x": s.focus_x, "focus_y": s.focus_y, "source_zoom": s.source_zoom,
         } for s in episode.scenes
     ])
     voice_profile_json = json.dumps(NARRATOR_VOICE_PROFILES[st.session_state.narrator_voice])
     narrator_enabled_json = json.dumps(bool(st.session_state.narrator_enabled))
+    source_media_json = json.dumps(source_media_src())
+    source_lock_json = json.dumps(bool(st.session_state.source_media_lock_geometry))
+    source_motion_json = json.dumps(st.session_state.source_media_motion)
+    source_opacity_json = json.dumps(int(st.session_state.source_media_opacity) / 100.0)
     player_html = f"""
     <html><head><style>
     body{{margin:0;background:#080909;color:#eee8dc;font-family:Arial,sans-serif}}
     #frame{{position:relative;aspect-ratio:16/9;border:1px solid #524327;border-radius:16px;overflow:hidden;
       background:radial-gradient(circle at 55% 35%,#58301d 0,#1d1812 33%,#080909 72%);}}
-    .fog{{position:absolute;inset:-30%;background:conic-gradient(from 20deg,#0000,#79502b22,#0000,#2d8b7e18,#0000);animation:spin 18s linear infinite}}
+    #sourceImage{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;
+      z-index:0;display:none;transform:scale(1);transition:transform 1.2s ease,object-position 1.2s ease,opacity .4s ease;}}
+    .source-shade{{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(2,5,8,.35),rgba(2,5,8,.10) 48%,rgba(2,5,8,.58));pointer-events:none}}
+    .fog{{position:absolute;inset:-30%;z-index:1;background:conic-gradient(from 20deg,#0000,#79502b22,#0000,#2d8b7e18,#0000);animation:spin 18s linear infinite}}
     @keyframes spin{{to{{transform:rotate(360deg)}}}}
     .top{{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;z-index:3}}
     .pill{{padding:6px 9px;border:1px solid #806330;background:#090909bb;border-radius:999px;color:#e5c47d;font-size:12px}}
@@ -640,7 +796,7 @@ else:
     .timeline{{display:flex;gap:6px;overflow:auto;margin-top:10px}} .timeline button{{min-width:118px;text-align:left;font-size:11px}}
     .timeline button.active{{border-color:#c59b49;color:#f0d59e}}
     </style></head><body>
-    <div id="frame"><div class="fog"></div><div class="top"><span id="act" class="pill"></span><span id="count" class="pill"></span></div>
+    <div id="frame"><img id="sourceImage" alt=""><div class="source-shade"></div><div class="fog"></div><div class="top"><span id="act" class="pill"></span><span id="sourceBadge" class="pill" style="display:none"></span><span id="count" class="pill"></span></div>
       <div class="center"><h2 id="title"></h2><p id="visual"></p><p id="narration"></p><div id="dialogue" class="quote"></div></div></div>
     <div class="controls"><button onclick="prev()">◀ Prev</button><button id="play" onclick="toggle()">▶ Play episode</button><button onclick="next()">Next ▶</button><button id="voice" onclick="toggleVoice()">🔊 Narration on</button></div>
     <div class="voice-meta"><span id="voiceProfile"></span><span id="voiceStatus">Browser voice preview</span></div>
@@ -650,6 +806,10 @@ else:
     <script>
     const scenes={scenes_json};
     const voiceProfile={voice_profile_json};
+    const sourceMedia={source_media_json};
+    const sourceLocked={source_lock_json};
+    const sourceMotion={source_motion_json};
+    const sourceOpacity={source_opacity_json};
     let voiceEnabled={narrator_enabled_json};
     let i=0, playing=false, elapsed=0, timer=null, lastSpoken=-1;
     function getPreferredVoice(){{
@@ -684,8 +844,24 @@ else:
       document.getElementById('voice').textContent=voiceEnabled?'🔊 Narration on':'🔇 Narration off';
       if(voiceEnabled && playing) speakScene();
     }}
+    function renderSource(s){{
+      const img=document.getElementById('sourceImage');
+      const badge=document.getElementById('sourceBadge');
+      if(!sourceMedia){{
+        img.style.display='none'; badge.style.display='none'; return;
+      }}
+      img.src=sourceMedia; img.style.display='block'; img.style.opacity=String(sourceOpacity);
+      const fx=Number(s.focus_x ?? 50), fy=Number(s.focus_y ?? 50), baseZoom=Number(s.source_zoom ?? 1);
+      img.style.objectPosition=fx+'% '+fy+'%';
+      let z=baseZoom;
+      if(sourceMotion==='Static') z=1;
+      if(sourceMotion==='Slow push') z=Math.max(baseZoom,1.04);
+      img.style.transform='scale('+z+')';
+      badge.style.display='inline-block';
+      badge.textContent=sourceLocked?'SOURCE LOCKED':'SOURCE REFERENCE';
+    }}
     function render(){{
-      const s=scenes[i]; document.getElementById('act').textContent=s.act; document.getElementById('count').textContent=(i+1)+' / '+scenes.length;
+      const s=scenes[i]; renderSource(s); document.getElementById('act').textContent=s.act; document.getElementById('count').textContent=(i+1)+' / '+scenes.length;
       document.getElementById('title').textContent=s.title; document.getElementById('visual').textContent=s.visual;
       document.getElementById('narration').textContent=s.narration; document.getElementById('dialogue').textContent=s.dialogue?('“'+s.dialogue+'”'):'';
       document.getElementById('camera').textContent='CAMERA · '+s.camera; document.getElementById('sound').textContent='SOUND · '+s.sound;
@@ -719,6 +895,7 @@ else:
         ("Episode structure", "Ready"),
         ("Playable animatic", "Ready"),
         ("Reference rights boundary", "Ready"),
+        ("Source-locked visual layer", "Ready" if source_media_src() else "Optional"),
         ("Full-motion video generation", "Not connected"),
         ("Premium voice performance", "Not connected"),
         ("Music / SFX generation", "Not connected"),
@@ -727,4 +904,4 @@ else:
     ]
     st.table({"Stage": [x[0] for x in queue_rows], "Status": [x[1] for x in queue_rows]})
 
-st.caption("GrimForge War Theater · original war-fantasy production workspace · GitHub/Streamlit build")
+st.caption("GrimForge War Theater · source-locked media + original generative production workspace · GitHub/Streamlit build")

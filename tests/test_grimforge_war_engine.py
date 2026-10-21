@@ -28,6 +28,32 @@ class GrimForgeWarEngineTests(unittest.TestCase):
         restored = engine.episode_from_dict(ep.to_dict())
         self.assertEqual(restored.to_dict(), ep.to_dict())
 
+    def test_source_locked_scene_framing_defaults_round_trip(self):
+        ep = engine.make_episode("Source Lock", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
+        first = ep.scenes[0]
+        self.assertEqual(first.focus_x, 50)
+        self.assertEqual(first.focus_y, 50)
+        self.assertEqual(first.source_zoom, 1.0)
+        first.focus_x = 37
+        first.focus_y = 62
+        first.source_zoom = 1.45
+        restored = engine.episode_from_dict(ep.to_dict())
+        self.assertEqual(restored.scenes[0].focus_x, 37)
+        self.assertEqual(restored.scenes[0].focus_y, 62)
+        self.assertEqual(restored.scenes[0].source_zoom, 1.45)
+
+    def test_legacy_episode_without_source_framing_still_loads(self):
+        ep = engine.make_episode("Legacy", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
+        data = ep.to_dict()
+        for scene in data["scenes"]:
+            scene.pop("focus_x", None)
+            scene.pop("focus_y", None)
+            scene.pop("source_zoom", None)
+        restored = engine.episode_from_dict(data)
+        self.assertTrue(all(scene.focus_x == 50 for scene in restored.scenes))
+        self.assertTrue(all(scene.focus_y == 50 for scene in restored.scenes))
+        self.assertTrue(all(scene.source_zoom == 1.0 for scene in restored.scenes))
+
     def test_full_episode_manifest_has_multiple_shots(self):
         ep = engine.make_episode("Full Episode", self.presets, "Ashen Crown", "Enemy", "Commander", "Hold.")
         manifest = engine.build_full_episode_manifest(

@@ -27,6 +27,9 @@ The YouTube reference is used only for broad production mechanics such as pacing
 - editable Reference Lens presets
 - deterministic original episode generation
 - playable in-browser animatic with scene timeline, autoplay, play/pause, previous/next, progress, narration/dialogue, camera/sound/continuity notes
+- **Source-Locked Visuals**: use a public image URL or uploaded PNG/JPG/WebP as a pixel-stable truth layer for maps, diagrams, scans, evidence photos, and educational explainers
+- scene-level source framing controls (focus X/Y + zoom) so Forge can pan/zoom without redrawing the source
+- portable project export embeds uploaded source images and records source/rights metadata
 - full Pro filmmaking workspace
 - continuity locks
 - audio lane planning and loudness target
@@ -43,6 +46,8 @@ The Streamlit build does **not** pretend that unconnected services are available
 Currently local:
 - preset / project logic
 - episode generator
+- source-locked media import / project persistence
+- source-locked pan/zoom animatic player
 - animatic player
 - Veyr deterministic advice
 - QC / render planning
@@ -89,3 +94,18 @@ Production service:
 GrimForge project state can be exported as JSON and imported again later. A forged episode can also export a provider-neutral render manifest. The manifest intentionally uses the stage `planned` until a real video worker returns generated media; a plan or animatic must never be labeled as a final render.
 
 The app also shows heuristic routing guidance for the selected open video model and free GPU backend. That guidance is not live VRAM detection and does not imply a provider is connected.
+
+
+## Source-Locked Visuals
+
+Use **Reference Theater → Source-Locked Visuals** when the visual must remain faithful to a real source rather than be regenerated.
+
+Supported sources:
+- a direct public image URL
+- an uploaded PNG, JPG/JPEG, or WebP
+
+When **Lock source geometry** is enabled, GrimForge treats the image as the truth layer. The animatic may crop, pan, zoom, dim, and place text/graphics above it, but the source pixels are not generatively redrawn.
+
+In Pro mode, each scene exposes **Focus X**, **Focus Y**, and **Zoom** controls. This is designed for map walkthroughs, medical/technical diagrams, evidence images, satellite/aerial screenshots, and other explanatory content where spatial accuracy matters.
+
+Uploaded sources are embedded as data URIs in the exported project JSON for portability. Public URLs are preserved as URLs. Always record an appropriate rights/source note for material you did not create.
