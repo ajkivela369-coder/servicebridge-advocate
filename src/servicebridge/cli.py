@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from .advocate import Advocate
+from .data_quality import audit_source_quality, summarize_findings
 from .ingest import ingest_file
 from .models import AdvocacyMode, AdvocacyRequest, BenefitLane, EvidenceClass
 from .providers import OpenAIProvider, PromptOnlyProvider
@@ -45,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     sources = sub.add_parser("sources", help="List indexed sources")
     sources.add_argument("--json", action="store_true")
+
+    quality = sub.add_parser(
+        "quality", help="Audit indexed source metadata and provenance quality without changing records"
+    )
+    quality.add_argument("--json", action="store_true")
 
     search = sub.add_parser("search", help="Search the local evidence index")
     search.add_argument("query")
@@ -115,6 +121,24 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 for item in items:
                     print(f"{item['source_id']}\t{item['evidence_class']}\t{item['title']}")
+            return 0
+
+        if args.command == "quality":
+            findings = audit_source_quality(store.list_sources())
+            payload = {
+                "summary": summarize_findings(findings),
+                "findings": [item.to_dict() for item in findings],
+            }
+            if args.json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(
+                    f"Source quality audit: {payload['summary']['total']} finding(s) "
+                    f"({payload['summary']['warning']} warning, "
+                    f"{payload['summary']['info']} info)"
+                )
+                for item in findings:
+                    print(f"[{item.severity}] {item.source_id} {item.code}: {item.message}")
             return 0
 
         if args.command == "search":
