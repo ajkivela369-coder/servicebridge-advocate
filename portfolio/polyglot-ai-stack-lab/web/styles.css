@@ -1,0 +1,27 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 2rem;
+  background: #f7f8fa;
+  color: #1f2937;
+}
+
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.pipeline article {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+}

@@ -1,0 +1,10 @@
+project: polyglot-ai-stack-lab
+dataset: data/benchmark.jsonl
+stages:
+  - python_summary
+  - sql_analysis
+  - r_statistics
+  - typescript_review
+notes:
+  - "JSON/YAML are data/config formats, not programming languages."
+  - "Specialized languages are added only when the project has a real need."
