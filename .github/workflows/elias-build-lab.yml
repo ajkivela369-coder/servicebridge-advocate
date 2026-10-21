@@ -1,0 +1,21 @@
+name: Elias Build Lab CI
+on:
+  push:
+    paths: ["portfolio/elias-build-lab/**", ".github/workflows/elias-build-lab.yml"]
+  pull_request:
+    paths: ["portfolio/elias-build-lab/**", ".github/workflows/elias-build-lab.yml"]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portfolio/elias-build-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - run: npm run build
